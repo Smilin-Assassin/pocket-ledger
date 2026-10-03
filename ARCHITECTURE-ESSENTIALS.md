@@ -26,4 +26,4 @@ Firebase project pocket-ledger-3a340 (asia-south1)
 
 **Gemini:** always through the `gemini` Cloud Function (key is a server secret, daily per-person limit). Bank CSVs from BML and MIB are parsed exactly in the browser without Gemini.
 
-**Release:** bump `pl-vNN` in `sw.js` and `?v=NN` in `index.html`; run `tests/g1…g12`; push; check the live `sw.js`.
+**Release:** bump `pl-vNN` in `sw.js` and `?v=NN` in `index.html`; run `tests/g1…g13`; push; check the live `sw.js`.

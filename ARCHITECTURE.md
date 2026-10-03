@@ -9,7 +9,7 @@ Short version: `ARCHITECTURE-ESSENTIALS.md`. What the app is for and the product
 - **Security in rules, not in the UI.** `firestore.rules` enforces who can read a space and that only a doc's `author` can change it. The UI hides buttons, the rules make it true.
 
 ## Start-up
-1. `index.html` applies the saved theme before paint (inline script: `plApplyTheme`), then loads `app.js?v=NN`.
+1. `index.html` applies the saved theme before paint (inline script: `plApplyTheme`; with no saved theme, Apple devices get Glass and everyone else Lagoon; Glass forces light and, off Apple devices, loads Inter), then loads `app.js?v=NN`.
 2. `app.js` shows the gate: sign in, invite check (`access` function), one-time migration of the old household, then picks the space (Me, a group, or someone's dashboard you were allowed to view).
 3. `js/main.js boot()` registers the pages, starts shell, dock, Quick add, scanning, statements, transfers, chat, lock and the backup reminder, then connects the live data and routes.
 
@@ -51,9 +51,9 @@ Short version: `ARCHITECTURE-ESSENTIALS.md`. What the app is for and the product
 Run from the repo root:
 ```
 python3 -m http.server 8765
-cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g12, in order
+cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g13, in order
 ```
-`tests/` runs Playwright against the real files with Firebase replaced by mocks (`tests/mockfb/`); the Firestore mock checks the security rules so a denied write fails the test. `g1` seeds an old-style household; later tests chain on `pl_state*.json` in the temp folder. g1 migration · g2 sharing, groups, view requests, view-only · g3 joining from a group link · g4 a new person through every page · g5 invites · g6 admin · g7 trash, backup, CSV, chat confirm, shortcuts · g8 BML statement, Undo, bank accounts list · g9 money sent between people · g10 dock, Quick add, Undo, Appearance, every text size · g11 MIB statement, duplicate cross-checks, slip prompt · g12 category drill-down and totals, chat button tucking and never covering content. All test data is made up.
+`tests/` runs Playwright against the real files with Firebase replaced by mocks (`tests/mockfb/`); the Firestore mock checks the security rules so a denied write fails the test. `g1` seeds an old-style household; later tests chain on `pl_state*.json` in the temp folder. g1 migration · g2 sharing, groups, view requests, view-only · g3 joining from a group link · g4 a new person through every page · g5 invites · g6 admin · g7 trash, backup, CSV, chat confirm, shortcuts · g8 BML statement, Undo, bank accounts list · g9 money sent between people · g10 dock, Quick add, Undo, Appearance, every text size · g11 MIB statement, duplicate cross-checks, slip prompt · g12 category drill-down and totals, chat button tucking and never covering content · g13 Glass theme: Apple default, light only, the iOS tab bar and its shrinking, Android with Inter, the glass side menu. All test data is made up.
 
 ## Hosting, services and deploying
 

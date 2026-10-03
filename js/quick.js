@@ -51,7 +51,7 @@ function paint() {
   const lerp = (a, b) => a + (b - a) * t;
   if (from) {
     const z = zoom(), top = (from.top - sr.top) / z, left = (from.left - sr.left) / z, right = (sr.right - from.right) / z, bottom = (sr.bottom - from.bottom) / z;
-    sh.style.clipPath = p >= .999 ? "none" : `inset(${Math.max(0, lerp(top, 0)).toFixed(1)}px ${Math.max(0, lerp(right, 0)).toFixed(1)}px ${Math.max(0, lerp(bottom, 0)).toFixed(1)}px ${Math.max(0, lerp(left, 0)).toFixed(1)}px round ${lerp(22, 28).toFixed(1)}px)`;
+    sh.style.clipPath = p >= .999 ? "none" : `inset(${Math.max(0, lerp(top, 0)).toFixed(1)}px ${Math.max(0, lerp(right, 0)).toFixed(1)}px ${Math.max(0, lerp(bottom, 0)).toFixed(1)}px ${Math.max(0, lerp(left, 0)).toFixed(1)}px round ${lerp(22, parseFloat(getComputedStyle(sh).borderTopLeftRadius) || 28).toFixed(1)}px)`;
   }
   $("qaScrim").style.opacity = Math.max(0, Math.min(1, p)).toFixed(3);
   fades().forEach((el, i) => { const v = p >= .999 && P.idle() ? 1 : Math.max(0, Math.min(1, (p - .3 - i * .04) / .38)); el.style.opacity = v.toFixed(3); el.style.transform = v >= 1 ? "" : `translate3d(0,${((1 - v) * 14).toFixed(1)}px,0)`; });
@@ -96,7 +96,10 @@ function save() {
 }
 
 // ---------- hold the + : Scan / Type it / Voice ----------
-const SAT_POS = [[-86, -40], [0, -94], [86, -40]];
+const SAT_FAN = [[-86, -40], [0, -94], [86, -40]];
+// Glass: the + sits at the right edge, so the shortcuts fan up and to the left
+const SAT_CORNER = [[-104, -2], [-78, -78], [0, -104]];
+let SAT_POS = SAT_FAN;
 const satS = [0, 1, 2].map(() => new Spring(0));
 let satOpen = false, hold = null;
 const satClock = clock(dt => {
@@ -110,6 +113,7 @@ const satClock = clock(dt => {
 function setSat(on) {
   if (on === satOpen) return; satOpen = on;
   const sat = $("dkSat"); if (!sat) return;
+  if (on) SAT_POS = document.documentElement.getAttribute("data-preset") === "glass" ? SAT_CORNER : SAT_FAN;
   sat.classList.toggle("open", on); sat.setAttribute("aria-hidden", String(!on));
   document.body.classList.toggle("sat-open", on);
   satS.forEach((s, i) => setTimeout(() => { s.t = on ? 1 : 0; if (reduced()) s.snap(); satClock.kick(); }, on ? i * 45 : (2 - i) * 25));

@@ -23,12 +23,14 @@ export const icon = (p, size) => `<svg width="${size || 22}" height="${size || 2
 
 const phoneMQ = window.matchMedia("(max-width: 899.98px)");
 const isPhone = () => phoneMQ.matches;
-const MIN_TAB = 46, SLOT = 62;
+// Glass (Apple look): labels under every icon, the + sits in its own circle beside the bar
+export const isGlass = () => document.documentElement.getAttribute("data-preset") === "glass";
+const minTab = () => isGlass() ? 44 : 46, slot = () => isGlass() ? 72 : 62, pad = () => isGlass() ? 32 : 24;
 // Settings › Text size zooms the page; screen measurements must be divided by it
 export const zoom = () => { const z = parseFloat(getComputedStyle(document.body).zoom); return z > 0 ? z : 1; };
 const layoutWidth = () => Math.min(window.innerWidth / zoom(), 560);
 // 6 tabs only when each still gets a comfortable thumb-sized target
-export function fitsSix() { const w = layoutWidth() - 24 - 12 - SLOT; return Math.floor(w / MIN_TAB) >= 6; }
+export function fitsSix() { const w = layoutWidth() - pad() - 12 - slot(); return Math.floor(w / minTab()) >= 6; }
 export const dockPages = () => (M.tabs === 6 && fitsSix()) ? PAGES.slice() : M.dock.concat("more");
 const tabFor = p => { const l = dockPages(); return l.includes(p) ? p : "more"; };
 
@@ -42,8 +44,9 @@ export function buildDock() {
   dock.innerHTML = `<i class="dk-blob" id="dkBlob"></i><div class="dk-half">${list.slice(0, half).map(btn).join("")}</div><div class="dk-slot" aria-hidden="true"></div><div class="dk-half">${list.slice(half).map(btn).join("")}</div>`;
   dock.dataset.n = list.length;
   blob = $("dkBlob"); tabs = [...dock.querySelectorAll(".dk-tab")];
-  const per = (layoutWidth() - 24 - 12 - SLOT) / list.length;
-  dock.classList.toggle("tight", per < 64);
+  const per = (layoutWidth() - pad() - 12 - slot()) / list.length;
+  dock.classList.toggle("tight", per < 64 && !isGlass());
+  setMin(false);
   renderMore(); dockBadges();
   requestAnimationFrame(() => { aim(); L.snap(); R.snap(); H.snap(); paint(); });
 }
@@ -154,7 +157,7 @@ function wireDock() {
     try { dock.setPointerCapture(e.pointerId); } catch {}
   });
   dock.addEventListener("pointermove", e => {
-    if (!press || e.pointerId !== press.id) return;
+    if (!press || e.pointerId !== press.id || minned) return;
     if (!press.moved && Math.abs(e.clientX - press.x) < 8) return;
     press.moved = true; scrub = true;
     const d = dock.getBoundingClientRect(), x = (e.clientX - d.left) / zoom(), half = Math.max(22, tabs[0].offsetWidth / 2);
@@ -168,6 +171,8 @@ function wireDock() {
     if (!press || e.pointerId !== press.id) return;
     const p = press; press = null; scrub = false;
     tabs.forEach(t => t.classList.remove("hover"));
+    // tapping the shrunken bar opens it back up, like iOS
+    if (minned) { if (e.type !== "pointercancel") { setMin(false); buzz(6); } return; }
     const i = p.moved ? p.over : tabs.findIndex(t => { const r = t.getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top - 12 && e.clientY <= r.bottom + 12; });
     if (e.type !== "pointercancel" && i >= 0) pick(tabs[i].dataset.p);
     kick();
@@ -176,6 +181,14 @@ function wireDock() {
   dock.addEventListener("pointercancel", release);
   // keyboard (Enter / Space on a tab)
   dock.addEventListener("click", e => { if (e.detail === 0) { const t = e.target.closest(".dk-tab"); if (t) pick(t.dataset.p); } });
+}
+// ---------- Glass: the bar shrinks to the current tab while you scroll down (iOS 26) ----------
+let minned = false;
+function setMin(on) {
+  on = !!on && isGlass() && isPhone();
+  const w = $("dockWrap"); if (!w || on === minned) return;
+  minned = on; w.classList.toggle("dk-min", on);
+  keepUntil = performance.now() + 700; kick();
 }
 function pick(p) {
   buzz(8);
@@ -193,6 +206,12 @@ export function initDock() {
   const mo = new MutationObserver(() => dockBadges());
   ["settingsBadge", "billsBadge"].forEach(id => { const el = $(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ["hidden"] }); });
   onRoute(onPage);
+  let lastY = window.scrollY;
+  addEventListener("scroll", () => {
+    const y = window.scrollY, dy = y - lastY; if (Math.abs(dy) < 6) return; lastY = y;
+    setMin(dy > 0 && y > 80);
+  }, { passive: true });
+  addEventListener("hashchange", () => { setMin(false); lastY = window.scrollY; });
   document.addEventListener("click", e => { const b = e.target.closest("[data-more]"); if (b) go(b.dataset.more); });
   let rz = 0, wasPhone = isPhone(), lastW = window.innerWidth;
   addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => {

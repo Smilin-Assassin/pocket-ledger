@@ -9,8 +9,15 @@
   var d = document.documentElement, g = function (k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } };
   var mq = window.matchMedia ? matchMedia("(prefers-color-scheme: dark)") : null;
   window.plApplyTheme = function () {
-    var mode = g("pl-mode") || "auto", preset = g("pl-preset") || "lagoon";
-    var dark = mode === "dark" || (mode === "auto" && mq && mq.matches);
+    // Glass (Apple's Liquid Glass look) is the default on iPhone, iPad and Mac; everyone can pick any theme
+    var apple = /iPhone|iPad|iPod|Macintosh|Mac OS X/.test(navigator.userAgent || "");
+    var mode = g("pl-mode") || "auto", preset = g("pl-preset") || (apple ? "glass" : "lagoon");
+    var dark = preset !== "glass" && (mode === "dark" || (mode === "auto" && mq && mq.matches));
+    d.toggleAttribute("data-apple", apple);
+    if (preset === "glass" && !apple && !document.getElementById("plInter")) {
+      var l = document.createElement("link"); l.id = "plInter"; l.rel = "stylesheet";
+      l.href = "https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap"; document.head.appendChild(l);
+    }
     d.setAttribute("data-theme", dark ? "dark" : "light");
     if (preset && preset !== "lagoon") d.setAttribute("data-preset", preset); else d.removeAttribute("data-preset");
     if (g("pl-amoled") === "1") d.setAttribute("data-amoled", ""); else d.removeAttribute("data-amoled");
@@ -31,7 +38,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=30">
+<link rel="stylesheet" href="css/app.css?v=31">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -314,11 +321,12 @@
 
       <section class="panel setsec" id="set-look">
         <h2>Appearance on this device</h2>
-        <div class="modeseg" role="group" aria-label="Light or dark"><button type="button" data-mode="auto">Automatic</button><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div>
-        <div class="themes" role="group" aria-label="Theme"><button class="theme-sw" type="button" data-preset="lagoon"><span class="chip"><i style="background:#F3F6F5"></i><i style="background:#0B5F57"></i><i style="background:#0F1716"></i></span>Lagoon</button><button class="theme-sw" type="button" data-preset="atoll"><span class="chip"><i style="background:#F1F5FA"></i><i style="background:#1D5FAE"></i><i style="background:#0C1320"></i></span>Atoll</button><button class="theme-sw" type="button" data-preset="sand"><span class="chip"><i style="background:#F5F1E8"></i><i style="background:#4E6A2C"></i><i style="background:#16140F"></i></span>Sandbank</button><button class="theme-sw" type="button" data-preset="monsoon"><span class="chip"><i style="background:#EDEFF3"></i><i style="background:#3B4A6E"></i><i style="background:#111419"></i></span>Monsoon</button><button class="theme-sw" type="button" data-preset="sunset"><span class="chip"><i style="background:#F7F1F4"></i><i style="background:#7B3A6A"></i><i style="background:#181116"></i></span>Sunset</button></div>
+        <div class="modeseg" id="modeSeg" role="group" aria-label="Light or dark"><button type="button" data-mode="auto">Automatic</button><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div>
+        <p class="hint" id="glassNote" hidden>Glass is a light theme only, like Apple's. Pick another theme for dark mode.</p>
+        <div class="themes" role="group" aria-label="Theme"><button class="theme-sw" type="button" data-preset="glass"><span class="chip"><i style="background:#F2F2F7"></i><i style="background:#FFFFFF"></i><i style="background:#0088FF"></i></span>Glass</button><button class="theme-sw" type="button" data-preset="lagoon"><span class="chip"><i style="background:#F3F6F5"></i><i style="background:#0B5F57"></i><i style="background:#0F1716"></i></span>Lagoon</button><button class="theme-sw" type="button" data-preset="atoll"><span class="chip"><i style="background:#F1F5FA"></i><i style="background:#1D5FAE"></i><i style="background:#0C1320"></i></span>Atoll</button><button class="theme-sw" type="button" data-preset="sand"><span class="chip"><i style="background:#F5F1E8"></i><i style="background:#4E6A2C"></i><i style="background:#16140F"></i></span>Sandbank</button><button class="theme-sw" type="button" data-preset="monsoon"><span class="chip"><i style="background:#EDEFF3"></i><i style="background:#3B4A6E"></i><i style="background:#111419"></i></span>Monsoon</button><button class="theme-sw" type="button" data-preset="sunset"><span class="chip"><i style="background:#F7F1F4"></i><i style="background:#7B3A6A"></i><i style="background:#181116"></i></span>Sunset</button></div>
         <div class="field"><span class="flabel">Text size</span>
           <div class="modeseg four" id="fsSeg" role="group" aria-label="Text size"><button type="button" data-fs="s">Small</button><button type="button" data-fs="m">Normal</button><button type="button" data-fs="l">Large</button><button type="button" data-fs="xl">Extra large</button></div></div>
-        <label class="check"><input type="checkbox" id="setAmoled"><span>Pure black in dark mode<small>Deeper blacks that save battery on AMOLED screens.</small></span></label>
+        <label class="check" id="amoledRow"><input type="checkbox" id="setAmoled"><span>Pure black in dark mode<small>Deeper blacks that save battery on AMOLED screens.</small></span></label>
         <div class="field"><span class="flabel">Motion</span>
           <div class="modeseg" id="motionSeg" role="group" aria-label="Motion"><button type="button" data-motion="calm">Calm</button><button type="button" data-motion="lively">Lively</button><button type="button" data-motion="jelly">Jelly</button></div>
           <small class="hint" id="motionHint"></small></div>
@@ -574,6 +582,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=30"></script>
+<script type="module" src="app.js?v=31"></script>
 </body>
 </html>
