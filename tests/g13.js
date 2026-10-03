@@ -30,7 +30,17 @@ const SHOTS = process.env.SHOTS;
   // scrolling down shrinks the bar to the current tab; scrolling up brings it back
   await T.nav("entries"); await p.waitForTimeout(300);
   for (let i = 0; i < 25; i++) await T.addEntry("expense", 10 + i, 1);
-  await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(300);
+  await p.evaluate(() => window.scrollTo(0, 200)); await p.waitForTimeout(700);
+  await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(700);
+  // it follows the finger: a short scroll moves it part of the way, then it glides back to the closer end
+  await p.evaluate(() => window.scrollTo(0, 400)); await p.waitForTimeout(700);
+  await p.evaluate(() => window.scrollTo(0, 250)); await p.waitForTimeout(700);
+  const part = await p.evaluate(() => new Promise(r => { requestAnimationFrame(() => { window.scrollBy(0, 24); requestAnimationFrame(() => requestAnimationFrame(() => r(parseFloat(document.getElementById("dockWrap").style.getPropertyValue("--p"))))); }); }));
+  check(part > .2 && part < .8, "a short scroll shrinks the bar part of the way", part);
+  await p.waitForTimeout(800);
+  const back = await p.evaluate(() => parseFloat(document.getElementById("dockWrap").style.getPropertyValue("--p")));
+  check(back === 0 || back === 1, "then it glides to fully open or fully shrunk", back);
+  await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(700);
   await p.mouse.move(200, 300); await p.mouse.wheel(0, 700); await p.waitForTimeout(700);
   const minned = await p.evaluate(() => ({ min: document.getElementById("dockWrap").classList.contains("dk-min"), w: document.getElementById("dock").getBoundingClientRect().width }));
   check(minned.min && minned.w < 60, "scrolling down shrinks the bar", minned);

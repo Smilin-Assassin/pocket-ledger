@@ -183,12 +183,38 @@ function wireDock() {
   dock.addEventListener("click", e => { if (e.detail === 0) { const t = e.target.closest(".dk-tab"); if (t) pick(t.dataset.p); } });
 }
 // ---------- Glass: the bar shrinks to the current tab while you scroll down (iOS 26) ----------
-let minned = false;
-function setMin(on) {
-  on = !!on && isGlass() && isPhone();
-  const w = $("dockWrap"); if (!w || on === minned) return;
-  minned = on; w.classList.toggle("dk-min", on);
-  keepUntil = performance.now() + 700; kick();
+// It follows your finger: every pixel scrolled moves it part of the way, and when the scrolling
+// stops it glides (on a spring) to whichever end is closer. 0 = full bar, 1 = just the current tab.
+const TRAVEL = 64;                       // px of scrolling for a full shrink or grow
+let minned = false, prog = 0, settleT = 0;
+const S = new Spring(0);                 // works in 0..100 so the spring's rest threshold is fine-grained
+function setProg(v) {
+  v = Math.max(0, Math.min(1, v));
+  const w = $("dockWrap"); if (!w || Math.abs(v - prog) < 1e-4 && v !== 0 && v !== 1) return;
+  prog = v; w.style.setProperty("--p", v.toFixed(4));
+  const m = v > .5; if (m !== minned) { minned = m; w.classList.toggle("dk-min", m); }
+  // the tabs move as the bar changes size: keep the highlight glued to the current one
+  if (dock && !scrub) { aim(); L.snap(); R.snap(); paint(); }
+}
+const progClock = clock(dt => {
+  S.k = 170; S.z = .92; S.run(dt); setProg(S.x / 100);
+  if (S.idle()) { S.snap(); setProg(S.t / 100); return false; }
+});
+function glideTo(t) {
+  clearTimeout(settleT);
+  if (!isGlass() || !isPhone()) t = 0;
+  S.x = prog * 100; S.t = t * 100;
+  if (reduced()) { S.snap(); setProg(t); return; }
+  progClock.kick();
+}
+function setMin(on) { glideTo(on ? 1 : 0); }
+function onScrollDock(dy, y) {
+  if (!isGlass() || !isPhone()) { if (prog) glideTo(0); return; }
+  S.t = S.x;                               // a new swipe takes over from any glide in progress
+  if (y <= 8) { glideTo(0); return; }     // back at the top: always the full bar
+  if (!progClock.running) setProg(prog + dy / TRAVEL); else { S.x = Math.max(0, Math.min(100, S.x + dy / TRAVEL * 100)); S.t = S.x; }
+  clearTimeout(settleT);
+  settleT = setTimeout(() => glideTo(prog > .5 && window.scrollY > 80 ? 1 : 0), 110);
 }
 function pick(p) {
   buzz(8);
@@ -207,10 +233,7 @@ export function initDock() {
   ["settingsBadge", "billsBadge"].forEach(id => { const el = $(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ["hidden"] }); });
   onRoute(onPage);
   let lastY = window.scrollY;
-  addEventListener("scroll", () => {
-    const y = window.scrollY, dy = y - lastY; if (Math.abs(dy) < 6) return; lastY = y;
-    setMin(dy > 0 && y > 80);
-  }, { passive: true });
+  addEventListener("scroll", () => { const y = window.scrollY, dy = y - lastY; lastY = y; if (dy) onScrollDock(dy, y); }, { passive: true });
   addEventListener("hashchange", () => { setMin(false); lastY = window.scrollY; });
   document.addEventListener("click", e => { const b = e.target.closest("[data-more]"); if (b) go(b.dataset.more); });
   let rz = 0, wasPhone = isPhone(), lastW = window.innerWidth;
