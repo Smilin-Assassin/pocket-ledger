@@ -55,6 +55,7 @@ A household in the Maldives wants to know, at any moment, **how much is left to 
 
 ## Release history (newest first)
 
+- October 2026 (pl-v29): polish pass (Impeccable): faint grey text and placeholders now pass WCAG AA in every theme, phone tap targets 40-44px, themed selection/caret/checkboxes/scrollbars, labelled invite link; dock icons are plain outlines (the pill marks the page).
 - October 2026 (pl-v28): personal details removed from the repo (docs, test data, example wording); test data is all made up.
 - October 2026: docs reorganised; HANDOFF.md retired (its content is now in ARCHITECTURE.md, PRD.md and AGENTS.md).
 - October 2026 (pl-v27): tap a category on Home (Where the money went) to see its entries; Entries has a category picker and a total line for whatever is shown (`ui.cat`, `#ledgerTotal`, test g12).

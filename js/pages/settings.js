@@ -115,7 +115,7 @@ async function renderGroups() {
     return `<div class="grp" data-g="${esc(g.id)}">
       <div class="grp-top"><b>${esc(d.name || g.name)}</b><small>${esc(names.join(", "))}${own ? " · you made this group" : ""}</small></div>
       ${own ? `<div class="grp-rename"><input data-rename="${esc(g.id)}" maxlength="30" value="${esc(d.name || g.name)}" aria-label="Group name"><button class="ghost" type="button" data-renameok="${esc(g.id)}">Rename</button></div>
-      <div class="field"><label>Invite link</label><input readonly value="${esc(inviteUrl(g.id))}"></div>
+      <div class="field"><label for="inv-${esc(g.id)}">Invite link</label><input id="inv-${esc(g.id)}" readonly value="${esc(inviteUrl(g.id))}"></div>
       <p class="hint">${open ? "Invitations are open until " + esc(new Date(d.joinUntil).toLocaleDateString(undefined, { day: "numeric", month: "short" })) + ". People who already use Pocket Ledger can join with the link." + (ctx.admin ? " For someone new, make an invite under Invite people." : " Someone new also needs an invite from the app's admin.") : "Invitations are closed, so the link doesn't let anyone join."}</p>
       <div class="formfoot"><button class="ghost" type="button" data-copy="${esc(g.id)}">Copy link</button>${navigator.share ? `<button class="ghost" type="button" data-share="${esc(g.id)}">Share</button>` : ""}<button class="ghost" type="button" data-inv="${esc(g.id)}" data-open="${open ? 0 : 1}">${open ? "Close invitations" : "Open invitations for 7 days"}</button></div>`
       : `<div class="formfoot"><button class="ghost" type="button" data-leave="${esc(g.id)}">Leave group</button></div>`}
