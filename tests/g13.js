@@ -26,6 +26,14 @@ const SHOTS = process.env.SHOTS;
   check(lbls.every(o => o === "1"), "every tab shows its label", lbls);
   const blob = await p.evaluate(() => { const b = document.getElementById("dkBlob"), t = document.querySelector("#dock .dk-tab.on"); return [parseFloat(b.style.width), t.offsetWidth]; });
   check(Math.abs(blob[0] - (blob[1] - 10)) < 3, "the highlight sits on the current tab", blob);
+  check(!(await p.evaluate(() => document.documentElement.hasAttribute("data-lens"))), "Safari keeps the plain glass (no lens filter)");
+  // touching the glass lights it up under the finger; letting go fades it
+  const tb = await p.$eval("#dock .dk-tab[data-p=entries]", e => { const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
+  await p.mouse.move(tb[0], tb[1]); await p.mouse.down(); await p.waitForTimeout(150);
+  const lit = await p.$eval("#dock", e => [e.classList.contains("lit"), parseFloat(e.style.getPropertyValue("--lx"))]);
+  await p.mouse.up(); await p.waitForTimeout(600);
+  check(lit[0] && Math.abs(lit[1] - (tb[0] - (await p.$eval("#dock", e => e.getBoundingClientRect().left)))) < 3 && !(await p.$eval("#dock", e => e.classList.contains("lit"))), "touch light follows the finger and fades on release", lit);
+  await T.nav("home"); await p.waitForTimeout(500);
 
   // scrolling down shrinks the bar to the current tab; scrolling up brings it back
   await T.nav("entries"); await p.waitForTimeout(300);
@@ -89,6 +97,9 @@ const SHOTS = process.env.SHOTS;
   await A.nav("settings/look"); await A.p.waitForTimeout(400);
   await A.p.click('.theme-sw[data-preset="glass"]'); await A.p.waitForTimeout(500);
   check(await A.p.evaluate(() => document.documentElement.getAttribute("data-preset")) === "glass" && !!(await A.p.$("#plInter")), "Android can pick Glass, which loads Inter");
+  await A.nav("home"); await A.p.waitForTimeout(800);
+  const lens = await A.p.evaluate(() => ({ on: document.documentElement.hasAttribute("data-lens"), maps: [...document.querySelectorAll("#lensDefs filter")].map(f => f.id), bf: getComputedStyle(document.getElementById("dock")).backdropFilter }));
+  check(lens.on && lens.maps.includes("lens-dock") && lens.maps.includes("lens-plus") && /url\("?#lens-dock/.test(lens.bf), "Android Chrome gets real lens edges on the glass", lens);
   await A.end();
   // wide screens: the floating glass sidebar
   const W = await start({ seed: loadState("2"), users: { "adam@x.com": "secret12" }, context: { userAgent: IPHONE.replace("iPhone; CPU iPhone OS 26_0 like", "Macintosh; Intel Mac OS X 10_15_7) (KHTML"), viewport: { width: 1280, height: 820 } } });

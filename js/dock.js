@@ -5,6 +5,7 @@
 import { $, esc } from "./util.js";
 import { ctx, state, ui, openBills } from "./store.js";
 import { go, currentPage, onRoute } from "./shell.js";
+import { refreshLens } from "./glass.js";
 import { M, PAGES, Spring, clock, params, reduced, buzz, ease, applyEase, measureHz } from "./motion.js";
 
 export const NAMES = { home: "Home", entries: "Entries", loans: "Loans", bills: "Bills", goals: "Goals", settings: "Settings", more: "More", admin: "Admin" };
@@ -199,6 +200,7 @@ function setProg(v) {
   // the highlight is faded out while the bar is changing; put it back on the tab once fully open
   // (reading the layout only here, not every frame, keeps the motion cheap)
   if (v === 0 && was > 0 && dock && !scrub) { aim(); L.snap(); R.snap(); paint(); }
+  if (v === 0 || v === 1) refreshLens("dock");            // Android: redraw the lens for the new size
 }
 const progClock = clock((dt, now) => {
   if (pend) {                                            // following the finger

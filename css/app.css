@@ -1033,3 +1033,34 @@ a.tile:hover .v { color: var(--accent); }
   :root[data-preset="glass"] .toast { left: calc(50% + 121px); }
 }
 @media (min-width: 1500px) { :root[data-preset="glass"] .main { margin-left: max(242px, calc((100vw - 1180px) / 2)); } }
+
+/* ---------- Glass: touch light (js/glass.js sets --lx/--ly where your finger is) ---------- */
+:root[data-preset="glass"] :is(.dk, .dk-plus, .fab, .monthnav, .nav) { overflow: hidden; }
+:root[data-preset="glass"] .monthnav { position: relative; }
+:root[data-preset="glass"] :is(.dk, .dk-plus, .fab, .monthnav, .nav)::after {
+  content: ""; position: absolute; z-index: 0; left: 0; top: 0; width: 150px; height: 150px; margin: -75px 0 0 -75px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 255, 255, .95) 0, rgba(255, 255, 255, .45) 30%, rgba(255, 255, 255, 0) 68%);
+  opacity: 0; transform: translate3d(var(--lx, 0px), var(--ly, 0px), 0) scale(.5);
+  transition: opacity .45s ease, transform .5s var(--spring-ease, ease); }
+:root[data-preset="glass"] :is(.dk, .dk-plus, .fab, .monthnav, .nav).lit::after { opacity: 1; transform: translate3d(var(--lx, 0px), var(--ly, 0px), 0) scale(1); transition: opacity .12s ease, transform .16s ease-out; }
+:root[data-preset="glass"] .dk-plus::after, :root[data-preset="glass"] .dk-plus.lit::after { mix-blend-mode: plus-lighter; }
+:root[data-preset="glass"] :is(.dk-plus, .fab) > svg, :root[data-preset="glass"] .monthnav > *, :root[data-preset="glass"] .nav > :not(.nav-blob) { position: relative; z-index: 1; }
+/* the bar swells a touch while you hold it, like Apple's */
+:root[data-preset="glass"] .dk { transition: scale .45s var(--spring-ease, ease); }
+:root[data-preset="glass"] .dk.lit { scale: 1.015; }
+:root[data-preset="glass"] .fab.lit, :root[data-preset="glass"] .monthnav.lit { scale: 1.03; }
+:root[data-preset="glass"] .fab, :root[data-preset="glass"] .monthnav { transition: scale .45s var(--spring-ease, ease), transform .35s var(--spring-ease, ease), opacity .2s; }
+
+/* ---------- Glass: lens edges on Chrome / Android (js/glass.js draws a map per surface) ---------- */
+/* a clearer glass so the bending shows; text on it stays readable thanks to the lighter blur + white fill */
+:root[data-preset="glass"][data-lens] { --g-lens-fill: rgba(255, 255, 255, .6); }
+:root[data-preset="glass"][data-lens] #dock { background: var(--g-lens-fill); -webkit-backdrop-filter: blur(9px) saturate(190%) url(#lens-dock); backdrop-filter: blur(9px) saturate(190%) url(#lens-dock); }
+:root[data-preset="glass"][data-lens] #dkPlus { -webkit-backdrop-filter: blur(6px) saturate(190%) url(#lens-plus); backdrop-filter: blur(6px) saturate(190%) url(#lens-plus); }
+:root[data-preset="glass"][data-lens] #chatFab { background: var(--g-lens-fill); -webkit-backdrop-filter: blur(8px) saturate(190%) url(#lens-fab); backdrop-filter: blur(8px) saturate(190%) url(#lens-fab); }
+:root[data-preset="glass"][data-lens] #monthNav { background: var(--g-lens-fill); -webkit-backdrop-filter: blur(8px) saturate(190%) url(#lens-month); backdrop-filter: blur(8px) saturate(190%) url(#lens-month); }
+@media (min-width: 900px) {
+  :root[data-preset="glass"][data-lens] #nav { -webkit-backdrop-filter: blur(14px) saturate(190%) url(#lens-nav); backdrop-filter: blur(14px) saturate(190%) url(#lens-nav); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-preset="glass"][data-lens] :is(#dock, #dkPlus, #chatFab, #monthNav, #nav) { -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); background: var(--g-fill); }
+}
