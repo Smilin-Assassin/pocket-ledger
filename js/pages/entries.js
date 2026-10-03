@@ -1,20 +1,21 @@
 // Entries page: the add/edit form and every entry, searchable across months.
 import { $, esc, money, num, sum, todayISO, monthKey, monthName, shiftMonth, toast, saveFile, fillSelect, canHover } from "../util.js";
 import { state, ui, db, meId, isAll, isGroup, people, pname, pcolor, canEdit, addedBy, otherOf, inMonth, countsMoney,
-  visibleGoals, goalBalance, goalName, totalSavings, catOptions, guessCategory, changed } from "../store.js";
+  visibleGoals, goalBalance, goalName, totalSavings, catOptions, guessCategory, changed, merchantKey } from "../store.js";
 import { createRecurring, budgetCheck, removeWithUndo } from "../actions.js";
 import { go } from "../shell.js";
 
 Object.assign(ui, { type: "expense", editId: null, filter: "all", search: "", cat: "", confirm: null, openRow: null, catOther: false, goalSel: "" });
 
 // ---------- one entry row (also used on Home) ----------
-const META = { expense: ["var(--c-spent)", "out", "−"], income: ["var(--c-left)", "in", "+"], save: ["var(--c-saved)", "sv", "→ "], withdraw: ["var(--c-saved)", "in", "← "] };
+const META = { expense: ["var(--c-spent)", "out", "−"], income: ["var(--c-left)", "in", "+"], save: ["var(--c-saved)", "sv", "→ "], withdraw: ["var(--c-saved)", "in", "← "], move: ["var(--ink-3)", "mv", ""] };
 export function rowHtml(e, opts) {
   opts = opts || {};
   const meta = META[e.type] || ["var(--ink-3)", "out", ""];
   let title = e.category || "";
   if (e.type === "save") title = "Saved" + (goalName(e.goalId) ? " for " + goalName(e.goalId) : "");
   if (e.type === "withdraw") title = "Took out of savings" + (goalName(e.goalId) ? " (" + goalName(e.goalId) + ")" : "");
+  if (e.type === "move") title = "Moved between your accounts";
   const tags = (e.split ? '<span class="owner-tag">Split</span>' : "") + (e.recurringId ? '<span class="owner-tag">Bill</span>' : "") +
     (e.countMonth && e.countMonth !== (e.date || "").slice(0, 7) ? '<span class="owner-tag">For ' + esc(monthName(e.countMonth, true)) + "</span>" : "") +
     (e.loanId && !countsMoney(e) ? '<span class="owner-tag">Loan · separate</span>' : "");
@@ -67,6 +68,7 @@ function renderLedger() {
   if (ui.filter === "expense") es = es.filter(e => e.type === "expense");
   if (ui.filter === "income") es = es.filter(e => e.type === "income");
   if (ui.filter === "savings") es = es.filter(e => e.type === "save" || e.type === "withdraw");
+  if (ui.filter === "moved") es = es.filter(e => e.type === "move" || e.moved);
   // category picker: the categories in what's shown (before picking one)
   const sel = $("catFilter"), cats = [...new Set(es.map(e => e.category || "Other"))].sort();
   if (ui.cat && !cats.includes(ui.cat)) cats.unshift(ui.cat);
@@ -77,12 +79,12 @@ function renderLedger() {
   // the total of whatever is chosen
   const out = sum(es.filter(e => e.type === "expense"), e => +e.amount), inc = sum(es.filter(e => e.type === "income"), e => +e.amount);
   const sv = sum(es.filter(e => e.type === "save"), e => +e.amount) - sum(es.filter(e => e.type === "withdraw"), e => +e.amount);
-  const what = [ui.cat, ui.filter === "expense" ? "Spent" : ui.filter === "income" ? "Income" : ui.filter === "savings" ? "Savings" : "", ui.search ? "\u201c" + ui.search + "\u201d" : ""].filter(Boolean).join(" · ") || "Everything";
+  const what = [ui.cat, ui.filter === "expense" ? "Spent" : ui.filter === "income" ? "Income" : ui.filter === "savings" ? "Savings" : ui.filter === "moved" ? "Moved" : "", ui.search ? "\u201c" + ui.search + "\u201d" : ""].filter(Boolean).join(" · ") || "Everything";
   $("ledgerTotal").innerHTML = es.length ? `<span><b>${esc(what)}</b> ${ui.search ? "in all months" : "in " + esc(monthName(ui.month))}, ${es.length} entr${es.length === 1 ? "y" : "ies"}</span><span class="lt-sums">${out ? `<b class="num neg">${esc(money(out))}</b> spent` : ""}${out && (inc || sv) ? " · " : ""}${inc ? `<b class="num pos">${esc(money(inc))}</b> in` : ""}${inc && sv ? " · " : ""}${sv ? `<b class="num">${esc(money(sv))}</b> saved` : ""}</span>${ui.cat ? `<button type="button" class="linkish" data-cat-clear="1">Show all categories</button>` : ""}` : "";
   $("ledgerTotal").hidden = !es.length;
   if (!es.length) {
     if (ui.search || ui.cat) { list.innerHTML = `<li class="empty"><span>Nothing matches${ui.cat ? " in " + esc(ui.cat) : ""}${ui.search ? ' "' + esc(ui.search) + '"' : ""}${ui.search ? "" : " in " + esc(monthName(ui.month))}.</span></li>`; return; }
-    list.innerHTML = `<li class="empty"><span>${ui.filter === "all" ? "Nothing logged " + (isAll() || ui.view === meId() ? "" : "for " + esc(pname(ui.view)) + " ") + "in " + esc(monthName(ui.month)) + " yet." : "No entries of this kind this month."}</span>${state.readOnly ? "" : `<span class="hint">Use the form to add your income first, then each thing you spend.</span>`}</li>`;
+    list.innerHTML = `<li class="empty"><span>${ui.filter === "moved" ? "No moves between your own accounts this month. They're added when you import a bank statement." : ui.filter === "all" ? "Nothing logged " + (isAll() || ui.view === meId() ? "" : "for " + esc(pname(ui.view)) + " ") + "in " + esc(monthName(ui.month)) + " yet." : "No entries of this kind this month."}</span>${state.readOnly ? "" : `<span class="hint">Use the form to add your income first, then each thing you spend.</span>`}</li>`;
     return;
   }
   let html = "", lastDay = "";
@@ -107,9 +109,18 @@ function syncCatSel() {
   else { sel.value = ""; inp.hidden = true; }
 }
 function renderForm() {
-  const t = ui.type, goalMode = t === "save" || t === "withdraw";
+  const t = ui.type, goalMode = t === "save" || t === "withdraw", isMove = t === "move";
+  const editing = ui.editId ? state.entries.find(x => x.id === ui.editId) : null, wasMove = !!(editing && editing.moved);
   document.querySelectorAll("#formPanel .seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.t === t)));
-  $("catField").hidden = goalMode; $("goalField").hidden = !goalMode;
+  $("catField").hidden = goalMode || isMove; $("goalField").hidden = !goalMode;
+  $("moveRow").hidden = !(isMove || (wasMove && t === "save"));
+  if (!$("moveRow").hidden) {
+    const way = editing && editing.acctFrom ? " (" + editing.acctFrom + " → " + editing.acctTo + ")" : "";
+    $("moveText").textContent = isMove ? "Moved between your own accounts" + way + ". It isn't counted as income or spending." : "This came from a move between your own accounts" + way + ". It now counts as savings.";
+    $("moveToggle").textContent = isMove ? "Count it as savings instead" : "Make it a plain move again";
+  }
+  const src = editing && editing.importId ? "From your " + (editing.importLabel || "bank statement") + ". Undoing that import (Settings › Backup) removes it." : editing && editing.source === "transfer" ? "From money sent between people in Pocket Ledger." : "";
+  $("srcHint").textContent = src; $("srcHint").hidden = !src;
   const gsel = $("fGoal");
   fillSelect(gsel, [["", t === "withdraw" ? "General savings" : "General savings (no goal)"]].concat(visibleGoals(entryWho()).map(g => [g.id, g.name])).concat(t === "save" ? [["__other", "Other"]] : []), ui.goalSel || gsel.value);
   $("purposeRow").hidden = !(t === "save" && gsel.value === "__other");
@@ -126,7 +137,7 @@ function renderForm() {
   $("splitRow").hidden = t !== "expense" || people().length < 2 || !other;
   $("splitLabel").textContent = "Split half with " + pname(other);
   $("repeatRow").hidden = !!ui.editId;
-  const verb = { expense: "expense", income: "income", save: "savings", withdraw: "withdrawal" }[t];
+  const verb = { expense: "expense", income: "income", save: "savings", withdraw: "withdrawal", move: "move" }[t];
   $("submitBtn").textContent = (ui.editId ? "Update " : "Add ") + verb;
   $("formTitle").textContent = ui.editId ? "Edit entry" : "Add an entry";
   $("cancelEdit").hidden = !ui.editId;
@@ -134,7 +145,8 @@ function renderForm() {
     expense: "Money you spent. It comes out of what's left this month.",
     income: "Money coming in. If you're paid before the month ends, choose which month it's for.",
     save: "Money you move into savings. It leaves this month's spending money and adds to your savings or a goal.",
-    withdraw: "Money taken out of your savings. It's deducted from your savings (and the goal, if you pick one) and added to this month's money. Put it back later with Save."
+    withdraw: "Money taken out of your savings. It's deducted from your savings (and the goal, if you pick one) and added to this month's money. Put it back later with Save.",
+    move: "Pick Spent, Income or Save above if this wasn't just a move between your own accounts."
   }[t];
   syncCatSel();
   document.querySelectorAll("#formPanel button, #formPanel input, #formPanel select").forEach(el => { el.disabled = state.readOnly; });
@@ -153,7 +165,7 @@ export function startEdit(id) {
   if (location.hash.replace("#", "").split("/")[0] !== "entries") go("entries");
   ui.editId = e.id; ui.type = e.type; ui.catOther = false; ui.goalSel = e.goalId || "";
   $("fAmount").value = e.amount; $("fDate").value = e.date; $("fNote").value = e.note || "";
-  $("fCat").value = e.type === "save" || e.type === "withdraw" ? "" : (e.category || "");
+  $("fCat").value = e.type === "save" || e.type === "withdraw" || e.type === "move" ? "" : (e.category || "");
   $("fFor").value = e.countMonth && e.countMonth !== (e.date || "").slice(0, 7) ? "next" : "this";
   $("fSplit").checked = !!e.split; $("fRepeat").checked = false;
   renderForm();
@@ -184,7 +196,8 @@ async function submit(ev) {
   const e = { type: t, amount, date, note: $("fNote").value.trim(), created: Date.now(), person: entryWho() };
   if (t === "expense" && $("fSplit").checked && !$("splitRow").hidden) e.split = { with: otherOf(e.person), share: 0.5 };
   if (t === "income" && $("fFor").value === "next") e.countMonth = shiftMonth(date.slice(0, 7), 1);
-  if (goalMode) {
+  if (t === "move") e.category = "Moved";
+  else if (goalMode) {
     const g = $("fGoal").value;
     e.goalId = g === "__other" ? "" : (g || ""); e.category = "Savings";
     if (t === "save" && g === "__other") { const pur = $("fPurpose").value.trim(); if (pur) e.note = "Saving for " + pur + (e.note ? " · " + e.note : ""); }
@@ -199,8 +212,11 @@ async function submit(ev) {
   const wasEdit = ui.editId;
   if (wasEdit) {
     const old = state.entries.find(x => x.id === wasEdit);
-    if (old) { if (old.created) e.created = old.created; ["ref", "loanId", "loanRole", "recurringId", "source", "author"].forEach(k => { if (old[k] !== undefined && e[k] === undefined) e[k] = old[k]; }); }
-    db.update(wasEdit, e); toast("Entry updated");
+    // keep where it came from (statement import, transfer, own-account move) so Undo import and matching still find it
+    if (old) { if (old.created) e.created = old.created; ["ref", "refs", "loanId", "loanRole", "recurringId", "source", "author", "importId", "importLabel", "moved", "acctFrom", "acctTo", "legs", "transferId", "transferGroup", "sample"].forEach(k => { if (old[k] !== undefined && e[k] === undefined) e[k] = old[k]; }); }
+    db.update(wasEdit, e);
+    const n = old ? offerChangeAll(old, e) : 0;
+    if (!n) toast("Entry updated");
   } else {
     db.add(e); toast("Added");
     if ($("fRepeat").checked) {
@@ -212,6 +228,63 @@ async function submit(ev) {
   resetForm(); $("fDate").value = date; renderForm();
   if (date.slice(0, 7) !== ui.month) { ui.month = date.slice(0, 7); changed(); }
   if (canHover()) $("fAmount").focus();
+}
+
+// ---------- one category change, everywhere ----------
+// Changing an entry's category remembers it for that shop/person, and offers to change the others too.
+const sameName = (e, k, type) => e.type === type && canEdit(e) && merchantKey(e.note) === k;
+function offerChangeAll(old, e) {
+  if ((e.type !== "expense" && e.type !== "income") || old.type !== e.type || !e.category || old.category === e.category) return 0;
+  const k = merchantKey(e.note); if (k.length < 2) return 0;
+  db.saveCatRule(e.type, k, e.category);
+  const others = state.entries.filter(x => x.id !== old.id && sameName(x, k, e.type) && x.category !== e.category);
+  if (!others.length) return 0;
+  const name = (e.note || "").split(/:|,/)[0].replace(/^(Transfer to|From)\s+/i, "").trim() || k;
+  toast("Also change " + others.length + " other " + name + " entr" + (others.length === 1 ? "y" : "ies") + " to " + e.category + "?", { action: "Change all", ms: 8000,
+    onAction: () => { db.patchMany(others.map(x => x.id), { category: e.category }); toast(others.length + " more changed to " + e.category); } });
+  return others.length;
+}
+
+// Find & replace: search all months, change the category of every match at once
+function frMatches() {
+  const q = $("frQ").value.trim().toLowerCase(), type = $("frType").value, from = $("frFrom").value;
+  if (q.length < 2) return [];
+  return state.entries.filter(e => e.type === type && canEdit(e) && (e.note || "").toLowerCase().includes(q) && (!from || (e.category || "Other") === from));
+}
+function frRender(keepFrom) {
+  const type = $("frType").value, q = $("frQ").value.trim().toLowerCase();
+  const pool = q.length >= 2 ? state.entries.filter(e => e.type === type && canEdit(e) && (e.note || "").toLowerCase().includes(q)) : [];
+  const cats = [...new Set(pool.map(e => e.category || "Other"))].sort();
+  fillSelect($("frFrom"), [["", "Any category"]].concat(cats.map(c => [c, c])), keepFrom);
+  fillSelect($("frCat"), catOptions(type).map(c => [c, c]), $("frCat").value || "");
+  const m = frMatches(), to = $("frCat").value, change = m.filter(e => (e.category || "Other") !== to);
+  const box = $("frFound");
+  if (q.length < 2) box.innerHTML = `<span class="hint">Type at least 2 letters.</span>`;
+  else if (!m.length) box.innerHTML = `<span class="hint">Nothing matches "${esc($("frQ").value.trim())}".</span>`;
+  else box.innerHTML = `<span><b>${m.length} found</b>, ${change.length} to change</span><ul>${m.slice().sort(byNewest).slice(0, 6).map(e => `<li><span>${esc(new Date(e.date + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short", year: "2-digit" }))} · ${esc(e.note || "")}</span><span class="muted">${esc(e.category || "Other")}</span></li>`).join("")}</ul>${m.length > 6 ? `<small class="hint">and ${m.length - 6} more</small>` : ""}`;
+  $("frGo").disabled = !change.length;
+  $("frGo").textContent = change.length ? "Change " + change.length + " to " + to : "Change all";
+}
+export function openFindReplace(q) {
+  if (state.readOnly) return toast("You can't change entries here.");
+  $("frQ").value = q || ""; $("frType").value = "expense"; $("frCat").value = "";
+  frRender(""); $("frWrap").hidden = false; document.body.classList.add("sheet-open");
+  setTimeout(() => $("frQ").focus(), 60);
+}
+function closeFindReplace() { $("frWrap").hidden = true; document.body.classList.remove("sheet-open"); }
+function frGo() {
+  const to = $("frCat").value, type = $("frType").value, q = $("frQ").value.trim();
+  const change = frMatches().filter(e => (e.category || "Other") !== to);
+  if (!change.length || !to) return;
+  db.patchMany(change.map(e => e.id), { category: to });
+  if ($("frRemember").checked) {
+    // remember the name as it's written in the notes (e.g. "veyla" for "Veyla Pvt Ltd")
+    const keys = new Set(change.map(e => merchantKey(e.note)).filter(k => k.length >= 2));
+    const ql = q.toLowerCase().replace(/\s+/g, " ");
+    if ([...keys].some(k => k.startsWith(ql))) db.saveCatRule(type, ql, to); else keys.forEach(k => db.saveCatRule(type, k, to));
+  }
+  toast(change.length + " entr" + (change.length === 1 ? "y" : "ies") + " changed to " + to);
+  closeFindReplace();
 }
 
 function exportCsv() {
@@ -254,6 +327,16 @@ export const page = {
     $("searchQ").addEventListener("input", () => { clearTimeout(st); st = setTimeout(() => { ui.search = $("searchQ").value.trim(); renderLedger(); }, 200); });
     wireRows($("ledger"), renderLedger);
     $("exportBtn").addEventListener("click", exportCsv);
+    $("frBtn").addEventListener("click", () => openFindReplace(ui.search));
+    $("frClose").addEventListener("click", closeFindReplace);
+    $("frWrap").addEventListener("click", ev => { if (ev.target === $("frWrap")) closeFindReplace(); });
+    let ft = null;
+    $("frQ").addEventListener("input", () => { clearTimeout(ft); ft = setTimeout(() => frRender(""), 150); });
+    $("frType").addEventListener("change", () => { $("frCat").value = ""; frRender(""); });
+    $("frFrom").addEventListener("change", () => frRender($("frFrom").value));
+    $("frCat").addEventListener("change", () => frRender($("frFrom").value));
+    $("frGo").addEventListener("click", frGo);
+    $("moveToggle").addEventListener("click", () => { setType(ui.type === "move" ? "save" : "move"); });
     $("clearSamples").addEventListener("click", () => {
       state.entries.filter(e => e.sample).forEach(e => db.remove(e.id));
       state.goals.filter(g => g.sample).forEach(g => db.removeDoc("goals", g.id));

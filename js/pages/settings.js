@@ -71,9 +71,10 @@ async function saveMyDetails() {
   });
   jobs.push(F().setDoc(uRef(), { name }, { merge: true }));
   state.my = mine; ctx.profile.name = name;
-  const b = $("saveSettings"); busy(b, true, "Saving…");
-  try { await Promise.all(jobs); toast("Saved"); } catch { toast("Couldn't save. Check your connection and try again."); }
-  busy(b, false);
+  // like every other change: shown at once, synced in the background (no "Saving…" waiting on a slow connection)
+  toast("Saved");
+  Promise.all(jobs).catch(() => toast("Some details couldn't be saved. Check your connection and try again."));
+  changed();
 }
 
 // ---------- appearance (this device) ----------

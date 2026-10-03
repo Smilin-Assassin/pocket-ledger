@@ -350,7 +350,7 @@ function ownInfo(extra) {
   String(me.acct || "").split(/[,\s]+/).forEach(d => { if (/^\d{4}$/.test(d)) last4.add(d); });
   (me.accounts || []).forEach(a => { if (/^\d{4}$/.test(a.last4 || "")) last4.add(a.last4); });
   if (extra && /^\d{4}$/.test(String(extra.last4 || ""))) last4.add(String(extra.last4));
-  return { names, last4 };
+  return { names, last4, accounts: me.accounts || [] };
 }
 function myDetails() { return state.my || people().find(p => p.id === meId()) || {}; }
 const titleCase = s => String(s || "").toLowerCase().replace(/(^|[\s\-\/&(])([a-z])/g, (m, a, c) => a + c.toUpperCase()).replace(/\b(Pvt|Ltd|Llc|Mv|Mib|Bml|Atm|Ips)\b/g, w => w.toUpperCase()).trim();
@@ -409,7 +409,8 @@ async function importStatement(file) {
     if (!rows.length) throw { code: "empty" };
     const own = ownInfo(extra);
     if (!own.names.length && !own.last4.size && !importAnyway) return askForDetails(file);
-    const isOwn = r => (r.acct && String(r.acct).split(/\s+/).some(d => d.length >= 8 && own.last4.has(d.slice(-4)))) || own.names.some(n => nameMatches(n, r.name));
+    const ownAcct = r => (String(r.acct || "").split(/\s+/).find(d => d.length >= 8 && own.last4.has(d.slice(-4))) || "").slice(-4);
+    const isOwn = r => !!ownAcct(r) || own.names.some(n => nameMatches(n, r.name));
     const used = new Set(), seenRefs = new Set(), mine = state.entries.filter(e => e.person === meId() || !e.person);
     // "Already in Pocket Ledger" is decided by cross-checking several things, so genuinely repeated
     // payments (the same 645 every month, two 30s to the same person on one day) are never skipped:
@@ -421,7 +422,7 @@ async function importStatement(file) {
     const words = s => new Set(toks(s).filter(w => w.length >= 3 && !/^(FROM|TRANSFER|PAID|BACK|LOAN|THE|AND)$/.test(w)));
     const dupOfRow = r => {
       const type = r.dir === "out" ? "expense" : "income";
-      if (r.ref) { const e = mine.find(x => x.ref && x.ref === r.ref); if (e) return e; }
+      if (r.ref) { const e = mine.find(x => (x.ref && x.ref === r.ref) || (x.refs || []).includes(r.ref)); if (e) return e; }
       const rw = words(r.name);
       const cands = mine.filter(x => !used.has(x.id) && x.type === type && Math.abs(+x.amount - r.amount) < 0.005 && x.date && Math.abs(daysBetween(x.date, r.date)) <= 2
         && !(x.ref && r.ref && x.ref !== r.ref) && !(x.source === "statement" && x.ref));
@@ -431,11 +432,32 @@ async function importStatement(file) {
       used.add(e.id);
       return e;
     };
-    const res = { add: [], dup: [], own: [] };
+    // Moves between your own accounts are kept as "Moved" entries that don't count as income or spending.
+    // The same move shows on both statements (out of one account, into the other), so it's stored once:
+    // a row joins an earlier move with the same amount within 2 days that hasn't got this side yet.
+    const acctName = d4 => { const a = own.accounts.find(x => x.last4 === d4); return a ? (a.name || a.bank || "") + (a.name && a.bank ? " (" + a.bank + ")" : "") || d4 : ""; };
+    const here = acctName(extra.last4) || extra.bank || "This account";
+    const legOf = r => (extra.last4 || extra.bank || "acct") + ":" + r.dir;
+    const moveOf = r => {
+      if (r.ref) { const e = mine.find(x => (x.ref && x.ref === r.ref) || (x.refs || []).includes(r.ref)); if (e) return { dup: e }; }
+      const leg = legOf(r), side = leg.split(":")[0];
+      const e = mine.find(x => x.moved && !used.has(x.id) && Math.abs(+x.amount - r.amount) < 0.005 && x.date && Math.abs(daysBetween(x.date, r.date)) <= 2
+        && !(x.legs || []).includes(leg) && (x.legs || []).every(l => l.split(":")[0] !== side && l.split(":")[1] !== r.dir));
+      if (e) { used.add(e.id); return { join: e, leg }; }
+      return { leg };
+    };
+    const otherSide = r => acctName(ownAcct(r)) || r.otherBank || "Other account";
+    const res = { add: [], dup: [], own: [], joined: [] };
     rows.forEach(r => {
       if (r.ref && seenRefs.has(r.ref)) return res.dup.push(r); // the same line twice in one file
       if (r.ref) seenRefs.add(r.ref);
-      if (isOwn(r)) return res.own.push(r);
+      if (isOwn(r)) {
+        const m = moveOf(r);
+        if (m.dup) return res.dup.push(r);
+        r.leg = m.leg; r.from = r.dir === "out" ? here : otherSide(r); r.to = r.dir === "out" ? otherSide(r) : here;
+        if (m.join) { r.join = m.join; return res.joined.push(r); }
+        return res.own.push(r);
+      }
       if (dupOfRow(r)) return res.dup.push(r);
       const nm = titleCase(r.name) || titleCase(r.label) || "Bank";
       r.note = ((r.kind === "purchase" || r.kind === "bill" || r.kind === "fee" || r.name === "MIB profit") ? nm : r.dir === "out" ? "Transfer to " + nm : "From " + nm) + (r.remark ? ": " + r.remark : "");
@@ -451,8 +473,19 @@ async function importStatement(file) {
     const label = (extra.bank || "Bank") + " statement · " + (main.length ? main : months).map(k => monthName(k, true)).join(", ");
     const entries = res.add.map((r, i) => Object.assign({ type: r.dir === "out" ? "expense" : "income", amount: r2(r.amount), date: r.date, category: r.category, note: r.note,
       person: meId(), created: Date.now() + i, source: "statement", importId, importLabel: label }, r.ref ? { ref: r.ref.slice(0, 40) } : {}));
-    status("Adding " + entries.length + " entries…", true);
-    const ids = entries.length ? await db.addMany(entries) : [];
+    const moves = res.own.map((r, i) => Object.assign({ type: "move", moved: true, amount: r2(r.amount), date: r.date, category: "Moved", note: (r.from + " → " + r.to).slice(0, 160),
+      acctFrom: r.from, acctTo: r.to, legs: [r.leg], person: meId(), created: Date.now() + entries.length + i, source: "statement", importId, importLabel: label }, r.ref ? { ref: r.ref.slice(0, 40), refs: [r.ref.slice(0, 40)] } : { refs: [] }));
+    // the other side of a move already saved from another statement: fill in this side, don't add it again
+    res.joined.forEach(r => {
+      const e = r.join, known = x => x && !/^(Other account|This account)$/.test(x);
+      const upd = Object.assign({}, e, { legs: (e.legs || []).concat(r.leg), refs: (e.refs || (e.ref ? [e.ref] : [])).concat(r.ref ? [r.ref.slice(0, 40)] : []).slice(0, 6),
+        acctFrom: known(e.acctFrom) ? e.acctFrom : r.from, acctTo: known(e.acctTo) ? e.acctTo : r.to });
+      if (e.type === "move") upd.note = (upd.acctFrom + " → " + upd.acctTo).slice(0, 160);
+      db.update(e.id, upd);
+    });
+    const all = entries.concat(moves);
+    status("Adding " + all.length + " entries…", true);
+    const ids = all.length ? await db.addMany(all) : [];
     lastImport = { ids, importId, label, months, res };
     renderImport();
   } catch (e) {
@@ -481,7 +514,7 @@ function askForDetails(file) {
 function renderImport() {
   const L = lastImport, r = L.res, sumOf = (a, d) => r2(sum(a.filter(x => x.dir === d), x => x.amount));
   const outN = r.add.filter(x => x.dir === "out").length, inN = r.add.length - outN;
-  $("scanTitle").textContent = r.add.length ? "Statement imported" : "Nothing new to add";
+  $("scanTitle").textContent = r.add.length || r.own.length ? "Statement imported" : "Nothing new to add";
   status(esc(L.label), false);
   const list = (a, title) => a.length ? `<details class="box imp-list"><summary>${esc(title)}</summary><ul>${a.map(x => `<li><span>${esc(fmtDate(x.date))} · ${esc(titleCase(x.name) || x.label || "")}</span><b class="num">${x.dir === "out" ? "−" : "+"}${esc(money(x.amount))}</b></li>`).join("")}</ul></details>` : "";
   const byCat = {}; r.add.filter(x => x.dir === "out").forEach(x => { byCat[x.category] = (byCat[x.category] || 0) + x.amount; });
@@ -489,9 +522,9 @@ function renderImport() {
     <div class="imp-stats"><div><span class="label">Spent</span><b class="num">${esc(money(sumOf(r.add, "out")))}</b><small>${outN} entr${outN === 1 ? "y" : "ies"} added</small></div>
       <div><span class="label">Income</span><b class="num">${esc(money(sumOf(r.add, "in")))}</b><small>${inN} entr${inN === 1 ? "y" : "ies"} added</small></div></div>
     ${Object.keys(byCat).length ? `<p class="hint">${Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([c, v]) => esc(c) + " " + esc(money(v, { whole: true }))).join(", ")}</p>` : ""}
-    <p class="hint">Skipped ${r.dup.length} already in Pocket Ledger and ${r.own.length} between your own accounts.</p>
-    ${list(r.add, "Added (" + r.add.length + ")")}${list(r.dup, "Already in Pocket Ledger (" + r.dup.length + ")")}${list(r.own, "Between your own accounts (" + r.own.length + ")")}
-    <div class="row-btns">${r.add.length ? `<button class="primary" type="button" data-imp="see">See entries</button><button class="ghost" type="button" data-imp="undo">Undo this import</button>` : `<button class="primary" type="button" data-imp="close">Close</button>`}</div>
+    <p class="hint">${[r.dup.length ? "Skipped " + r.dup.length + " already in Pocket Ledger." : "", r.own.length + r.joined.length ? (r.own.length + r.joined.length) + " moved between your own accounts, kept as Moved (not counted)" + (r.joined.length ? ", " + r.joined.length + " matched to the other statement" : "") + "." : ""].filter(Boolean).join(" ") || "Nothing skipped."}</p>
+    ${list(r.add, "Added (" + r.add.length + ")")}${list(r.dup, "Already in Pocket Ledger (" + r.dup.length + ")")}${list(r.own.concat(r.joined), "Moved between your accounts (" + (r.own.length + r.joined.length) + ")")}
+    <div class="row-btns">${L.ids.length ? `<button class="primary" type="button" data-imp="see">See entries</button><button class="ghost" type="button" data-imp="undo">Undo this import</button>` : `<button class="primary" type="button" data-imp="close">Close</button>`}</div>
   </div>`;
   $("scanFoot").hidden = true;
 }

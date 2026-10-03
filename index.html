@@ -38,7 +38,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=34">
+<link rel="stylesheet" href="css/app.css?v=35">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -154,7 +154,7 @@
         <section class="panel" id="ledgerPanel">
           <div class="panel-head">
             <h2>Entries</h2>
-            <button class="ghost" type="button" id="exportBtn" title="Download all entries as a spreadsheet (CSV)">Export CSV</button>
+            <span class="row-btns"><button class="ghost" type="button" id="frBtn" title="Change the category of many entries at once">Find &amp; replace</button><button class="ghost" type="button" id="exportBtn" title="Download all entries as a spreadsheet (CSV)">Export CSV</button></span>
           </div>
           <div class="ledger-tools">
             <input id="searchQ" class="search" type="search" placeholder="Search all months" aria-label="Search all months" autocomplete="off">
@@ -163,6 +163,7 @@
               <button class="chip" type="button" data-f="expense" aria-pressed="false">Spent</button>
               <button class="chip" type="button" data-f="income" aria-pressed="false">Income</button>
               <button class="chip" type="button" data-f="savings" aria-pressed="false">Savings</button>
+              <button class="chip" type="button" data-f="moved" aria-pressed="false">Moved</button>
             </div>
           </div>
           <div class="lt-row"><select id="catFilter" aria-label="Category"></select></div>
@@ -172,7 +173,7 @@
 
         <section class="panel" id="formPanel">
           <button class="scanbig" type="button" data-scan="1"><svg class="ico"><use href="#i-cam"/></svg><span><b>Scan a receipt or screenshot</b><small>Take a photo or pick one. I'll fill in the details and ask if anything's unclear.</small></span></button>
-          <div class="side-links"><button class="linkish" type="button" data-statement="1">Import a bank statement (PDF or CSV)</button><button class="linkish" type="button" data-xfer="1">Send money to someone in your group</button></div>
+          <div class="side-links"><button class="linkish" type="button" data-statement="1">Import a bank statement (PDF or CSV)</button><button class="linkish" type="button" data-xfer="1">Send money to someone</button></div>
           <div class="panel-head"><h2 id="formTitle">Add an entry</h2><button class="icon-btn" type="button" id="cancelEdit" hidden>Cancel edit</button></div>
           <div class="seg" role="group" aria-label="Entry type">
             <button type="button" data-t="expense" aria-pressed="true">Spent</button>
@@ -189,6 +190,7 @@
               <div class="field" id="goalField" hidden><label for="fGoal" id="goalLabel">Put it into</label><select id="fGoal"></select></div>
               <div class="field"><label for="fDate">Date</label><input id="fDate" type="date" required></div>
             </div>
+            <div class="move-note" id="moveRow" hidden><span id="moveText">Moved between your own accounts. It isn't counted as income or spending.</span><button class="linkish" type="button" id="moveToggle">Count it as savings instead</button></div>
             <div class="field" id="purposeRow" hidden><label for="fPurpose">What are you saving for?</label><input id="fPurpose" maxlength="40" placeholder="e.g. Wedding gift, Eid"></div>
             <div class="field" id="forRow" hidden><label for="fFor">Counts for</label><select id="fFor"><option value="this">This month</option><option value="next">Next month</option></select></div>
             <div class="field"><label for="fNote" id="noteLabel">Note <span class="muted">(optional)</span></label>
@@ -198,6 +200,7 @@
             <div class="err" id="formErr" hidden></div>
             <div class="formfoot"><button class="primary" type="submit" id="submitBtn">Add expense</button></div>
             <div class="hint" id="typeHint">Money you spent this month.</div>
+            <div class="hint" id="srcHint" hidden></div>
           </form>
         </section>
       </div>
@@ -463,6 +466,23 @@
   <form class="chat-form" id="chatForm"><button class="mic" id="chatMic" type="button" aria-label="Speak"><svg class="ico"><use href="#i-mic"/></svg></button><textarea id="chatInput" rows="1" placeholder="Ask, or tap the mic" aria-label="Your message"></textarea><button class="primary" id="chatSend" type="submit">Ask</button><button class="ghost" id="chatStop" type="button" hidden>Stop</button></form>
 </section>
 
+<div class="sheet-wrap" id="frWrap" hidden>
+  <section class="sheet" aria-label="Find and replace">
+    <div class="panel-head"><h2>Find &amp; replace</h2><button class="icon-btn" type="button" id="frClose">Close</button></div>
+    <p class="hint">Find entries by shop, person or note in all months, then change their category in one go.</p>
+    <div class="form">
+      <div class="row2">
+        <div class="field"><label for="frQ">Find</label><input id="frQ" type="search" autocomplete="off" placeholder="e.g. Veyla"></div>
+        <div class="field"><label for="frType">In</label><select id="frType"><option value="expense">Spending</option><option value="income">Income</option></select></div>
+        <div class="field"><label for="frFrom">Now in</label><select id="frFrom"></select></div>
+        <div class="field"><label for="frCat">Change category to</label><select id="frCat"></select></div>
+      </div>
+      <label class="check"><input type="checkbox" id="frRemember" checked><span>Remember it<small>Future imports, scans and entries for this name get this category.</small></span></label>
+      <div class="fr-found" id="frFound" role="status"></div>
+      <div class="formfoot"><button class="primary" type="button" id="frGo" disabled>Change all</button></div>
+    </div>
+  </section>
+</div>
 <div class="sheet-wrap" id="xferSendWrap" hidden>
   <section class="sheet" aria-label="Send money">
     <div class="panel-head"><h2>Send money</h2><button class="icon-btn" type="button" id="xsClose">Close</button></div>
@@ -582,6 +602,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=34"></script>
+<script type="module" src="app.js?v=35"></script>
 </body>
 </html>

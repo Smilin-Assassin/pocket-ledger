@@ -120,7 +120,7 @@ export function connect(fb) {
   // my own name / bank details live in my private space
   const pid = ctx.profile && ctx.profile.personal;
   if (pid && pid !== ctx.hid) {
-    F.getDoc(F.doc(db, "households", pid)).then(s => { if (s.exists()) { state.my = ((s.data().settings || {}).people || [])[0] || null; rebuild(); changed(); } }).catch(() => {});
+    F.getDoc(F.doc(db, "households", pid)).then(s => { if (s.exists()) { const st0 = s.data().settings || {}; state.my = (st0.people || [])[0] || null; state.myRules = st0.catRules || {}; rebuild(); changed(); } }).catch(() => {});
   }
 }
 export const rawDoc = (c, id) => { const x = (raw[c] || []).find(o => o.id === id); return x ? JSON.parse(JSON.stringify(x)) : null; };
@@ -152,24 +152,43 @@ export const db = {
     b.delete(ctx.F.doc(col(c), id));
     return fire(b.commit());
   },
-  // many entries at once (statement imports): batched, and returns the new ids
-  async addMany(list) {
+  // many entries at once (statement imports): batched, returns the new ids straight away.
+  // Like every other write, they show at once and sync in the background (no waiting on the server).
+  addMany(list) {
     const F = ctx.F, ids = [];
     for (let i = 0; i < list.length; i += 400) {
       const b = F.writeBatch(ctx.db);
       list.slice(i, i + 400).forEach(e => { const ref = F.doc(col("entries")); ids.push(ref.id); b.set(ref, clean(e)); });
-      await b.commit();
+      fire(b.commit());
     }
-    return ids;
+    return Promise.resolve(ids);
   },
   // undoing an import: removed for good (not kept in Recently deleted)
-  async removeMany(ids) {
+  removeMany(ids) {
     const F = ctx.F;
     for (let i = 0; i < ids.length; i += 400) {
       const b = F.writeBatch(ctx.db);
       ids.slice(i, i + 400).forEach(id => b.delete(F.doc(col("entries"), id)));
-      await b.commit();
+      fire(b.commit());
     }
+    return Promise.resolve();
+  },
+  // change a few fields on many entries at once (Find & replace, "change all")
+  patchMany(ids, patch) {
+    const F = ctx.F;
+    for (let i = 0; i < ids.length; i += 400) {
+      const b = F.writeBatch(ctx.db);
+      ids.slice(i, i + 400).forEach(id => b.update(F.doc(col("entries"), id), patch));
+      fire(b.commit());
+    }
+  },
+  // remember a category for a shop or person (kept in your own space, used by imports, scans and the form)
+  saveCatRule(type, key, category) {
+    if (!key || !category || !ctx.profile || !ctx.profile.personal) return;
+    const rules = JSON.parse(JSON.stringify(catRules()));
+    (rules[type] = rules[type] || {})[key] = category;
+    if (!isGroup()) state.settings.catRules = rules; else state.myRules = rules;
+    return fire(ctx.F.updateDoc(hRef(ctx.profile.personal), { "settings.catRules": rules }));
   },
   // put back something just deleted (the Undo button) and drop its Recently deleted copy
   restoreDoc(c, id, data) {
@@ -294,10 +313,18 @@ export function catOptions(type) {
   const base = type === "income" ? INC_CATS : EXP_CATS;
   return [...new Set(base.concat(state.entries.filter(e => e.type === type && e.category).map(e => e.category)))];
 }
-// category memory: what you used last time for this shop / person
-const merchantKey = note => String(note || "").toLowerCase().split(/\s[–—-]\s|,|\(|:/)[0].replace(/^(transfer to|from|paid back|loan to|loan from)\s+/, "").replace(/[^a-z0-9 .&']/g, " ").replace(/\s+/g, " ").trim();
+// category memory: a rule you set (Find & replace, or changing one entry), else what you used last time for this shop / person
+export const merchantKey = note => String(note || "").toLowerCase().split(/\s[–—-]\s|,|\(|:/)[0].replace(/^(transfer to|from|paid back|loan to|loan from)\s+/, "").replace(/[^a-z0-9 .&']/g, " ").replace(/\s+/g, " ").trim();
+export const catRules = () => (isGroup() ? state.myRules : state.settings.catRules) || {};
+export function ruleFor(note, type) {
+  const k = merchantKey(note), r = catRules()[type] || {}; if (k.length < 2) return "";
+  if (r[k]) return r[k];
+  const hit = Object.keys(r).filter(x => x.length >= 3 && (k.startsWith(x + " ") || x.startsWith(k + " "))).sort((a, b) => b.length - a.length)[0];
+  return hit ? r[hit] : "";
+}
 export function guessCategory(note, type) {
   const k = merchantKey(note); if (k.length < 2) return "";
+  const rule = ruleFor(note, type); if (rule) return rule;
   const pool = state.entries.filter(e => e.type === type && e.category && e.category !== "Other" && !e.loanId).sort((a, b) => (b.created || 0) - (a.created || 0));
   const hit = pool.find(e => merchantKey(e.note) === k) || (k.length >= 3 ? pool.find(e => merchantKey(e.note).startsWith(k)) : null);
   return hit ? hit.category : "";

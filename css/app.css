@@ -738,6 +738,50 @@ a.tile:hover .v { color: var(--accent); }
 @media (max-width: 899.98px) { .main { padding-bottom: calc(176px + env(safe-area-inset-bottom, 0px)); } }
 @media (min-width: 900px) { .main { padding-bottom: 104px; } }
 
+/* ---------- Moves between your own accounts, Find & replace, chat reports (v35) ---------- */
+.amt.mv { color: var(--ink-3); }
+.move-note { display: grid; gap: 4px; padding: 10px 12px; border-radius: var(--r); background: var(--sunk); color: var(--ink-2); font-size: .92rem; }
+.move-note .linkish { justify-self: start; }
+.fr-found { display: grid; gap: 6px; font-size: .92rem; }
+.fr-found ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.fr-found li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.fr-found li span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xfer-mini { grid-template-columns: 1fr auto; align-items: center; }
+#ledgerPanel .panel-head .row-btns { gap: 6px; }
+/* categorical slots: fixed order, validated for colour-blind separation (light and dark steps) */
+:root { --v1: #2a78d6; --v2: #eb6834; --v3: #1baf7a; --v4: #eda100; --v5: #e87ba4; --v6: #008300; --v7: #4a3aa7; --v-rest: #9a9a95; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --v1: #3987e5; --v2: #d95926; --v3: #199e70; --v4: #c98500; --v5: #d55181; --v6: #008300; --v7: #9085e9; --v-rest: #6f6f6a; } }
+:root[data-theme="dark"] { --v1: #3987e5; --v2: #d95926; --v3: #199e70; --v4: #c98500; --v5: #d55181; --v6: #008300; --v7: #9085e9; --v-rest: #6f6f6a; }
+.rep { display: grid; gap: 10px; margin-top: 10px; padding: 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.rep-head { display: grid; gap: 2px; } .rep-head small { color: var(--ink-3); }
+.rep-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.rep-pie { display: grid; grid-template-columns: 130px 1fr; gap: 12px; align-items: center; }
+.rep-pie .rep-svg { width: 130px; }
+@media (max-width: 380px) { .rep-pie { grid-template-columns: 1fr; justify-items: center; } }
+.rep-mid { text-anchor: middle; font-size: 11px; fill: var(--ink-3); } .rep-mid.num { font-size: 13px; font-weight: 700; fill: var(--ink); }
+.rep-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: .86rem; width: 100%; }
+.rep-legend li { display: grid; grid-template-columns: 10px 1fr auto; gap: 8px; align-items: center; }
+.rep-legend li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rep-legend i { width: 10px; height: 10px; border-radius: 3px; }
+circle.rep-c1 { stroke: var(--v1); } i.rep-c1 { background: var(--v1); }
+circle.rep-c2 { stroke: var(--v2); } i.rep-c2 { background: var(--v2); }
+circle.rep-c3 { stroke: var(--v3); } i.rep-c3 { background: var(--v3); }
+circle.rep-c4 { stroke: var(--v4); } i.rep-c4 { background: var(--v4); }
+circle.rep-c5 { stroke: var(--v5); } i.rep-c5 { background: var(--v5); }
+circle.rep-c6 { stroke: var(--v6); } i.rep-c6 { background: var(--v6); }
+circle.rep-c7 { stroke: var(--v7); } i.rep-c7 { background: var(--v7); }
+circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest); }
+.rep-bar { fill: var(--v1); } .rep-hit { fill: transparent; } .rep-hit:hover + .rep-ax, g:hover > .rep-bar { opacity: .85; }
+.rep-base { stroke: var(--line); stroke-width: 1; }
+.rep-ax { font-size: 10px; fill: var(--ink-3); text-anchor: middle; } .rep-val { font-size: 10px; fill: var(--ink-2); text-anchor: middle; font-weight: 600; }
+.rep-tbl { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.rep-tbl table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+.rep-tbl th { text-align: left; font-weight: 600; color: var(--ink-2); padding: 4px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.rep-tbl td { padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.rep-tbl td:not(.n) { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rep-tbl .n { text-align: right; white-space: nowrap; }
+.msg.ai:has(.rep) { width: 100%; max-width: 100%; }
+
 /* =====================================================================================
    GLASS: Apple's Liquid Glass look (iOS 26 / iPadOS 26 / macOS 26). Light only.
    Default on iPhone, iPad and Mac; anyone can pick it in Settings › Appearance.

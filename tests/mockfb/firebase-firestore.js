@@ -77,7 +77,7 @@ export async function updateDoc(ref, data) {
   if (RULES && !allowed(ref.path, before, o)) deny(ref.path, "update");
   save(d); notify();
 }
-export function writeBatch() { const ops = []; return { set: (r, v) => ops.push(() => setDoc(r, v)), delete: r => ops.push(() => deleteDoc(r)), commit: async () => { for (const f of ops) await f(); } }; }
+export function writeBatch() { const ops = []; return { set: (r, v) => ops.push(() => setDoc(r, v)), delete: r => ops.push(() => deleteDoc(r)), update: (r, v) => ops.push(() => updateDoc(r, v)), commit: async () => { for (const f of ops) await f(); } }; }
 export function onSnapshot(ref, next) {
   const fire = () => {
     const d = load();

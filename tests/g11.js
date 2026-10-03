@@ -40,8 +40,11 @@ const csv = ['"POSTED DATE","VALUE DATE","TRANSACTION TYPE",REFERENCE,DESCRIPTIO
   await p.waitForTimeout(2000);
   check((await p.textContent("#scanTitle")) === "Statement imported", "imported", await p.textContent("#scanTitle"));
   const sum = await T.text("#scanList");
-  check(/Skipped 2 already in Pocket Ledger and 4 between your own accounts/.test(sum), "2 duplicates (pharmacy, same line twice), 4 own moves", sum);
-  const d = await T.db(), added = Object.keys(d).filter(k => k.startsWith(H + "/entries/") && d[k].importId).map(k => d[k]).sort((a, b) => a.date.localeCompare(b.date) || a.created - b.created);
+  check(/Skipped 2 already in Pocket Ledger\. 4 moved between your own accounts/.test(sum), "2 duplicates (pharmacy, same line twice), 4 own moves", sum);
+  const d = await T.db(), all = Object.keys(d).filter(k => k.startsWith(H + "/entries/") && d[k].importId).map(k => d[k]).sort((a, b) => a.date.localeCompare(b.date) || a.created - b.created);
+  const added = all.filter(e => e.type !== "move"), moves = all.filter(e => e.type === "move");
+  check(moves.length === 4 && moves.filter(m => m.amount === 1050).length === 2, "4 moves kept, the two 1050s both (different references)", moves.map(m => m.note + " " + m.amount));
+  check(moves.some(m => m.note === "Savings (MIB) → BML" && m.amount === 3000), "a Favara to your own BML reads Savings (MIB) → BML", moves.map(m => m.note));
   check(added.length === 8, "8 entries added", added.map(e => e.note));
   const by = n => added.find(e => e.note === n) || {};
   check(by("Transfer to Laila Hassan: Lunch money").amount === 1200 && by("Transfer to Laila.hassan").amount === 500, "transfers to someone else are spending, with the remark", added.map(e => e.note));

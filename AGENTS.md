@@ -17,6 +17,8 @@ A household money tracker PWA for a couple in the Maldives (MVR). Plain ES modul
 - **Deleting is instant with Undo** (`removeWithUndo`), not "Are you sure?".
 - **Only the author edits a doc** (Firestore rules check `author`). Everyone has a private space; groups are shared.
 - **Statement duplicates are cross-checked**, never amount-only (see `importStatement` in `js/scan.js`). Real repeats (two taxi rides of 30 the same day) must stay.
+- **Moves between your own accounts are kept, not dropped:** `type: "move"`, never counted as income or spending, stored once even when both statements show them.
+- **Writes never wait on the server** (no "Saving…" spinners): show the change at once and sync in the background (`fire()` in `store.js`).
 - **Account digits are last-4 only**, and only ever compared with account numbers, never amounts.
 - Bills/reminders are never auto-added. Loans stay out of "left to spend" unless ticked.
 - Maldivian dates are DD/MM/YYYY.
@@ -31,6 +33,6 @@ A household money tracker PWA for a couple in the Maldives (MVR). Plain ES modul
 ## Testing
 ```
 python3 -m http.server 8765        # in the repo root
-cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g13, in order
+cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g14, in order
 ```
 Firebase is swapped for the mocks in `tests/mockfb/` (the Firestore mock models the security rules). Each test prints ok/FAIL and exits non-zero on failure.

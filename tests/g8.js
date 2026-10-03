@@ -32,10 +32,11 @@ const csv = [
   await p.waitForTimeout(1800);
   check((await p.textContent("#scanTitle")) === "Statement imported", "imported", await p.textContent("#scanTitle"));
   const sum = await T.text("#scanList");
-  check(/Skipped 2 already in Pocket Ledger and 2 between your own accounts/.test(sum), "skips duplicates (ref, date+amount) and own accounts (name, digits)", sum);
+  check(/Skipped 2 already in Pocket Ledger\. 2 moved between your own accounts, kept as Moved/.test(sum), "skips duplicates (ref, date+amount); own-account moves (name, digits) kept as Moved", sum);
   check(/490\.16/.test(sum) && /1,400\.00/.test(sum), "totals: spent 490.16, income 1,400", sum);
-  const d = await T.db(), added = Object.keys(d).filter(k => k.startsWith(H + "/entries/") && d[k].importId).map(k => d[k]);
-  check(added.length === 4, "4 entries added", added.length);
+  const d = await T.db(), all = Object.keys(d).filter(k => k.startsWith(H + "/entries/") && d[k].importId).map(k => d[k]), added = all.filter(e => e.type !== "move"), moves = all.filter(e => e.type === "move");
+  check(added.length === 4 && moves.length === 2, "4 entries added, plus 2 moves", [added.length, moves.length]);
+  check(moves.every(m => m.moved && m.category === "Moved" && m.legs.length === 1 && /→/.test(m.note)), "moves: not counted, one side known, note shows the way", moves);
   const cat = n => (added.find(e => e.note === n) || {}).category;
   check(cat("Netflix.com") === "Entertainment" && cat("Transfer to Ahmed Shahir") === "Other" && cat("From Hassan Naseem") === "Side income", "categories and notes", added.map(e => e.note + ":" + e.category));
   check(added.every(e => e.type === "expense" || e.type === "income") && added.every(e => e.author === U && e.source === "statement"), "only Spent / Income, marked as statement");
@@ -48,7 +49,7 @@ const csv = [
   await p.click('#scanList [data-imp="close"]');
   // Settings lists the import and can undo it
   await T.nav("settings/data"); await p.waitForTimeout(400);
-  check(/BML statement · Sep 2026.*4 entries/.test(await T.text("#importList")), "import listed in Settings", await T.text("#importList"));
+  check(/BML statement · Sep 2026.*6 entries/.test(await T.text("#importList")), "import listed in Settings", await T.text("#importList"));
   await p.click("#importList button[data-undoimp]"); await p.click("#importList button[data-undoimp]"); await p.waitForTimeout(900);
   const d2 = await T.db();
   check(!Object.keys(d2).some(k => k.startsWith(H + "/entries/") && d2[k].importId) && !!d2[H + "/entries/m1"], "Undo removed exactly the imported entries");
@@ -67,7 +68,7 @@ const csv = [
   await p.setInputFiles("#stmtFile", { name: "statement.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 test") });
   await p.waitForTimeout(1800);
   check((await p.evaluate(() => window.__parts[0])).includes("application/pdf"), "the PDF itself is sent to Gemini", await p.evaluate(() => window.__parts));
-  check(/Skipped 0 already in Pocket Ledger and 1 between your own accounts/.test(await T.text("#scanList")) && /Oct 2026/.test(await p.textContent("#scanStatus")), "PDF rows imported, own transfer skipped", await T.text("#scanList"));
+  check(/^(?!.*Skipped).*1 moved between your own accounts/.test(await T.text("#scanList")) && /Oct 2026/.test(await p.textContent("#scanStatus")), "PDF rows imported, own transfer skipped", await T.text("#scanList"));
   await p.click('#scanList [data-imp="see"]'); await p.waitForTimeout(400);
   check((await T.rows()).some(r => /Stop 2 Shop/.test(r)) && (await p.textContent("#monthLabel")) === "October 2026", "See entries opens the statement's month", await p.textContent("#monthLabel"));
   // in a group, statements are refused

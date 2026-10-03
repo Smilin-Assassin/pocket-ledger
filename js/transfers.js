@@ -2,8 +2,8 @@
 // they share (the "mailbox"); the receiver gets a card to check and accept it,
 // which adds the income to their own private space. Nothing shows in the group's
 // own entries or totals.
-import { $, esc, money, num, r2, todayISO, fmtDate, toast, busy, fillSelect } from "./util.js";
-import { ctx, state, meId, isViewer, hRef, EXP_CATS, INC_CATS, pname } from "./store.js";
+import { $, esc, money, num, r2, todayISO, fmtDate, toast, fillSelect } from "./util.js";
+import { ctx, state, meId, isViewer, isGroup, hRef, EXP_CATS, INC_CATS, pname } from "./store.js";
 import { callFn } from "./notify.js";
 
 const F = () => ctx.F;
@@ -35,6 +35,12 @@ export async function checkTransfers() {
 function render() {
   const bar = $("xferBar");
   bar.hidden = !pending.length;
+  // money sent to you is yours: you accept it in your own space (Me), never in a shared group
+  if (isGroup()) {
+    const tot = pending.reduce((a, t) => a + (+t.amount || 0), 0), who = [...new Set(pending.map(t => t.fromName || "Someone"))].join(" and ");
+    bar.innerHTML = pending.length ? `<div class="xfer-card xfer-mini"><span>${esc(who)} sent you <b class="num">${esc(money(tot))}</b>. It goes to your own space.</span><button class="primary" type="button" data-xme="1">Open Me</button></div>` : "";
+    return;
+  }
   bar.innerHTML = pending.map((t, i) => `<div class="xfer-card" data-x="${i}">
     <div class="xfer-top"><b>${esc(t.fromName || "Someone")} sent you <span class="num">${esc(money(+t.amount))}</span></b><small>${esc(fmtDate(t.date))}${t.note ? " · “" + esc(t.note) + "”" : ""}</small></div>
     <div class="row2">
@@ -49,17 +55,17 @@ async function answer(i, accept, btn) {
   const t = pending[i]; if (!t) return;
   const card = btn.closest(".xfer-card"), val = k => card.querySelector(`[data-xk="${k}"]`).value;
   const key = t.gid + "_" + t.id, cat = val("cat"), note = val("note").trim(), date = val("date") || t.date;
-  busy(btn, true);
-  try {
-    if (accept && cat !== "__none") {
-      await F().setDoc(F().doc(personalEntries(), "xfer-" + t.gid + "-" + t.id), { type: "income", amount: r2(t.amount), date, category: cat,
-        note: ("From " + (t.fromName || "someone") + (note ? ": " + note : "")).slice(0, 160), person: meId(), author: meId(), created: Date.now(),
-        source: "transfer", transferId: t.id, transferGroup: t.gid });
-    }
-    await F().setDoc(seenRef(key), { status: accept ? (cat === "__none" ? "kept-out" : "accepted") : "declined", at: Date.now(), author: meId() });
-    pending.splice(i, 1); render();
-    toast(!accept ? "Declined" : cat === "__none" ? "Noted. It isn't counted as income." : "Added to your income");
-  } catch { busy(btn, false); toast("That didn't work. Check your connection and try again."); }
+  // both writes go to your own space together, and show at once (they sync in the background)
+  const b = F().writeBatch(ctx.db);
+  if (accept && cat !== "__none") {
+    b.set(F().doc(personalEntries(), "xfer-" + t.gid + "-" + t.id), { type: "income", amount: r2(t.amount), date, category: cat,
+      note: ("From " + (t.fromName || "someone") + (note ? ": " + note : "")).slice(0, 160), person: meId(), author: meId(), created: Date.now(),
+      source: "transfer", transferId: t.id, transferGroup: t.gid });
+  }
+  b.set(seenRef(key), { status: accept ? (cat === "__none" ? "kept-out" : "accepted") : "declined", at: Date.now(), author: meId() });
+  b.commit().catch(() => toast("That didn't sync. Check your connection; it will try again."));
+  pending.splice(i, 1); render();
+  toast(!accept ? "Declined" : cat === "__none" ? "Noted. It isn't counted as income." : "Added to your income");
 }
 
 // ---------- sending ----------
@@ -91,23 +97,23 @@ async function send() {
   if (!p) return err("Pick who you're sending to.");
   if (!(amount > 0)) return err("Enter the amount.");
   if (!side) return err("Choose how it counts on your side.");
-  const b = $("xsSend"); busy(b, true, "Sending…");
-  try {
-    const ref = F().doc(F().collection(hRef(p.gid), "transfers"));
-    await F().setDoc(ref, { from: meId(), fromName: myName(), to: p.uid, toName: p.name, amount: r2(amount), date, note: note.slice(0, 160), created: Date.now(), author: meId() });
-    if (side.startsWith("exp:")) {
-      await F().setDoc(F().doc(personalEntries(), "xfer-out-" + p.gid + "-" + ref.id), { type: "expense", amount: r2(amount), date, category: side.slice(4),
-        note: ("To " + p.name + (note ? ": " + note : "")).slice(0, 160), person: meId(), author: meId(), created: Date.now(), source: "transfer", transferId: ref.id, transferGroup: p.gid });
-    }
-    callFn("notifyTransfer", { gid: p.gid, tid: ref.id }).catch(() => {});
-    busy(b, false); closeSend();
-    toast("Sent. " + p.name + " gets a card to accept it.");
-  } catch { busy(b, false); err("Couldn't send. Check your connection and try again."); }
+  // the transfer (in the shared group, so they can see it) and your side (in your own space) are saved together, at once
+  const ref = F().doc(F().collection(hRef(p.gid), "transfers")), wb = F().writeBatch(ctx.db);
+  wb.set(ref, { from: meId(), fromName: myName(), to: p.uid, toName: p.name, amount: r2(amount), date, note: note.slice(0, 160), created: Date.now(), author: meId() });
+  if (side.startsWith("exp:")) {
+    wb.set(F().doc(personalEntries(), "xfer-out-" + p.gid + "-" + ref.id), { type: "expense", amount: r2(amount), date, category: side.slice(4),
+      note: ("To " + p.name + (note ? ": " + note : "")).slice(0, 160), person: meId(), author: meId(), created: Date.now(), source: "transfer", transferId: ref.id, transferGroup: p.gid });
+  }
+  wb.commit().then(() => callFn("notifyTransfer", { gid: p.gid, tid: ref.id }).catch(() => {}))
+    .catch(() => toast("Sending didn't sync. Check your connection and try again."));
+  closeSend();
+  toast("Sent. " + p.name + " gets a card to accept it in their own space.");
 }
 
 export function initTransfers() {
   $("xferBar").addEventListener("click", ev => {
     const b = ev.target.closest("button"); if (!b) return;
+    if (b.dataset.xme) { ctx.switchTo(ctx.profile.personal); return; }
     if (b.dataset.xok !== undefined) answer(+b.dataset.xok, true, b);
     else if (b.dataset.xno !== undefined) answer(+b.dataset.xno, false, b);
   });

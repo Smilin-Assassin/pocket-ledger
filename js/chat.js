@@ -1,8 +1,8 @@
 // Ask about your money (typing or voice). Gemini decides what to look up; the
 // numbers come from the app; changes are prepared for one-tap confirmation.
-import { $, esc, money, sum, r2, monthKey, monthName, shiftMonth, monthsBetween, todayISO, fmtDate, isoOk, MONTH, lsGet, lsSet, toast, canHover } from "./util.js";
+import { $, esc, money, sum, r2, monthKey, monthName, shiftMonth, monthsBetween, todayISO, fmtDate, isoOk, MONTH, lsGet, lsSet, toast, canHover, saveFile } from "./util.js";
 import { state, ui, meId, isGroup, people, pname, groupName, effMonth, countsMoney, visibleGoals, goalBalance, goalName, totalSavings, loanOutstanding, openLoans,
-  budgetsFor, spentIn, owesPairs, EXP_CATS, INC_CATS, TYPE_LABEL } from "./store.js";
+  budgetsFor, spentIn, owesPairs, EXP_CATS, INC_CATS, TYPE_LABEL, merchantKey } from "./store.js";
 import { createLoan, findLoan, recordRepayment, createRecurring, settlePair, setBudget, addEntries } from "./actions.js";
 import { geminiText, parseJsonText } from "./gemini.js";
 import { showProposals } from "./scan.js";
@@ -32,10 +32,46 @@ function filterEntries(a) {
   const wantsLoans = /loan/i.test(String([].concat(a.category || []).join(" ") + " " + (a.search || "")));
   let es = state.entries.filter(e => (who === "all" || e.person === who) && (e.date || "") >= from && (e.date || "") <= to && (wantsLoans || countsMoney(e)));
   if (a.type && a.type !== "all") es = es.filter(e => e.type === String(a.type));
+  else es = es.filter(e => e.type !== "move"); // moves between your own accounts aren't money in or out
   const cats = [].concat(a.category || []).filter(Boolean).map(c => String(c).toLowerCase());
   if (cats.length) es = es.filter(e => { const c = (e.category || "").toLowerCase(); return cats.some(x => c === x || c.includes(x) || x.includes(c) && c.length > 3); });
   if (a.search) { const q = String(a.search).toLowerCase(); es = es.filter(e => ((e.note || "") + " " + (e.category || "") + " " + goalName(e.goalId)).toLowerCase().includes(q)); }
   return { es, who, from: isoOk(a.from) ? a.from : "first entry", to: isoOk(a.to) ? a.to : "latest entry" };
+}
+
+// group entries by category, month, shop/person name, person, type or day
+const shopName = e => { const k = merchantKey(e.note); return k ? k.replace(/(^|\s)([a-z])/g, (m, a, c) => a + c.toUpperCase()) : (e.category || "Other"); };
+function groupEntries(es, by) {
+  const g = {};
+  es.forEach(e => {
+    const k = by === "category" ? (e.category || "Other") : by === "month" ? (e.date || "").slice(0, 7) : by === "person" ? pname(e.person) : by === "type" ? e.type : by === "day" ? e.date : by === "shop" ? shopName(e) : "all";
+    (g[k] = g[k] || { key: k, total: 0, count: 0 }); g[k].total += +e.amount; g[k].count++;
+  });
+  const time = by === "month" || by === "day";
+  return Object.values(g).map(x => Object.assign(x, { total: r2(x.total) })).sort((x, y) => time ? x.key.localeCompare(y.key) : y.total - x.total);
+}
+const GROUP_COL = { category: "Category", month: "Month", shop: "Shop or person", person: "Person", type: "Type", day: "Day" };
+const keyLabel = (by, k) => by === "month" ? monthName(k, true) : by === "day" ? fmtDate(k) : by === "type" ? (TYPE_LABEL[k] || k) : k;
+// a table / chart the chat shows under its reply, with a Download CSV button. The app works out every number.
+function makeReport(a) {
+  a = Object.assign({}, a || {});
+  let by = GROUP_COL[a.groupBy] ? a.groupBy : "none";
+  if (by !== "none" && by !== "type" && (!a.type || a.type === "all")) a.type = "expense";
+  const { es, who, from, to } = filterEntries(a);
+  let chart = ["pie", "bar", "table"].includes(a.chart) ? a.chart : by === "month" || by === "day" ? "bar" : by === "none" ? "table" : "pie";
+  if (chart === "pie" && (by === "month" || by === "day")) chart = "bar";
+  if (by === "none") chart = "table";
+  const title = String(a.title || "").slice(0, 80) || (by === "none" ? "Entries" : (a.type === "income" ? "Income" : "Spending") + " by " + GROUP_COL[by].toLowerCase());
+  const sub = (isGroup() ? whoLabel(who) : "Yours") + ", " + (isoOk(a.from) ? fmtDate(a.from) : "from the start") + " to " + (isoOk(a.to) ? fmtDate(a.to) : "now");
+  let rep;
+  if (by === "none") {
+    const rows = es.slice().sort(a.sort === "largest" ? (x, y) => y.amount - x.amount : a.sort === "oldest" ? (x, y) => x.date.localeCompare(y.date) : (x, y) => y.date.localeCompare(x.date)).slice(0, Math.max(1, Math.min(+a.limit || 2000, 2000)));
+    rep = { title, sub, chart, by, cols: ["Date", "Type", "Category", "Note", "Amount"], rows: rows.map(e => [e.date, TYPE_LABEL[e.type] || e.type, e.category || "", e.note || "", r2(+e.amount)]), total: r2(sum(rows, e => +e.amount)) };
+  } else {
+    const gs = groupEntries(es, by), tot = sum(gs, x => x.total);
+    rep = { title, sub, chart, by, cols: [GROUP_COL[by], "Amount", "Entries", "Share"], rows: gs.map(x => [keyLabel(by, x.key), x.total, x.count, tot ? Math.round(x.total / tot * 1000) / 10 + "%" : ""]), total: r2(tot) };
+  }
+  return { rep, forAi: { report: title, period: sub, chart: rep.chart, rows: rep.rows.length, total: rep.total, first_rows: rep.rows.slice(0, 12), shown_to_user: "as a " + (rep.chart === "table" ? "table" : rep.chart + " chart and table") + " with a Download CSV button" } };
 }
 
 // ---------- lookups Gemini can ask for (exact numbers come from here) ----------
@@ -44,14 +80,7 @@ const TOOLS = {
     const { es, who, from, to } = filterEntries(a);
     const res = { person: whoLabel(who), from, to, type: a.type || "all", category: a.category || null, search: a.search || null, total: r2(sum(es, e => +e.amount)), count: es.length };
     const by = a.groupBy;
-    if (by && by !== "none") {
-      const g = {};
-      es.forEach(e => {
-        const k = by === "category" ? (e.category || "Other") : by === "month" ? (e.date || "").slice(0, 7) : by === "person" ? pname(e.person) : by === "type" ? e.type : by === "day" ? e.date : "all";
-        (g[k] = g[k] || { key: k, total: 0, count: 0 }); g[k].total += +e.amount; g[k].count++;
-      });
-      res.groups = Object.values(g).map(x => Object.assign(x, { total: r2(x.total) })).sort((x, y) => by === "month" || by === "day" ? x.key.localeCompare(y.key) : y.total - x.total).slice(0, 40);
-    }
+    if (by && by !== "none") res.groups = groupEntries(es, by).slice(0, 40);
     return res;
   },
   list(a) {
@@ -94,7 +123,7 @@ const TOOLS = {
   owed() { const ps = owesPairs(); return !ps.length ? { status: "nobody owes anything for shared costs" } : { owing: ps.map(p => ({ owes: pname(p.debtor), to: pname(p.creditor), amount: p.amt })) }; },
   repeating(a) { const who = resolvePerson(a && a.person); return state.recurring.filter(r => who === "all" || r.person === who).map(r => ({ what: r.note || r.category, type: r.type, amount: +r.amount, day: r.day, whose: pname(r.person), paused: !!r.paused })); }
 };
-const TOOL_LABEL = { totals: "totals", list: "entries", month_summary: "month summary", goals: "goals", savings: "savings", loans: "loans", budgets: "budgets", owed: "shared costs", repeating: "bills & reminders" };
+const TOOL_LABEL = { report: "report", totals: "totals", list: "entries", month_summary: "month summary", goals: "goals", savings: "savings", loans: "loans", budgets: "budgets", owed: "shared costs", repeating: "bills & reminders" };
 const ACTIONS = ["propose_entries", "add_loan", "loan_repayment", "create_goal", "set_budget", "add_recurring", "settle_up"];
 
 function chatContext() {
@@ -126,7 +155,8 @@ function planPrompt(q, voice) {
     "", "Context:", chatContext(), "",
     "Quick facts (already worked out, exact): " + quickFacts(), "",
     "Lookups:",
-    '- totals {from, to, person, type, category, search, groupBy}: sum and count of matching entries. groupBy: "category", "month", "person", "type", "day" or "none".',
+    '- totals {from, to, person, type, category, search, groupBy}: sum and count of matching entries. groupBy: "category", "month", "shop", "person", "type", "day" or "none". "shop" groups by the shop or person named in the note.',
+    '- report {title, chart, from, to, person, type, category, search, groupBy, sort, limit}: use whenever the user wants to SEE or DOWNLOAD data: a table, chart, graph, pie, breakdown, list to export, CSV, spreadsheet or Excel file. The app draws it in the chat with a Download CSV button. chart: "pie" for shares of a whole (groupBy category, shop or person), "bar" for change over time (groupBy month or day), "table" for a plain list (groupBy "none" lists every matching entry). title: a short name like "Eating out by month, 2026".',
     '- list {from, to, person, type, category, search, sort, limit}: individual entries. sort: "newest", "oldest" or "largest".',
     '- month_summary {month, person}: income, spending, savings and what is left for one month ("YYYY-MM").',
     "- goals {person}, savings {person}, loans {person}, budgets {month, person}, owed {} (who owes whom for shared costs), repeating {person}.",
@@ -155,6 +185,7 @@ function answerPrompt(q, results) {
     "You are the assistant inside Pocket Ledger, a household money tracker. Reply to the latest message using ONLY the results below.",
     "Match the user's tone (casual is fine) but stay clear. Be brief: 1-3 sentences, or a short list with lines starting \"- \". Use amounts like \"MVR 1,250.00\" and say which period and whose money you mean. You may use **bold** for the key number. No headings.",
     "When changes were prepared, say in one line what will be saved and that they just need to tap Confirm. Don't claim anything is saved yet.",
+    "When a report was made, it is already shown under your reply as a chart/table with a Download CSV button: give the key takeaway in 1-2 sentences and don't repeat the rows.",
     "If the results don't contain what is needed, say so and suggest a way to ask. Only give money advice if asked; keep it simple and kind.",
     "", "Context:", chatContext(), "",
     "Conversation so far:", historyText(), "",
@@ -225,6 +256,43 @@ function runAction(x) {
   else if (x.tool === "settle_up") settlePair(x.pair);
 }
 
+// ---------- reports in the chat (chart + table + CSV) ----------
+const SERIES = 8, svgEl = (w, h, body, label) => `<svg class="rep-svg" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(label)}">${body}</svg>`;
+function pieSvg(r) {
+  // up to 7 slices, the rest folded into "Other"
+  let sl = r.rows.map(x => ({ k: String(x[0]), v: +x[1] })).filter(x => x.v > 0);
+  if (sl.length > SERIES) { const rest = sl.slice(SERIES - 1); sl = sl.slice(0, SERIES - 1).concat({ k: "All the rest", v: sum(rest, x => x.v), rest: true }); }
+  const tot = sum(sl, x => x.v); if (!tot) return "";
+  const R = 52, C = 2 * Math.PI * R; let at = 0;
+  const arcs = sl.map((x, i) => { const len = x.v / tot * C, gap = sl.length > 1 ? Math.min(2, len / 2) : 0;
+    const s = `<circle r="${R}" cx="70" cy="70" fill="none" class="${x.rest ? "rep-rest" : "rep-c" + (i + 1)}" stroke-width="22" stroke-dasharray="${Math.max(len - gap, 0.01)} ${C}" stroke-dashoffset="${-at}" transform="rotate(-90 70 70)"><title>${esc(x.k)}: ${esc(money(x.v))} (${Math.round(x.v / tot * 100)}%)</title></circle>`;
+    at += len; return s; }).join("");
+  const legend = `<ul class="rep-legend">${sl.map((x, i) => `<li><i class="${x.rest ? "rep-rest" : "rep-c" + (i + 1)}"></i><span>${esc(x.k)}</span><b class="num">${Math.round(x.v / tot * 100)}%</b></li>`).join("")}</ul>`;
+  return `<div class="rep-pie">${svgEl(140, 140, arcs + `<text x="70" y="66" class="rep-mid">Total</text><text x="70" y="84" class="rep-mid num">${esc(money(tot, { whole: true }))}</text>`, r.title)}${legend}</div>`;
+}
+function barSvg(r) {
+  const rows = r.rows.slice(-24), vals = rows.map(x => +x[1] || 0), max = Math.max(...vals, 0); if (!max) return "";
+  const W = 300, H = 150, base = 124, top = 16, n = rows.length, slot = W / n, bw = Math.max(4, Math.min(28, slot - 4)), hi = vals.indexOf(max);
+  const bars = rows.map((x, i) => { const h = Math.max(1, (vals[i] / max) * (base - top)), xx = i * slot + (slot - bw) / 2, y = base - h, rr = Math.min(4, bw / 2, h);
+    return `<g><path class="rep-bar" d="M${xx},${base} V${y + rr} Q${xx},${y} ${xx + rr},${y} H${xx + bw - rr} Q${xx + bw},${y} ${xx + bw},${y + rr} V${base} Z"/><rect class="rep-hit" x="${i * slot}" y="${top - 12}" width="${slot}" height="${base - top + 12}"><title>${esc(String(x[0]))}: ${esc(money(vals[i]))}</title></rect>` +
+      (n <= 12 || i % Math.ceil(n / 12) === 0 ? `<text class="rep-ax" x="${xx + bw / 2}" y="${base + 16}">${esc(String(x[0]).replace(/ \d{4}$/, "").slice(0, 6))}</text>` : "") +
+      (i === hi ? `<text class="rep-val" x="${xx + bw / 2}" y="${y - 5}">${esc(money(vals[i], { whole: true }).replace(/^MVR\s?/, ""))}</text>` : "") + `</g>`; }).join("");
+  return svgEl(W, H, `<line class="rep-base" x1="0" x2="${W}" y1="${base}" y2="${base}"/>` + bars, r.title);
+}
+function reportHtml(r, i, j) {
+  const fmt = (v, c) => c === "Amount" ? esc(money(+v)) : c === "Date" ? esc(fmtDate(v)) : esc(String(v));
+  const show = r.open ? r.rows : r.rows.slice(0, 8);
+  const tbl = r.rows.length ? `<div class="rep-tbl"><table><thead><tr>${r.cols.map(c => `<th${c === "Amount" || c === "Entries" || c === "Share" ? ' class="n"' : ""}>${esc(c)}</th>`).join("")}</tr></thead><tbody>${show.map(row => `<tr>${row.map((v, k) => `<td${r.cols[k] === "Amount" || r.cols[k] === "Entries" || r.cols[k] === "Share" ? ' class="n num"' : ""}>${fmt(v, r.cols[k])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : `<p class="hint">Nothing matches.</p>`;
+  return `<div class="rep" data-rep="${i}:${j}"><div class="rep-head"><b>${esc(r.title)}</b><small>${esc(r.sub)}, ${r.rows.length} row${r.rows.length === 1 ? "" : "s"}, total ${esc(money(r.total))}</small></div>
+    ${r.chart === "pie" ? pieSvg(r) : r.chart === "bar" ? barSvg(r) : ""}${tbl}
+    <div class="row-btns">${r.rows.length > 8 ? `<button class="ghost" type="button" data-repmore="${i}:${j}">${r.open ? "Show less" : "Show all " + r.rows.length}</button>` : ""}${r.rows.length ? `<button class="ghost" type="button" data-repcsv="${i}:${j}">Download CSV</button>` : ""}</div></div>`;
+}
+function reportCsv(r) {
+  const cell = v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
+  const csv = [r.cols].concat(r.rows).map(row => row.map(cell).join(",")).join("\r\n");
+  saveFile(("pocket-ledger-" + r.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "").slice(0, 60) + ".csv", "\ufeff" + csv, "Saved");
+}
+
 // ---------- the chat panel ----------
 function fmtReply(t) {
   return esc(String(t || "").trim()).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
@@ -242,6 +310,7 @@ function renderChat() {
       : `<div class="msg ai${m.error ? " err" : ""}"><div>${m.pending ? '<span class="spin" aria-hidden="true"></span>' + esc(m.pendingText || "Thinking…") : fmtReply(m.text)}</div>` +
         (m.actions && m.actions.length ? `<div class="act-card${m.done ? " done" : ""}">${m.actions.map(x => `<div class="act-line${x.invalid ? " bad" : ""}">${esc(x.lines.join("; "))}</div>`).join("")}` +
           (m.done ? `<small>${m.done === "yes" ? "Saved ✓" : "Not saved"}</small>` : m.actions.some(x => !x.invalid) && !state.readOnly ? `<div class="row-btns"><button class="primary" type="button" data-ok="${i}">Confirm</button>${m.actions.length === 1 && m.actions[0].tool === "propose_entries" ? `<button class="ghost" type="button" data-editact="${i}">Edit first</button>` : ""}<button class="icon-btn" type="button" data-no="${i}">Not now</button></div>` : "") + `</div>` : "") +
+        (m.reports && !m.pending ? m.reports.map((r, j) => reportHtml(r, i, j)).join("") : "") +
         (m.note ? `<small>${esc(m.note)}</small>` : "") +
         (i === chat.msgs.length - 1 && !m.pending && !chat.busy && m.sugg && m.sugg.length ? `<div class="chips follow">${m.sugg.filter(x => typeof x === "string" && x.trim()).slice(0, 3).map(x => `<button type="button" class="chipq">${esc(x.trim().slice(0, 80))}</button>`).join("")}</div>` : "") +
         (m.action === "settings" ? `<button type="button" class="ghost" data-act="settings">Open Settings</button>` : "") + `</div>`).join("");
@@ -333,6 +402,9 @@ async function askChat(voiceWav) {
           else results.push({ change: name, problem: "Missing details (like the amount)" });
           continue;
         }
+        if (name === "report") {
+          const r = makeReport(args); (reply.reports = reply.reports || []).push(r.rep); results.push({ tool: name, args, result: r.forAi }); looked.push("report"); continue;
+        }
         const fn = TOOLS[name];
         results.push({ tool: name, args, result: fn ? fn(args) : "Unknown lookup" });
         if (fn) looked.push(TOOL_LABEL[name] || name);
@@ -390,6 +462,9 @@ export function initChat() {
     const c = ev.target.closest(".chipq"); if (c) { $("chatInput").value = c.textContent; askChat(); return; }
     const b = ev.target.closest("button"); if (!b) return;
     if (b.dataset.act === "settings") { closeChat(); go("settings", "ai"); return; }
+    const rk = b.dataset.repcsv || b.dataset.repmore;
+    if (rk) { const [mi, rj] = rk.split(":").map(Number), r = ((chat.msgs[mi] || {}).reports || [])[rj]; if (!r) return;
+      if (b.dataset.repcsv) reportCsv(r); else { r.open = !r.open; const y = $("chatMsgs").scrollTop; renderChat(); $("chatMsgs").scrollTop = y; } return; }
     const m = chat.msgs[+(b.dataset.ok || b.dataset.no || b.dataset.editact)]; if (!m || m.done) return;
     if (b.dataset.ok !== undefined) { m.actions.forEach(runAction); m.done = "yes"; toast("Saved"); renderChat(); }
     else if (b.dataset.no !== undefined) { m.done = "no"; renderChat(); }
