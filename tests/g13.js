@@ -40,6 +40,16 @@ const SHOTS = process.env.SHOTS;
   await p.waitForTimeout(800);
   const back = await p.evaluate(() => parseFloat(document.getElementById("dockWrap").style.getPropertyValue("--p")));
   check(back === 0 || back === 1, "then it glides to fully open or fully shrunk", back);
+  // holding a finger still part-way keeps the bar exactly there; it only settles after letting go
+  await p.evaluate(() => window.scrollTo(0, 250)); await p.waitForTimeout(700);
+  await p.evaluate(() => new Promise(r => { window.dispatchEvent(new Event("touchstart")); requestAnimationFrame(() => { window.scrollBy(0, 24); requestAnimationFrame(() => requestAnimationFrame(r)); }); }));
+  const held1 = await p.evaluate(() => parseFloat(document.getElementById("dockWrap").style.getPropertyValue("--p")));
+  await p.waitForTimeout(900);
+  const held2 = await p.evaluate(() => parseFloat(document.getElementById("dockWrap").style.getPropertyValue("--p")));
+  check(held1 > .2 && held1 < .8 && Math.abs(held2 - held1) < .01, "holding still part-way keeps the bar where it is", [held1, held2]);
+  await p.evaluate(() => window.dispatchEvent(new Event("touchend"))); await p.waitForTimeout(900);
+  const let1 = await p.evaluate(() => parseFloat(document.getElementById("dockWrap").style.getPropertyValue("--p")));
+  check(let1 === 0 || let1 === 1, "letting go settles it", let1);
   await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(700);
   await p.mouse.move(200, 300); await p.mouse.wheel(0, 700); await p.waitForTimeout(700);
   const minned = await p.evaluate(() => ({ min: document.getElementById("dockWrap").classList.contains("dk-min"), w: document.getElementById("dock").getBoundingClientRect().width }));

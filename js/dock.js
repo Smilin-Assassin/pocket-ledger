@@ -183,39 +183,61 @@ function wireDock() {
   dock.addEventListener("click", e => { if (e.detail === 0) { const t = e.target.closest(".dk-tab"); if (t) pick(t.dataset.p); } });
 }
 // ---------- Glass: the bar shrinks to the current tab while you scroll down (iOS 26) ----------
-// It follows your finger: every pixel scrolled moves it part of the way, and when the scrolling
-// stops it glides (on a spring) to whichever end is closer. 0 = full bar, 1 = just the current tab.
-const TRAVEL = 64;                       // px of scrolling for a full shrink or grow
-let minned = false, prog = 0, settleT = 0;
+// 0 = full bar, 1 = just the current tab. While your finger is moving the page, the bar moves with it
+// (one update per screen frame, however many scroll events arrive). Holding still keeps it exactly
+// where it is. Only once you let go and the page stops does it glide on a spring, carrying on at the
+// speed you were going, to the end you were heading for (or the closer end if you'd stopped).
+const TRAVEL = 70;                       // px of scrolling for a full shrink or grow
+let minned = false, prog = 0, pend = 0, vel = 0, mode = "", touching = false, lastMove = 0;
 const S = new Spring(0);                 // works in 0..100 so the spring's rest threshold is fine-grained
+const dockOn = () => isGlass() && isPhone();
 function setProg(v) {
   v = Math.max(0, Math.min(1, v));
-  const w = $("dockWrap"); if (!w || Math.abs(v - prog) < 1e-4 && v !== 0 && v !== 1) return;
-  prog = v; w.style.setProperty("--p", v.toFixed(4));
+  const w = $("dockWrap"); if (!w || v === prog) return;
+  const was = prog; prog = v; w.style.setProperty("--p", v.toFixed(4));
   const m = v > .5; if (m !== minned) { minned = m; w.classList.toggle("dk-min", m); }
-  // the tabs move as the bar changes size: keep the highlight glued to the current one
-  if (dock && !scrub) { aim(); L.snap(); R.snap(); paint(); }
+  // the highlight is faded out while the bar is changing; put it back on the tab once fully open
+  // (reading the layout only here, not every frame, keeps the motion cheap)
+  if (v === 0 && was > 0 && dock && !scrub) { aim(); L.snap(); R.snap(); paint(); }
 }
-const progClock = clock(dt => {
-  S.k = 170; S.z = .92; S.run(dt); setProg(S.x / 100);
-  if (S.idle()) { S.snap(); setProg(S.t / 100); return false; }
+const progClock = clock((dt, now) => {
+  if (pend) {                                            // following the finger
+    const next = Math.max(0, Math.min(1, prog + pend / TRAVEL)); pend = 0;
+    const v = (next - prog) / Math.max(dt, 1 / 240);
+    vel = vel * .4 + v * .6; mode = "follow"; lastMove = now; setProg(next);
+    return;
+  }
+  if (mode === "follow") {
+    vel *= Math.pow(.02, dt);                            // finger held still: the speed dies away
+    if (touching || now - lastMove < 90) return touching ? false : undefined;
+    // let go and the page has stopped: glide, starting at the speed it was moving
+    const aim1 = prog + vel * .18, t = window.scrollY > 80 && aim1 > .5 ? 1 : 0;
+    S.x = prog * 100; S.v = Math.max(-900, Math.min(900, vel * 100)); S.t = t * 100; mode = "glide";
+  }
+  if (mode === "glide") {
+    S.k = 260; S.z = .9; S.run(dt); setProg(S.x / 100);
+    if (S.idle()) { S.snap(); setProg(S.t / 100); mode = ""; vel = 0; return false; }
+    return;
+  }
+  return false;
 });
 function glideTo(t) {
-  clearTimeout(settleT);
-  if (!isGlass() || !isPhone()) t = 0;
-  S.x = prog * 100; S.t = t * 100;
-  if (reduced()) { S.snap(); setProg(t); return; }
+  if (!dockOn()) t = 0;
+  pend = 0; S.x = prog * 100; S.v = 0; S.t = t * 100; mode = "glide";
+  if (reduced()) { S.snap(); setProg(t); mode = ""; return; }
   progClock.kick();
 }
 function setMin(on) { glideTo(on ? 1 : 0); }
 function onScrollDock(dy, y) {
-  if (!isGlass() || !isPhone()) { if (prog) glideTo(0); return; }
-  S.t = S.x;                               // a new swipe takes over from any glide in progress
-  if (y <= 8) { glideTo(0); return; }     // back at the top: always the full bar
-  if (!progClock.running) setProg(prog + dy / TRAVEL); else { S.x = Math.max(0, Math.min(100, S.x + dy / TRAVEL * 100)); S.t = S.x; }
-  clearTimeout(settleT);
-  settleT = setTimeout(() => glideTo(prog > .5 && window.scrollY > 80 ? 1 : 0), 110);
+  if (!dockOn()) { if (prog) glideTo(0); return; }
+  if (y <= 8) { if (prog) glideTo(0); return; }        // back at the top: always the full bar
+  if (reduced()) { if (Math.abs(dy) > 4) glideTo(dy > 0 && y > 80 ? 1 : 0); return; }
+  pend += dy; progClock.kick();
 }
+addEventListener("touchstart", () => { touching = true; }, { passive: true });
+const lift = () => { touching = false; if (mode === "follow") { lastMove = performance.now(); progClock.kick(); } };
+addEventListener("touchend", lift, { passive: true });
+addEventListener("touchcancel", lift, { passive: true });
 function pick(p) {
   buzz(8);
   if (p === tabFor(currentPage()) && (p !== "more" || currentPage() === "more")) { window.scrollTo({ top: 0, behavior: reduced() ? "auto" : "smooth" }); return; }

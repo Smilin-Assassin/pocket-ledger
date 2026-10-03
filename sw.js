@@ -1,5 +1,5 @@
 // Pocket Ledger service worker: makes the app open offline and installable.
-const VERSION = "pl-v32";
+const VERSION = "pl-v33";
 const SHELL = ["./", "./index.html", "./app.js", "./config.js", "./manifest.webmanifest", "./css/app.css",
   "./js/main.js", "./js/util.js", "./js/store.js", "./js/actions.js", "./js/shell.js", "./js/gemini.js", "./js/scan.js", "./js/chat.js",
   "./js/lock.js", "./js/notify.js", "./js/backup.js", "./js/transfers.js", "./js/motion.js", "./js/dock.js", "./js/quick.js",

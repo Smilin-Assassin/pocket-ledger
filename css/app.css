@@ -987,7 +987,7 @@ a.tile:hover .v { color: var(--accent); }
   :root[data-preset="glass"] .dk-tab .lbl, :root[data-preset="glass"] .dk-tab.on .lbl, :root[data-preset="glass"] .dk.tight .dk-tab.on .lbl {
     max-width: 100%; max-height: calc(13px * (1 - var(--p))); margin: 0; opacity: calc(1 - var(--p) * 2); line-height: 13px; overflow: hidden; text-overflow: ellipsis; transition: none; }
   :root[data-preset="glass"] .dk-tab.on .lbl { color: var(--accent); }
-  :root[data-preset="glass"] .dk-blob { top: 4px; bottom: 4px; border-radius: 999px; background: var(--dk-soft); opacity: calc(1 - var(--p) * 3); }
+  :root[data-preset="glass"] .dk-blob { top: 4px; bottom: 4px; border-radius: 999px; background: var(--dk-soft); opacity: calc(1 - var(--p) * 8); }
   :root[data-preset="glass"] .dk-tab .badge, :root[data-preset="glass"] .dk-tab.on .badge { top: 5px; left: calc(50% + 5px); right: auto; }
   :root[data-preset="glass"] .dk-tab .badge.dot { top: 7px; left: calc(50% + 9px); }
   /* the +: its own tinted glass circle beside the bar */
