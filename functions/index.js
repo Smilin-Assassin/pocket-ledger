@@ -3,6 +3,7 @@
 //  - gemini:      runs Gemini for signed-in household members, so the key never reaches phones.
 //  - testPush:    sends a test notification to the caller's devices.
 //  - notifyTransfer: tells someone that money was sent to them in the app.
+//  - people:      find someone by email to send money to; delete a group you made (with everything in it).
 "use strict";
 
 const { initializeApp } = require("firebase-admin/app");
@@ -237,9 +238,10 @@ exports.gemini = onCall({ secrets: [GEMINI_KEY], timeoutSeconds: 120, memory: "5
   const limit = (await appConfig()).aiLimit || DAILY_AI_LIMIT;
   if (used > limit) throw new HttpsError("resource-exhausted", "Daily Gemini limit reached. It resets tomorrow.");
 
-  const { contents, generationConfig, model } = req.data || {};
+  const { contents, generationConfig, model, search } = req.data || {};
   if (!Array.isArray(contents) || !contents.length) throw new HttpsError("invalid-argument", "Nothing to send.");
-  const body = JSON.stringify({ contents, generationConfig: generationConfig || {} });
+  // search: let Gemini look things up with Google Search (used to tell what kind of place an unknown shop is)
+  const body = JSON.stringify(Object.assign({ contents, generationConfig: generationConfig || {} }, search ? { tools: [{ google_search: {} }] } : {}));
   const chain = model ? [String(model)] : MODEL_CHAIN;
   let status = 0, msg = "";
   for (const m of chain) {
@@ -270,16 +272,55 @@ exports.notifyTransfer = onCall(async req => {
   if (!req.auth) throw new HttpsError("unauthenticated", "Sign in first.");
   const uid = req.auth.uid, { gid, tid } = req.data || {};
   const okId = v => typeof v === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(v);
-  if (!okId(gid) || !okId(tid)) throw new HttpsError("invalid-argument", "Bad transfer.");
-  const ref = db.doc("households/" + gid + "/transfers/" + tid), snap = await ref.get();
+  if (!okId(tid) || (gid !== undefined && gid !== null && !okId(gid))) throw new HttpsError("invalid-argument", "Bad transfer.");
+  // direct transfers (v36) live in transfers/{tid}; older ones in a group's transfers
+  const ref = gid ? db.doc("households/" + gid + "/transfers/" + tid) : db.doc("transfers/" + tid), snap = await ref.get();
   if (!snap.exists) throw new HttpsError("not-found", "No such transfer.");
   const t = snap.data();
   if (t.from !== uid || t.author !== uid) throw new HttpsError("permission-denied", "Not your transfer.");
   if (t.notified) return { sent: 0 };
-  const g = (await db.doc("households/" + gid).get()).data() || {};
-  if (!(g.members || []).includes(uid) || !(g.members || []).includes(t.to)) throw new HttpsError("permission-denied", "Not in this group.");
+  if (gid) {
+    const g = (await db.doc("households/" + gid).get()).data() || {};
+    if (!(g.members || []).includes(uid) || !(g.members || []).includes(t.to)) throw new HttpsError("permission-denied", "Not in this group.");
+  } else if (!(await db.doc("access/" + t.to).get()).exists) throw new HttpsError("not-found", "They don't use Pocket Ledger.");
+  // if they've already chosen how money from this person counts, the app adds it for them
+  let auto = false;
+  try {
+    const u = (await db.doc("users/" + t.to).get()).data() || {};
+    const p = u.personal ? (await db.doc("households/" + u.personal).get()).data() || {} : {};
+    auto = !!(((p.settings || {}).xferRules || {})[uid]);
+  } catch (e) { auto = false; }
   const amt = "MVR " + Number(t.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const sent = await sendTo([t.to], (t.fromName || "Someone") + " sent you " + amt, (t.note ? t.note + ". " : "") + "Open Pocket Ledger to accept it.", "transfers");
+  const sent = await sendTo([t.to], (t.fromName || "Someone") + " sent you " + amt, (t.note ? t.note + ". " : "") + (auto ? "It's added to your income when you open Pocket Ledger." : "Open Pocket Ledger to choose how it counts."), "transfers");
   await ref.update({ notified: Date.now() });
   return { sent };
+});
+
+// ---------- people: find someone to send money to, delete a group you made ----------
+exports.people = onCall(async req => {
+  if (!req.auth) throw new HttpsError("unauthenticated", "Sign in first.");
+  const uid = req.auth.uid, data = req.data || {};
+  if (!(await db.doc("access/" + uid).get()).exists) throw new HttpsError("permission-denied", "No access.");
+  if (data.action === "lookup") {
+    // by exact email only: you have to know who you're looking for (nobody can list the app's users)
+    const email = String(data.email || "").trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new HttpsError("invalid-argument", "That email doesn't look right.");
+    let user = null; try { user = await getAuth().getUserByEmail(email); } catch (e) { user = null; }
+    if (!user || user.uid === uid || !(await db.doc("access/" + user.uid).get()).exists) throw new HttpsError("not-found", "Nobody with that email uses Pocket Ledger.");
+    const u = (await db.doc("users/" + user.uid).get()).data() || {};
+    return { uid: user.uid, name: u.name || email.split("@")[0] };
+  }
+  if (data.action === "deleteGroup") {
+    const gid = String(data.gid || "");
+    if (!/^[A-Za-z0-9_-]{1,100}$/.test(gid)) throw new HttpsError("invalid-argument", "Bad group.");
+    const ref = db.doc("households/" + gid), snap = await ref.get();
+    if (!snap.exists) return { ok: true };
+    const g = snap.data();
+    if (g.type !== "group" || g.owner !== uid) throw new HttpsError("permission-denied", "Only the person who made the group can delete it.");
+    for (const m of g.members || []) await db.doc("users/" + m).set({ spaces: FieldValue.arrayRemove(gid) }, { merge: true });
+    await db.recursiveDelete(ref);
+    logger.info("group deleted", { gid, by: uid });
+    return { ok: true };
+  }
+  throw new HttpsError("invalid-argument", "Unknown action.");
 });

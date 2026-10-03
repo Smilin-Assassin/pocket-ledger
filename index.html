@@ -38,7 +38,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=35">
+<link rel="stylesheet" href="css/app.css?v=36">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -97,6 +97,7 @@
     <section class="page" id="pg-home" data-page="home" hidden>
       <div class="bills-bar" id="dueBar" hidden></div>
       <div class="banner info owes" id="owesBar" hidden></div>
+      <section class="smart" id="smartBar" aria-label="Suggestions" hidden></section>
       <section class="summary" aria-label="This month">
         <div class="dash-head"><button class="icon-btn" type="button" id="tileBtn" aria-label="Customize the dashboard">Customize</button></div>
         <div class="tile-cfg" id="tileCfg" hidden></div>
@@ -372,6 +373,13 @@
           <label class="check"><input type="checkbox" id="ntXfer" checked><span>Money sent to you<small>When someone sends you money in Pocket Ledger</small></span></label>
         </div>
         <p class="hint">Your choices apply to all your devices. Alerts are checked every morning at 8:30.</p>
+        <h3 class="sub-h">Smart help</h3>
+        <div class="tile-opts">
+          <label class="check"><input type="checkbox" id="smartOn" checked><span>Suggestions on Home<small>Regular payments to turn into bills, a category running above your usual, and a nudge after a few quiet days. Worked out on this device from your own entries.</small></span></label>
+          <label class="check"><input type="checkbox" id="placesOn"><span>Remember places<small>Things you add get roughly where you were (about 100 m), and when you're back near a place you've paid at, Home offers to log it again. Only while the app is open; asks for location once.</small></span></label>
+        </div>
+        <h3 class="sub-h">Money from people, added automatically</h3>
+        <div id="xferRules"></div>
       </section>
 
       <section class="panel setsec" id="set-groups">
@@ -486,10 +494,11 @@
 <div class="sheet-wrap" id="xferSendWrap" hidden>
   <section class="sheet" aria-label="Send money">
     <div class="panel-head"><h2>Send money</h2><button class="icon-btn" type="button" id="xsClose">Close</button></div>
-    <p class="hint">This records money you've sent (by bank transfer, cash, etc.). The other person gets a card to accept it into their own income. It doesn't move any money.</p>
+    <p class="hint">This records money you've sent (by bank transfer, cash, etc.) and tells the other person. It goes straight into their own income. It doesn't move any money.</p>
     <div class="form">
       <div class="row2">
         <div class="field"><label for="xsTo">To</label><select id="xsTo"></select></div>
+        <div class="field xs-find" id="xsFindRow" hidden><label for="xsEmail">Their email in Pocket Ledger</label><span class="xs-find-in"><input id="xsEmail" type="email" autocomplete="off" placeholder="name@example.com"><button class="ghost" type="button" id="xsFind">Find</button></span></div>
         <div class="field"><label for="xsAmt">Amount</label><input id="xsAmt" class="num" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div>
         <div class="field"><label for="xsDate">Date</label><input id="xsDate" type="date"></div>
         <div class="field"><label for="xsSide">On your side</label><select id="xsSide"></select></div>
@@ -602,6 +611,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=35"></script>
+<script type="module" src="app.js?v=36"></script>
 </body>
 </html>

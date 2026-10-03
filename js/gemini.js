@@ -57,8 +57,8 @@ export async function geminiText(prompt, files, opts) {
   if (signal && signal.aborted) throw { code: "cancelled" };
   const gen = { temperature: opts.temperature ?? 0.1 };
   if (opts.json) gen.response_mime_type = "application/json";
-  if (server) return serverGemini({ contents: [{ role: "user", parts }], generationConfig: gen, model: lsGet(MODEL_LS).trim() || null }, signal);
-  const body = JSON.stringify({ contents: [{ role: "user", parts }], generationConfig: gen });
+  if (server) return serverGemini(Object.assign({ contents: [{ role: "user", parts }], generationConfig: gen, model: lsGet(MODEL_LS).trim() || null }, opts.search ? { search: true } : {}), signal);
+  const body = JSON.stringify(Object.assign({ contents: [{ role: "user", parts }], generationConfig: gen }, opts.search ? { tools: [{ google_search: {} }] } : {}));
   const call = async model => {
     try { return await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body, signal }); }
     catch (e) { throw { code: e && e.name === "AbortError" ? "cancelled" : "offline" }; }

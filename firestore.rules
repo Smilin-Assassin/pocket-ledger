@@ -74,6 +74,18 @@ service cloud.firestore {
       allow delete: if signedIn() && (resource.data.from == me() || resource.data.to == me());
     }
 
+    // Money sent straight to another person (no shared group needed). The receiver's app adds it
+    // to their own space; the server sends the push. Nobody can change a transfer once it's sent.
+    match /transfers/{tid} {
+      allow create: if hasAccess() && request.resource.data.from == me() && request.resource.data.author == me()
+                    && request.resource.data.to is string && request.resource.data.to != me()
+                    && request.resource.data.amount is number && request.resource.data.amount > 0
+                    && request.resource.data.keys().hasOnly(['from', 'fromName', 'to', 'toName', 'amount', 'date', 'note', 'created', 'author']);
+      allow read: if signedIn() && (resource.data.from == me() || resource.data.to == me());
+      allow delete: if signedIn() && resource.data.from == me();
+      allow update: if false;
+    }
+
     match /{document=**} { allow read, write: if false; }
   }
 }

@@ -1,4 +1,5 @@
 // Home: the dashboard for the month you're looking at.
+import { renderSmart } from "../smart.js";
 import { $, esc, money, num, sum, monthKey, monthName, shiftMonth, lsGet, lsSet, lsJson, toast } from "../util.js";
 import { state, ui, db, isAll, isGroup, isOwner, isMine, pname, pcolor, poss, groupName, meId, monthTotals, totalSavings, inMonth, effMonth, countsMoney,
   visibleGoals, goalBalance, openBills, dueText, openLoans, loanOutstanding, owesPairs, budgetsFor, spentIn, EXP_CATS, LOAN_OUT, LOAN_BACK_OUT, changed, canEdit } from "../store.js";
@@ -195,6 +196,6 @@ export const page = {
   },
   render() {
     renderDue($("dueBar"), 4);
-    renderOwes(); renderHero(); renderTiles(); renderCats(); renderBudgets(); renderRecent(); renderTrend();
+    renderOwes(); renderSmart(); renderHero(); renderTiles(); renderCats(); renderBudgets(); renderRecent(); renderTrend();
   }
 };

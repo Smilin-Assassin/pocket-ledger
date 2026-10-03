@@ -3,6 +3,8 @@
 // person and their spaces, then hands over to boot().
 import { firebaseConfig } from "./config.js";
 import { boot } from "./js/main.js";
+import { addPeek } from "./js/util.js";
+addPeek(); // show/hide on password and PIN boxes
 
 const SDK = "12.19.0";
 const $ = id => document.getElementById(id);

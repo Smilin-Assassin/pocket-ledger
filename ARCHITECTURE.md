@@ -27,7 +27,8 @@ Short version: `ARCHITECTURE-ESSENTIALS.md`. What the app is for and the product
 | `js/scan.js` | Receipt and screenshot scanning (Gemini prompt + check-before-adding sheet) and bank statement import: BML CSV and MIB CSV parsed exactly, other CSVs and PDFs via Gemini; own-account detection, cross-checked duplicates, categorising, Undo. |
 | `js/gemini.js` | Calls the `gemini` function (or a personal key), image compression, PDF inline data. |
 | `js/chat.js` | Chat and voice: Gemini plans tool calls (look-ups, reports or changes), changes need a one-tap confirm. `report` draws a pie (shares) or bar (over time) chart plus a table under the reply, with Download CSV; the app computes every number. |
-| `js/transfers.js` | Money sent between people in a group: send sheet, approval cards, push via `notifyTransfer`. |
+| `js/transfers.js` | Money sent between people: send sheet (contacts, find by email via `people`), first-time card, automatic adding by the receiver's rule, push via `notifyTransfer`. |
+| `js/smart.js` | Smart help on Home, computed on the device: regular payments → bill, category above usual, quiet days, optional places (rounded position on entries added today, suggestion when near a place paid at twice). |
 | `js/lock.js`, `js/notify.js`, `js/backup.js`, `js/util.js` | App lock (PIN/fingerprint), push setup and notification choices, backup/restore/reminder and import history, small helpers (`toast` with Undo, dates, money, storage). |
 | `sw.js` | Cache `pl-vNN`, network-first with `no-cache`, share target (images, PDF, CSV), push display. |
 | `functions/index.js`, `alerts.js` | `gemini`, `access`, `admin`, `dailyAlerts` (08:30 Maldives), `notifyTransfer`, `testPush`. |
@@ -52,9 +53,9 @@ Short version: `ARCHITECTURE-ESSENTIALS.md`. What the app is for and the product
 Run from the repo root:
 ```
 python3 -m http.server 8765
-cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g14, in order
+cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g15, in order
 ```
-`tests/` runs Playwright against the real files with Firebase replaced by mocks (`tests/mockfb/`); the Firestore mock checks the security rules so a denied write fails the test. `g1` seeds an old-style household; later tests chain on `pl_state*.json` in the temp folder. g1 migration · g2 sharing, groups, view requests, view-only · g3 joining from a group link · g4 a new person through every page · g5 invites · g6 admin · g7 trash, backup, CSV, chat confirm, shortcuts · g8 BML statement, Undo, bank accounts list · g9 money sent between people · g10 dock, Quick add, Undo, Appearance, every text size · g11 MIB statement, duplicate cross-checks, slip prompt · g12 category drill-down and totals, chat button tucking and never covering content · g13 Glass theme: Apple default, light only, the iOS tab bar and its shrinking (follows the finger, holds still, settles on release), touch light, Android with Inter and lens edges, the glass side menu · g14 own-account moves across two statements, Moved → Save, change all + remembered categories, Find & replace, chat reports (pie, bar, CSV), transfer cards only in Me. All test data is made up.
+`tests/` runs Playwright against the real files with Firebase replaced by mocks (`tests/mockfb/`); the Firestore mock checks the security rules so a denied write fails the test. `g1` seeds an old-style household; later tests chain on `pl_state*.json` in the temp folder. g1 migration · g2 sharing, groups, view requests, view-only · g3 joining from a group link · g4 a new person through every page · g5 invites · g6 admin · g7 trash, backup, CSV, chat confirm, shortcuts · g8 BML statement, Undo, bank accounts list · g9 money sent between people · g10 dock, Quick add, Undo, Appearance, every text size · g11 MIB statement, duplicate cross-checks, slip prompt · g12 category drill-down and totals, chat button tucking and never covering content · g13 Glass theme: Apple default, light only, the iOS tab bar and its shrinking (follows the finger, holds still, settles on release), touch light, Android with Inter and lens edges, the glass side menu · g14 own-account moves across two statements, Moved → Save, change all + remembered categories, Find & replace, chat reports (pie, bar, CSV), transfer cards only in Me · g15 password eye, chat layout while thinking, smart help (bill from regular payments, above usual, places), deleting a group. g9 also covers sending by email and automatic adding. All test data is made up.
 
 ## Hosting, services and deploying
 
@@ -76,6 +77,7 @@ cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g14, in order
   - Subcollections: `entries`, `goals`, `loans`, `recurring`, `settlements`, `trash`; groups also have `transfers`, personal spaces `transfersSeen`. Every doc has `author` (uid of who added it).
   - Entry: `type` (expense|income|save|withdraw|move), `amount`, `date` (YYYY-MM-DD), `category`, `note` (≤160), `person` (uid), `created`, optional `goalId`, `split {with, share}`, `countMonth` (YYYY-MM it counts for), `loanId`/`loanRole`, `recurringId`, `ref` (bank ref), `source`, `importId`/`importLabel` (statement batch). Own-account moves: `type: "move"` (never counted), `moved: true` (kept if the owner turns it into Save), `acctFrom`, `acctTo`, `legs[]` (`"<last4 or bank>:<in|out>"`, one per statement side seen), `refs[]`. Editing an entry keeps all of these.
   - Personal space `settings.catRules {expense|income: {name key: category}}`: categories remembered from "change all" and Find & replace (`ruleFor`/`guessCategory` in `store.js`, used by the form, scans and imports).
+  - Personal space `settings.xferRules {senderUid: {cat, name}}` (money from that person is added automatically) and `settings.contacts [{uid, name}]` (people to send to). Entries may carry `place {lat, lng}` (3 decimals, opt-in) and `maybeDup` (id of the entry it looks like; "" once kept).
   - Goal: `name`, `target`, `by` (target month YYYY-MM — note `by` means deadline, NOT creator), `owner` (uid or "shared").
   - Recurring (bills/reminders): `type, amount, category, note, person, day, remindDays, startMonth, skips[], paused`. Paying creates entry id `rec-{rid}-{YYYY-MM}`. Never auto-added.
   - Loans: `direction` (lent|borrowed), `counterparty`, `amount`, `date`, `due`, `inMonth` (count in monthly money; default off), `person`. Repayments are entries with `loanId`.
@@ -89,7 +91,9 @@ cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g14, in order
 ## Server functions (`functions/index.js`, region asia-south1)
 
 - `dailyAlerts` (08:30 Indian/Maldives): bills/budgets/loans alerts via FCM (`alerts.js`).
-- `notifyTransfer` (callable): push to the receiver when someone records money sent to them; checks the caller is the sender and both are in the group.
+- `notifyTransfer` (callable): push to the receiver when someone records money sent to them; checks the caller is the sender (and, for old group transfers, that both are in the group). Says "added to your income" when the receiver has an automatic rule for the sender.
+- `people` (callable, v36): `lookup {email}` → `{uid, name}` of someone with access (exact email only, nobody can list users); `deleteGroup {gid}` → the group's owner only; removes it from every member's `spaces` and deletes the group with everything under it (`recursiveDelete`).
+- `gemini` also takes `search: true` → Google Search grounding (used to look up unknown shops in statements).
 - `testPush`, `gemini` (needs `access/{uid}`; daily per-person limit from `config/app.aiLimit` or 300; model chain gemini-3.8-flash → 3.7-flash → 3.5-flash → 3.5-flash-lite), `access` (invite redemption / grandfathering; refuses `revoked`), `admin` (overview, revoke, restore, makeAdmin, removeAdmin, deleteWaiting, setLimit).
 
 ## Bank statements (details)
@@ -110,7 +114,10 @@ cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g14, in order
 - Slip scanning tells Gemini every saved account ending (old field + accounts list) and that amounts, references, dates and phone numbers are never account numbers; account and name are cross-checked and a disagreement becomes a question.
 - Test: g11 (made-up MIB file). Never commit a real statement: the repo is public.
 
-## Money sent between people (added Oct 2026)
+## Money sent between people (added Oct 2026, direct since pl-v36)
+- v36: transfers live in top-level `transfers/{id}` `{from, fromName, to, toName, amount, date, note, created, author}`; rules: create by the sender (fixed keys, amount > 0, not to yourself), read by sender or receiver, delete by sender, never updated by clients. Recipients: `settings.contacts [{uid, name}]` in your own space, people from past transfers, group members, or `people.lookup` by email.
+- Receiving: the app queries `transfers where to == me` (plus old group transfers). Unseen ones from a sender in `settings.xferRules {senderUid: {cat, name}}` are added straight away (entry `xfer-d-{id}`, `source: "transfer"`, `transferFrom`) and marked in `transfersSeen/d_{id}`; others show a card in Me with "add automatically next time" (ticked). Editing a transfer entry keeps the amount read-only.
+- Deploy after v36: `firebase deploy --only functions,firestore:rules`, then once: `gcloud run services add-iam-policy-binding people --region=asia-south1 --member=allUsers --role=roles/run.invoker --project=pocket-ledger-3a340`.
 
 - Entries page › "Send money to someone in your group" (`js/transfers.js`). It only records a transfer; it doesn't move money.
 - The sender writes `households/{group}/transfers/{id}` `{from, fromName, to, toName, amount, date, note, created, author}`. "On your side": not counted, or an expense in the sender's own space (`xfer-out-{group}-{id}`).

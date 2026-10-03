@@ -1,5 +1,21 @@
 export const getFunctions = () => ({});
 export const httpsCallable = (f, name) => async data => { window.__calls = (window.__calls || []).concat(name); if (name === "testPush") return { data: { sent: 1 } }; if (name === "notifyTransfer") { window.__notified = (window.__notified || []).concat(data); return { data: { sent: 1 } }; }
+  if (name === "people") {
+    const e = localStorage.getItem("mock-cur"), uid = "uid_" + e.replace(/\W/g, ""), db = JSON.parse(localStorage.getItem("mock-db") || "{}");
+    const save = () => localStorage.setItem("mock-db", JSON.stringify(db)); const fail = (code, m) => { const x = new Error(m); x.code = "functions/" + code; throw x; };
+    if (data.action === "lookup") {
+      const t = "uid_" + String(data.email || "").trim().toLowerCase().replace(/\W/g, "");
+      if (t === uid || !db["access/" + t]) fail("not-found", "Nobody with that email uses Pocket Ledger.");
+      return { data: { uid: t, name: (db["users/" + t] || {}).name || data.email.split("@")[0] } };
+    }
+    if (data.action === "deleteGroup") {
+      const g = db["households/" + data.gid]; if (!g) return { data: { ok: true } };
+      if (g.type !== "group" || g.owner !== uid) fail("permission-denied", "Only the person who made the group can delete it.");
+      (g.members || []).forEach(m => { const u = db["users/" + m]; if (u) u.spaces = (u.spaces || []).filter(x => x !== data.gid); });
+      Object.keys(db).filter(k => k === "households/" + data.gid || k.startsWith("households/" + data.gid + "/")).forEach(k => delete db[k]);
+      save(); window.__groupDeleted = data.gid; return { data: { ok: true } };
+    }
+  }
   if (name === "admin") {
     const e = localStorage.getItem("mock-cur"), uid = "uid_" + e.replace(/\W/g, ""), db = JSON.parse(localStorage.getItem("mock-db") || "{}");
     const save = () => localStorage.setItem("mock-db", JSON.stringify(db)); const fail = (code, m) => { const x = new Error(m); x.code = "functions/" + code; throw x; };
@@ -36,6 +52,7 @@ export const httpsCallable = (f, name) => async data => { window.__calls = (wind
     i.used = (i.used || []).concat(uid); i.usedBy = (i.usedBy || []).concat(e); db["access/" + uid] = { ok: true, admin: false, how: "invite" }; save();
     return { data: { ok: true, admin: false, group: i.group || null } };
   } if (data && data.ping) return { data: { ok: true } };
+  if (window.__slowMs) await new Promise(r => setTimeout(r, window.__slowMs));
   const t = data.contents[0].parts[0].text; const plan = t.includes("Decide what to do");
   window.__parts = (window.__parts || []).concat([data.contents[0].parts.map(x => x.inline_data ? x.inline_data.mime_type : "text")]);
   if (window.__mockStatement && t.includes("bank statement (PDF)")) return { data: { text: JSON.stringify(window.__mockStatement) } };

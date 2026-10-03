@@ -18,11 +18,12 @@ export function rowHtml(e, opts) {
   if (e.type === "move") title = "Moved between your accounts";
   const tags = (e.split ? '<span class="owner-tag">Split</span>' : "") + (e.recurringId ? '<span class="owner-tag">Bill</span>' : "") +
     (e.countMonth && e.countMonth !== (e.date || "").slice(0, 7) ? '<span class="owner-tag">For ' + esc(monthName(e.countMonth, true)) + "</span>" : "") +
-    (e.loanId && !countsMoney(e) ? '<span class="owner-tag">Loan · separate</span>' : "");
+    (e.loanId && !countsMoney(e) ? '<span class="owner-tag">Loan · separate</span>' : "") +
+    (e.maybeDup ? '<span class="owner-tag warn-tag">Possible repeat</span>' : "");
   const by = isGroup() && !isAll() ? addedBy(e) : "";
   const sub = [isAll() ? pname(e.person) : "", e.note || (e.type === "expense" ? "Spent" : e.type === "income" ? "Income" : "")].filter(Boolean).join(", ");
   const editable = !opts.noActions && canEdit(e);
-  const acts = !editable ? "" : `<button type="button" class="icon-btn" data-edit="${e.id}" aria-label="Edit entry">Edit</button><button type="button" class="icon-btn danger" data-del="${e.id}" aria-label="Delete entry">Delete</button>`;
+  const acts = !editable ? "" : (e.maybeDup ? `<button type="button" class="icon-btn" data-keepdup="${e.id}" aria-label="Keep it, it's a real separate payment">Keep</button>` : "") + `<button type="button" class="icon-btn" data-edit="${e.id}" aria-label="Edit entry">Edit</button><button type="button" class="icon-btn danger" data-del="${e.id}" aria-label="Delete entry">Delete</button>`;
   return `<li class="tx${ui.openRow === e.id ? " open" : ""}" data-id="${e.id}"><span class="dot" style="background:${meta[0]}"></span>
     <div class="what"><b>${esc(title || "Untitled")}${tags}</b><small>${isAll() ? `<i class="pdot" style="background:${pcolor(e.person)}"></i>` : ""}${esc(sub)}${by ? ` <span class="by-tag">added by ${esc(by)}</span>` : ""}${opts.showDate ? " · " + esc(new Date(e.date + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" })) : ""}</small></div>
     <span class="amt num ${meta[1]}">${meta[2]}${esc(money(+e.amount))}</span><span class="acts">${acts}</span></li>`;
@@ -39,6 +40,7 @@ export function wireRows(list, rerender) {
     }
     if (b.dataset.del) { ui.openRow = null; removeWithUndo("entries", b.dataset.del, "Entry deleted"); }
     else if (b.dataset.edit) startEdit(b.dataset.edit);
+    else if (b.dataset.keepdup) { db.patchMany([b.dataset.keepdup], { maybeDup: "" }); toast("Kept as a separate payment"); }
   });
   let sw = null;
   list.addEventListener("touchstart", ev => { const li = ev.target.closest("li.tx"); if (li) sw = { id: li.dataset.id, x: ev.touches[0].clientX, y: ev.touches[0].clientY, li }; }, { passive: true });
@@ -119,7 +121,7 @@ function renderForm() {
     $("moveText").textContent = isMove ? "Moved between your own accounts" + way + ". It isn't counted as income or spending." : "This came from a move between your own accounts" + way + ". It now counts as savings.";
     $("moveToggle").textContent = isMove ? "Count it as savings instead" : "Make it a plain move again";
   }
-  const src = editing && editing.importId ? "From your " + (editing.importLabel || "bank statement") + ". Undoing that import (Settings › Backup) removes it." : editing && editing.source === "transfer" ? "From money sent between people in Pocket Ledger." : "";
+  const src = editing && editing.importId ? "From your " + (editing.importLabel || "bank statement") + ". Undoing that import (Settings › Backup) removes it." : editing && editing.source === "transfer" ? "Money sent between people in Pocket Ledger. You can change the note, category and date; the amount stays what was sent." : "";
   $("srcHint").textContent = src; $("srcHint").hidden = !src;
   const gsel = $("fGoal");
   fillSelect(gsel, [["", t === "withdraw" ? "General savings" : "General savings (no goal)"]].concat(visibleGoals(entryWho()).map(g => [g.id, g.name])).concat(t === "save" ? [["__other", "Other"]] : []), ui.goalSel || gsel.value);
@@ -155,6 +157,7 @@ function renderForm() {
 export function setType(t) { ui.type = t; ui.goalSel = ""; renderForm(); }
 function resetForm() {
   ui.editId = null; ui.catOther = false; ui.goalSel = "";
+  $("fAmount").readOnly = false;
   $("fAmount").value = ""; $("fCat").value = ""; $("fNote").value = ""; $("fPurpose").value = ""; $("fFor").value = "this";
   $("fCat").dataset.auto = ""; $("catHint").hidden = true;
   $("fDate").value = defaultDate(); $("formErr").hidden = true; $("fSplit").checked = false; $("fRepeat").checked = false;
@@ -165,6 +168,7 @@ export function startEdit(id) {
   if (location.hash.replace("#", "").split("/")[0] !== "entries") go("entries");
   ui.editId = e.id; ui.type = e.type; ui.catOther = false; ui.goalSel = e.goalId || "";
   $("fAmount").value = e.amount; $("fDate").value = e.date; $("fNote").value = e.note || "";
+  $("fAmount").readOnly = e.source === "transfer"; // money sent between people: the amount is what was sent
   $("fCat").value = e.type === "save" || e.type === "withdraw" || e.type === "move" ? "" : (e.category || "");
   $("fFor").value = e.countMonth && e.countMonth !== (e.date || "").slice(0, 7) ? "next" : "this";
   $("fSplit").checked = !!e.split; $("fRepeat").checked = false;
@@ -213,7 +217,7 @@ async function submit(ev) {
   if (wasEdit) {
     const old = state.entries.find(x => x.id === wasEdit);
     // keep where it came from (statement import, transfer, own-account move) so Undo import and matching still find it
-    if (old) { if (old.created) e.created = old.created; ["ref", "refs", "loanId", "loanRole", "recurringId", "source", "author", "importId", "importLabel", "moved", "acctFrom", "acctTo", "legs", "transferId", "transferGroup", "sample"].forEach(k => { if (old[k] !== undefined && e[k] === undefined) e[k] = old[k]; }); }
+    if (old) { if (old.created) e.created = old.created; ["ref", "refs", "loanId", "loanRole", "recurringId", "source", "author", "importId", "importLabel", "moved", "acctFrom", "acctTo", "legs", "transferId", "transferGroup", "transferFrom", "transferTo", "sample", "maybeDup"].forEach(k => { if (old[k] !== undefined && e[k] === undefined) e[k] = old[k]; }); }
     db.update(wasEdit, e);
     const n = old ? offerChangeAll(old, e) : 0;
     if (!n) toast("Entry updated");

@@ -32,10 +32,14 @@ const csv = [
   await p.waitForTimeout(1800);
   check((await p.textContent("#scanTitle")) === "Statement imported", "imported", await p.textContent("#scanTitle"));
   const sum = await T.text("#scanList");
-  check(/Skipped 2 already in Pocket Ledger\. 2 moved between your own accounts, kept as Moved/.test(sum), "skips duplicates (ref, date+amount); own-account moves (name, digits) kept as Moved", sum);
-  check(/490\.16/.test(sum) && /1,400\.00/.test(sum), "totals: spent 490.16, income 1,400", sum);
+  check(/Skipped 1 already in Pocket Ledger \(same bank reference\)\. 2 moved between your own accounts, kept as Moved/.test(sum), "skips only same-reference rows; own-account moves (name, digits) kept as Moved", sum);
+  check(/Possible repeats \(1\)/.test(sum) && /Stop 2 Shop/.test(sum), "a look-alike (same amount, a day apart) is added and listed as a possible repeat", sum);
+  check(/556\.16/.test(sum) && /1,400\.00/.test(sum), "totals: spent 556.16 (with the possible repeat), income 1,400", sum);
+  // remove the possible repeat right there
+  await p.click('#scanList [data-imp="drop"]'); await p.waitForTimeout(300);
+  check(/Removed/.test(await T.text(".imp-maybe")), "Remove takes it out", await T.text(".imp-maybe"));
   const d = await T.db(), all = Object.keys(d).filter(k => k.startsWith(H + "/entries/") && d[k].importId).map(k => d[k]), added = all.filter(e => e.type !== "move"), moves = all.filter(e => e.type === "move");
-  check(added.length === 4 && moves.length === 2, "4 entries added, plus 2 moves", [added.length, moves.length]);
+  check(added.length === 4 && moves.length === 2, "4 entries left (the repeat removed), plus 2 moves", [added.length, moves.length]);
   check(moves.every(m => m.moved && m.category === "Moved" && m.legs.length === 1 && /→/.test(m.note)), "moves: not counted, one side known, note shows the way", moves);
   const cat = n => (added.find(e => e.note === n) || {}).category;
   check(cat("Netflix.com") === "Entertainment" && cat("Transfer to Ahmed Shahir") === "Other" && cat("From Hassan Naseem") === "Side income", "categories and notes", added.map(e => e.note + ":" + e.category));

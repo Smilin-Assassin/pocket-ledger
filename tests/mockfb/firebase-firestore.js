@@ -27,6 +27,11 @@ function allowed(path, before, after) {
     if (!after) return before.from === u || before.to === u;
     return before.to === u && only(changed(before, after), ["status", "space", "toName", "answered"]);
   }
+  if (seg[0] === "transfers" && seg.length === 2) {
+    if (!before) return after.from === u && after.author === u && typeof after.to === "string" && after.to !== u && typeof after.amount === "number" && after.amount > 0 && only(Object.keys(after), ["from", "fromName", "to", "toName", "amount", "date", "note", "created", "author"]);
+    if (!after) return before.from === u;
+    return false;
+  }
   if (seg[0] === "households" && seg.length === 2) {
     if (!before) return eq(after.members, [u]) && (after.owner === undefined || after.owner === u) && !(after.viewers || []).length;
     if (!after) return false;
@@ -96,7 +101,7 @@ export async function getDocs(q) {
   let keys = Object.keys(d).filter(k => k.startsWith(pre) && !k.slice(pre.length).includes("/")).sort();
   const w = q.where || [];
   if (RULES) {
-    if (q.path === "viewRequests") { if (!w.some(c => (c.f === "from" || c.f === "to") && c.v === me())) throw err("permission-denied"); }
+    if (q.path === "viewRequests" || q.path === "transfers") { if (!w.some(c => (c.f === "from" || c.f === "to") && c.v === me())) throw err("permission-denied"); }
     else if (q.path === "invites") { if (!isAdmin()) throw err("permission-denied"); }
     else if (q.path.startsWith("households/")) { if (!canRead(q.path.split("/")[1])) throw err("permission-denied"); }
   }

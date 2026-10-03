@@ -6,6 +6,8 @@ import * as notify from "../notify.js";
 import * as gem from "../gemini.js";
 import * as backup from "../backup.js";
 import { exportCsv } from "./entries.js";
+import { renderXferRules } from "../transfers.js";
+import { smartOn, placesOn, setPlaces } from "../smart.js";
 import { M, PAGES, PRESETS, saveMotion, refreshHz, measureHz, reduced } from "../motion.js";
 import { NAMES, fitsSix, motionChanged } from "../dock.js";
 
@@ -122,7 +124,8 @@ async function renderGroups() {
       ${own ? `<div class="grp-rename"><input data-rename="${esc(g.id)}" maxlength="30" value="${esc(d.name || g.name)}" aria-label="Group name"><button class="ghost" type="button" data-renameok="${esc(g.id)}">Rename</button></div>
       <div class="field"><label for="inv-${esc(g.id)}">Invite link</label><input id="inv-${esc(g.id)}" readonly value="${esc(inviteUrl(g.id))}"></div>
       <p class="hint">${open ? "Invitations are open until " + esc(new Date(d.joinUntil).toLocaleDateString(undefined, { day: "numeric", month: "short" })) + ". People who already use Pocket Ledger can join with the link." + (ctx.admin ? " For someone new, make an invite under Invite people." : " Someone new also needs an invite from the app's admin.") : "Invitations are closed, so the link doesn't let anyone join."}</p>
-      <div class="formfoot"><button class="ghost" type="button" data-copy="${esc(g.id)}">Copy link</button>${navigator.share ? `<button class="ghost" type="button" data-share="${esc(g.id)}">Share</button>` : ""}<button class="ghost" type="button" data-inv="${esc(g.id)}" data-open="${open ? 0 : 1}">${open ? "Close invitations" : "Open invitations for 7 days"}</button></div>`
+      <div class="formfoot"><button class="ghost" type="button" data-copy="${esc(g.id)}">Copy link</button>${navigator.share ? `<button class="ghost" type="button" data-share="${esc(g.id)}">Share</button>` : ""}<button class="ghost" type="button" data-inv="${esc(g.id)}" data-open="${open ? 0 : 1}">${open ? "Close invitations" : "Open invitations for 7 days"}</button></div>
+      <div class="formfoot"><button class="ghost danger" type="button" data-delgrp="${esc(g.id)}">Delete group</button></div>`
       : `<div class="formfoot"><button class="ghost" type="button" data-leave="${esc(g.id)}">Leave group</button></div>`}
     </div>`;
   }).join("");
@@ -264,6 +267,14 @@ async function onClick(ev) {
       const until = d.open === "1" ? Date.now() + 7 * 864e5 : 0;
       await F().updateDoc(hRef(d.inv), { joinUntil: until }); if (groupDocs[d.inv]) groupDocs[d.inv].joinUntil = until; if (d.inv === ctx.hid) state.household.joinUntil = until;
       toast(until ? "Invitations open for 7 days" : "Invitations closed"); renderGroups();
+    } else if (d.delgrp) {
+      // the group and everything in it goes, for everyone in it (your own spaces aren't touched)
+      if (!d.sure) { b.dataset.sure = "1"; b.textContent = "Tap again to delete it for everyone"; return; }
+      b.disabled = true;
+      try { await notify.callFn("people", { action: "deleteGroup", gid: d.delgrp }); }
+      catch (e) { b.disabled = false; return toast(notify.serverMissing(e) ? "Deleting groups needs the server update. Ask the admin to deploy it." : (e && e.message) || "Couldn't delete the group. Try again."); }
+      toast("Group deleted");
+      if (d.delgrp === ctx.hid) ctx.switchTo(ctx.profile.personal); else { ctx.spaces = ctx.spaces.filter(s => s.id !== d.delgrp); renderGroups(); changed(); }
     } else if (d.leave) {
       if (!d.sure) { b.dataset.sure = "1"; b.textContent = "Tap again to leave"; return; }
       await F().updateDoc(hRef(d.leave), { members: F().arrayRemove(meId()) });
@@ -336,6 +347,8 @@ export const page = {
     $("signOutBtn").addEventListener("click", () => ctx.signOut());
     $("exportBtn2").addEventListener("click", exportCsv);
     lock.initSettings(); notify.initSettings(); gem.initSettings(); backup.initSettings();
+    $("smartOn").addEventListener("change", () => { lsSet("pl-smart", $("smartOn").checked ? "" : "0"); changed(); });
+    $("placesOn").addEventListener("change", async () => { const on = await setPlaces($("placesOn").checked); $("placesOn").checked = on; if (on) toast("Places on. Things you add from now on remember roughly where you were."); changed(); });
   },
   enter() {
     fillMyDetails(); syncAppearance();
@@ -343,7 +356,8 @@ export const page = {
     $("acctInfo").textContent = "Signed in as " + ((ctx.user && ctx.user.email) || "you") + ".";
     $("adminLink").hidden = !ctx.admin; $("adminIdx").hidden = !ctx.admin;
     $("set-you").hidden = isViewer(); $("set-ai").hidden = isViewer();
-    renderGroups().then(renderPrivacy); renderInvites(); renderTrash();
+    renderGroups().then(renderPrivacy); renderInvites(); renderTrash(); renderXferRules();
+    $("smartOn").checked = smartOn(); $("placesOn").checked = placesOn();
   },
   render() {
     // live bits only; the rest refreshes when you open Settings or act on it

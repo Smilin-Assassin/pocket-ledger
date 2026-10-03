@@ -120,7 +120,7 @@ export function connect(fb) {
   // my own name / bank details live in my private space
   const pid = ctx.profile && ctx.profile.personal;
   if (pid && pid !== ctx.hid) {
-    F.getDoc(F.doc(db, "households", pid)).then(s => { if (s.exists()) { const st0 = s.data().settings || {}; state.my = (st0.people || [])[0] || null; state.myRules = st0.catRules || {}; rebuild(); changed(); } }).catch(() => {});
+    F.getDoc(F.doc(db, "households", pid)).then(s => { if (s.exists()) { const st0 = s.data().settings || {}; state.my = (st0.people || [])[0] || null; state.myRules = st0.catRules || {}; state.mySet = st0; rebuild(); changed(); } }).catch(() => {});
   }
 }
 export const rawDoc = (c, id) => { const x = (raw[c] || []).find(o => o.id === id); return x ? JSON.parse(JSON.stringify(x)) : null; };
@@ -137,9 +137,11 @@ function fire(p) {
   return Promise.resolve();
 }
 const col = c => ctx.F.collection(hRef(), c);
+// small extension points other modules fill in (smart.js adds a rough place to things you add today)
+export const hooks = { place: null };
 export const validId = id => /^[A-Za-z0-9_-]{1,100}$/.test(String(id || ""));
 export const db = {
-  add(e) { const ref = ctx.F.doc(col("entries")); fire(ctx.F.setDoc(ref, clean(e))); return ref.id; },
+  add(e) { if (hooks.place) { try { hooks.place(e); } catch {} } const ref = ctx.F.doc(col("entries")); fire(ctx.F.setDoc(ref, clean(e))); return ref.id; },
   addWithId(id, e) { return fire(ctx.F.setDoc(ctx.F.doc(col("entries"), id), clean(e))); },
   update(id, e) { return fire(ctx.F.setDoc(ctx.F.doc(col("entries"), id), clean(e))); },
   remove(id) { return db.removeDoc("entries", id); },
@@ -315,6 +317,8 @@ export function catOptions(type) {
 }
 // category memory: a rule you set (Find & replace, or changing one entry), else what you used last time for this shop / person
 export const merchantKey = note => String(note || "").toLowerCase().split(/\s[–—-]\s|,|\(|:/)[0].replace(/^(transfer to|from|paid back|loan to|loan from)\s+/, "").replace(/[^a-z0-9 .&']/g, " ").replace(/\s+/g, " ").trim();
+// your own space's settings, also while a group is open
+export const mySettings = () => (isGroup() ? state.mySet : state.settings) || {};
 export const catRules = () => (isGroup() ? state.myRules : state.settings.catRules) || {};
 export function ruleFor(note, type) {
   const k = merchantKey(note), r = catRules()[type] || {}; if (k.length < 2) return "";

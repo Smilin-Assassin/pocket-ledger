@@ -2,7 +2,7 @@
 import { $, esc, money, num, r2, sum, todayISO, toast, ISO, fmtDate, monthName, daysBetween } from "./util.js";
 import { state, ui, meId, isGroup, people, pname, visibleGoals, catOptions, guessCategory, EXP_CATS, INC_CATS, TYPE_LABEL, changed, db } from "./store.js";
 import { budgetCheck } from "./actions.js";
-import { aiReady, geminiJson } from "./gemini.js";
+import { aiReady, geminiJson, geminiText, parseJsonText } from "./gemini.js";
 import { go } from "./shell.js";
 
 let scanAbort = null, items = [];
@@ -378,6 +378,19 @@ async function categorize(rows) {
       ].join("\n"), []);
     } catch (e) { ai = {}; }
   }
+  // shops Gemini didn't know: let it look them up online (what kind of place is it?)
+  const unknown = [...new Set(rows.filter(r => !r.category && r.dir === "out" && r.kind === "purchase" && !EXP_CATS.includes(((ai && ai.expense) || {})[r.name]) ).map(r => r.name))].slice(0, 15);
+  if (aiReady() && unknown.length) {
+    try {
+      const found = parseJsonText(await geminiText([
+        "Look up these shop or company names from a bank statement in the Maldives (search the web if you're not sure what they sell), and pick the best category for each.",
+        "Categories: " + EXP_CATS.filter(c => !/loan/i.test(c)).join(", ") + ". Use exactly these names; use Other only if you really can't tell.",
+        "Reply with JSON only, no other text: {\"NAME\": \"Category\"}.",
+        "Names: " + JSON.stringify(unknown)
+      ].join("\n"), [], { search: true, temperature: 0.1 }));
+      if (found && typeof found === "object") { ai.expense = Object.assign({}, ai.expense || {}); unknown.forEach(n => { if (EXP_CATS.includes(found[n])) ai.expense[n] = found[n]; }); }
+    } catch (e) {}
+  }
   rows.forEach(r => {
     if (r.category) return;
     const type = r.dir === "out" ? "expense" : "income", pick = ((ai && ai[type]) || {})[r.name];
@@ -422,7 +435,7 @@ async function importStatement(file) {
     const words = s => new Set(toks(s).filter(w => w.length >= 3 && !/^(FROM|TRANSFER|PAID|BACK|LOAN|THE|AND)$/.test(w)));
     const dupOfRow = r => {
       const type = r.dir === "out" ? "expense" : "income";
-      if (r.ref) { const e = mine.find(x => (x.ref && x.ref === r.ref) || (x.refs || []).includes(r.ref)); if (e) return e; }
+      if (r.ref) { const e = mine.find(x => (x.ref && x.ref === r.ref) || (x.refs || []).includes(r.ref)); if (e) return { e, sure: true }; }
       const rw = words(r.name);
       const cands = mine.filter(x => !used.has(x.id) && x.type === type && Math.abs(+x.amount - r.amount) < 0.005 && x.date && Math.abs(daysBetween(x.date, r.date)) <= 2
         && !(x.ref && r.ref && x.ref !== r.ref) && !(x.source === "statement" && x.ref));
@@ -430,7 +443,7 @@ async function importStatement(file) {
       const score = x => { const xw = words(x.note); let n = 0; rw.forEach(w => { if ([...xw].some(v => tokMatch(w, v))) n++; }); return n * 10 + (x.date === r.date ? 3 : 0) - Math.abs(daysBetween(x.date, r.date)); };
       const e = cands.sort((a, b) => score(b) - score(a))[0];
       used.add(e.id);
-      return e;
+      return { e, sure: false };
     };
     // Moves between your own accounts are kept as "Moved" entries that don't count as income or spending.
     // The same move shows on both statements (out of one account, into the other), so it's stored once:
@@ -447,7 +460,7 @@ async function importStatement(file) {
       return { leg };
     };
     const otherSide = r => acctName(ownAcct(r)) || r.otherBank || "Other account";
-    const res = { add: [], dup: [], own: [], joined: [] };
+    const res = { add: [], dup: [], own: [], joined: [], maybe: [] };
     rows.forEach(r => {
       if (r.ref && seenRefs.has(r.ref)) return res.dup.push(r); // the same line twice in one file
       if (r.ref) seenRefs.add(r.ref);
@@ -458,7 +471,11 @@ async function importStatement(file) {
         if (m.join) { r.join = m.join; return res.joined.push(r); }
         return res.own.push(r);
       }
-      if (dupOfRow(r)) return res.dup.push(r);
+      // only the same bank reference is certainly the same transaction; anything that just looks alike
+      // (same amount, close date) is added and listed as a possible repeat for you to keep or remove
+      const d = dupOfRow(r);
+      if (d && d.sure) return res.dup.push(r);
+      if (d) { r.maybeDup = d.e; res.maybe.push(r); }
       const nm = titleCase(r.name) || titleCase(r.label) || "Bank";
       r.note = ((r.kind === "purchase" || r.kind === "bill" || r.kind === "fee" || r.name === "MIB profit") ? nm : r.dir === "out" ? "Transfer to " + nm : "From " + nm) + (r.remark ? ": " + r.remark : "");
       r.note = r.note.slice(0, 160);
@@ -472,7 +489,7 @@ async function importStatement(file) {
     const main = months.filter(k => cnt[k] >= Math.max(3, rows.length * 0.15));
     const label = (extra.bank || "Bank") + " statement · " + (main.length ? main : months).map(k => monthName(k, true)).join(", ");
     const entries = res.add.map((r, i) => Object.assign({ type: r.dir === "out" ? "expense" : "income", amount: r2(r.amount), date: r.date, category: r.category, note: r.note,
-      person: meId(), created: Date.now() + i, source: "statement", importId, importLabel: label }, r.ref ? { ref: r.ref.slice(0, 40) } : {}));
+      person: meId(), created: Date.now() + i, source: "statement", importId, importLabel: label }, r.ref ? { ref: r.ref.slice(0, 40) } : {}, r.maybeDup ? { maybeDup: r.maybeDup.id } : {}));
     const moves = res.own.map((r, i) => Object.assign({ type: "move", moved: true, amount: r2(r.amount), date: r.date, category: "Moved", note: (r.from + " → " + r.to).slice(0, 160),
       acctFrom: r.from, acctTo: r.to, legs: [r.leg], person: meId(), created: Date.now() + entries.length + i, source: "statement", importId, importLabel: label }, r.ref ? { ref: r.ref.slice(0, 40), refs: [r.ref.slice(0, 40)] } : { refs: [] }));
     // the other side of a move already saved from another statement: fill in this side, don't add it again
@@ -486,6 +503,7 @@ async function importStatement(file) {
     const all = entries.concat(moves);
     status("Adding " + all.length + " entries…", true);
     const ids = all.length ? await db.addMany(all) : [];
+    res.add.forEach((r, i) => { r.id = ids[i]; });
     lastImport = { ids, importId, label, months, res };
     renderImport();
   } catch (e) {
@@ -522,7 +540,8 @@ function renderImport() {
     <div class="imp-stats"><div><span class="label">Spent</span><b class="num">${esc(money(sumOf(r.add, "out")))}</b><small>${outN} entr${outN === 1 ? "y" : "ies"} added</small></div>
       <div><span class="label">Income</span><b class="num">${esc(money(sumOf(r.add, "in")))}</b><small>${inN} entr${inN === 1 ? "y" : "ies"} added</small></div></div>
     ${Object.keys(byCat).length ? `<p class="hint">${Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([c, v]) => esc(c) + " " + esc(money(v, { whole: true }))).join(", ")}</p>` : ""}
-    <p class="hint">${[r.dup.length ? "Skipped " + r.dup.length + " already in Pocket Ledger." : "", r.own.length + r.joined.length ? (r.own.length + r.joined.length) + " moved between your own accounts, kept as Moved (not counted)" + (r.joined.length ? ", " + r.joined.length + " matched to the other statement" : "") + "." : ""].filter(Boolean).join(" ") || "Nothing skipped."}</p>
+    <p class="hint">${[r.dup.length ? "Skipped " + r.dup.length + " already in Pocket Ledger (same bank reference)." : "", r.own.length + r.joined.length ? (r.own.length + r.joined.length) + " moved between your own accounts, kept as Moved (not counted)" + (r.joined.length ? ", " + r.joined.length + " matched to the other statement" : "") + "." : ""].filter(Boolean).join(" ") || "Nothing skipped."}</p>
+    ${r.maybe.length ? `<div class="box imp-maybe"><b>Possible repeats (${r.maybe.length})</b><p class="hint">These look like something already in Pocket Ledger (same amount, a day or two apart). They're added; remove any that really are the same.</p><ul>${r.maybe.map(x => `<li data-mid="${esc(x.id || "")}"><span>${esc(fmtDate(x.date))} · ${esc(titleCase(x.name) || x.label || "")} <b class="num">${esc(money(x.amount))}</b><small class="hint">like “${esc(x.maybeDup.note || x.maybeDup.category || "")}”, ${esc(fmtDate(x.maybeDup.date))}</small></span><span class="row-btns"><button class="ghost" type="button" data-imp="keep" data-id="${esc(x.id || "")}">Keep</button><button class="ghost danger" type="button" data-imp="drop" data-id="${esc(x.id || "")}">Remove</button></span></li>`).join("")}</ul></div>` : ""}
     ${list(r.add, "Added (" + r.add.length + ")")}${list(r.dup, "Already in Pocket Ledger (" + r.dup.length + ")")}${list(r.own.concat(r.joined), "Moved between your accounts (" + (r.own.length + r.joined.length) + ")")}
     <div class="row-btns">${L.ids.length ? `<button class="primary" type="button" data-imp="see">See entries</button><button class="ghost" type="button" data-imp="undo">Undo this import</button>` : `<button class="primary" type="button" data-imp="close">Close</button>`}</div>
   </div>`;
@@ -537,6 +556,17 @@ async function onImportClick(b) {
   const what = b.dataset.imp;
   if (what === "see") { const k = lastImport.months[lastImport.months.length - 1]; closeScan(); ui.month = k; go("entries"); changed(); }
   else if (what === "close") closeScan();
+  else if (what === "keep" || what === "drop") {
+    const id = b.dataset.id, li = b.closest("li");
+    if (what === "keep") db.patchMany([id], { maybeDup: "" });
+    else {
+      // it was the same payment: the one already there learns this bank reference, so importing again skips it
+      const e = state.entries.find(x => x.id === id), t = e && state.entries.find(x => x.id === e.maybeDup);
+      if (e && t && e.ref && !(t.refs || []).includes(e.ref)) db.patchMany([t.id], { refs: (t.refs || []).concat(e.ref).slice(-10) });
+      db.removeMany([id]);
+    }
+    if (li) { li.querySelector(".row-btns").innerHTML = `<small class="hint">${what === "keep" ? "Kept" : "Removed"}</small>`; }
+  }
   else if (what === "undo") {
     if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Tap again to remove " + lastImport.ids.length + " entries"; return; }
     b.disabled = true;

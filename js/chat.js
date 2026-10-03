@@ -316,7 +316,8 @@ function renderChat() {
         (m.action === "settings" ? `<button type="button" class="ghost" data-act="settings">Open Settings</button>` : "") + `</div>`).join("");
   }
   box.scrollTop = box.scrollHeight;
-  $("chatSend").disabled = chat.busy || rec.on;
+  // while Gemini works, Stop takes the place of Ask (so the row never gets wider than the screen)
+  $("chatSend").disabled = chat.busy || rec.on; $("chatSend").hidden = chat.busy;
   $("chatStop").hidden = !chat.busy;
   $("chatMic").classList.toggle("rec", rec.on);
   $("chatMic").setAttribute("aria-label", rec.on ? "Stop recording" : "Speak");

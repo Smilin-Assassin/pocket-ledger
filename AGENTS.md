@@ -16,7 +16,9 @@ A household money tracker PWA for a couple in the Maldives (MVR). Plain ES modul
 - **Motion:** animate `transform`/`opacity` only; springs advance on real elapsed time (`Spring.run(dt)` in `js/motion.js`) so 60/90/120 Hz look the same; respect `prefers-reduced-motion`.
 - **Deleting is instant with Undo** (`removeWithUndo`), not "Are you sure?".
 - **Only the author edits a doc** (Firestore rules check `author`). Everyone has a private space; groups are shared.
-- **Statement duplicates are cross-checked**, never amount-only (see `importStatement` in `js/scan.js`). Real repeats (two taxi rides of 30 the same day) must stay.
+- **Only the same bank reference is skipped as a duplicate.** Look-alikes (same amount, close date) are added and offered as Possible repeats for the person to keep or remove (`importStatement` in `js/scan.js`). Real repeats (two taxi rides of 30 the same day) must stay.
+- **Money sent between people never needs a group** (`transfers/{id}`); the amount of a transfer entry can't be edited.
+- **Location is opt-in and coarse** (3 decimals, only on things added today, only while the app is open). Smart help is computed on the device.
 - **Moves between your own accounts are kept, not dropped:** `type: "move"`, never counted as income or spending, stored once even when both statements show them.
 - **Writes never wait on the server** (no "Saving…" spinners): show the change at once and sync in the background (`fire()` in `store.js`).
 - **Account digits are last-4 only**, and only ever compared with account numbers, never amounts.
@@ -33,6 +35,6 @@ A household money tracker PWA for a couple in the Maldives (MVR). Plain ES modul
 ## Testing
 ```
 python3 -m http.server 8765        # in the repo root
-cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g14, in order
+cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g15, in order
 ```
 Firebase is swapped for the mocks in `tests/mockfb/` (the Firestore mock models the security rules). Each test prints ok/FAIL and exits non-zero on failure.
