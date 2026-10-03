@@ -180,12 +180,12 @@ function prepareAction(tool, a) {
       return e;
     });
     if (!list.length) return null;
-    return { tool, entries: list, lines: list.map(e => TYPE_LABEL[e.type] + " " + cur(e.amount) + " · " + (e.note || e.category) + " · " + fmtDate(e.date) + " · " + pname(e.person) + (e.split ? " · split with " + pname(e.split.with) : "") + (e.goalId ? " · " + goalName(e.goalId) : "")) };
+    return { tool, entries: list, lines: list.map(e => TYPE_LABEL[e.type] + " " + cur(e.amount) + ", " + (e.note || e.category) + ", " + fmtDate(e.date) + ", " + pname(e.person) + (e.split ? ", split with " + pname(e.split.with) : "") + (e.goalId ? ", " + goalName(e.goalId) : "")) };
   }
   if (tool === "add_loan") {
     if (!(+a.amount > 0)) return null;
     const d = { direction: a.direction === "borrowed" ? "borrowed" : "lent", counterparty: String(a.counterparty || "Friend").slice(0, 40), amount: r2(a.amount), date: isoOk(a.date) ? a.date : todayISO(), due: isoOk(a.due) ? a.due : "", note: a.note || "", person: meIfAll() };
-    return { tool, data: d, lines: [(d.direction === "lent" ? "Loan to " : "Loan from ") + d.counterparty + " · " + cur(d.amount) + " · " + fmtDate(d.date) + " · " + pname(d.person) + (d.due ? " · due " + fmtDate(d.due) : "")] };
+    return { tool, data: d, lines: [(d.direction === "lent" ? "Loan to " : "Loan from ") + d.counterparty + ", " + cur(d.amount) + ", " + fmtDate(d.date) + ", " + pname(d.person) + (d.due ? ", due " + fmtDate(d.due) : "")] };
   }
   if (tool === "loan_repayment") {
     const loan = findLoan(a.counterparty, a.person ? resolvePerson(a.person) : "all");
@@ -196,17 +196,17 @@ function prepareAction(tool, a) {
   if (tool === "create_goal") {
     if (!a.name || !(+a.target > 0)) return null;
     const owner = isGroup() ? "shared" : meIfAll(), by = MONTH.test(String(a.by || "")) ? a.by : "";
-    return { tool, data: { name: String(a.name).slice(0, 40), target: r2(a.target), by, owner, created: Date.now() }, lines: ["New goal: " + a.name + " · " + cur(a.target) + (by ? " by " + monthName(by, true) : "") + " · " + pname(owner)] };
+    return { tool, data: { name: String(a.name).slice(0, 40), target: r2(a.target), by, owner, created: Date.now() }, lines: ["New goal: " + a.name + ", " + cur(a.target) + (by ? " by " + monthName(by, true) : "") + ", " + pname(owner)] };
   }
   if (tool === "set_budget") {
     if (!a.category || !(+a.amount >= 0)) return null;
     const who = a.person ? resolvePerson(a.person) : ui.view;
-    return { tool, who, category: String(a.category), amount: r2(a.amount), lines: ["Budget: " + a.category + " · " + cur(a.amount) + " a month · " + whoLabel(who)] };
+    return { tool, who, category: String(a.category), amount: r2(a.amount), lines: ["Budget: " + a.category + ", " + cur(a.amount) + " a month, " + whoLabel(who)] };
   }
   if (tool === "add_recurring") {
     if (!(+a.amount > 0)) return null;
     const d = { type: ["expense", "income", "save", "withdraw"].includes(a.type) ? a.type : "expense", amount: r2(a.amount), category: a.category, note: a.note || "", person: meIfAll(), day: parseInt(a.day, 10) || new Date().getDate() };
-    return { tool, data: d, lines: ["Every month on day " + d.day + ": " + (d.note || d.category || d.type) + " · " + cur(d.amount) + " · " + pname(d.person) + " · reminder"] };
+    return { tool, data: d, lines: ["Every month on day " + d.day + ": " + (d.note || d.category || d.type) + ", " + cur(d.amount) + ", " + pname(d.person) + ", reminder"] };
   }
   if (tool === "settle_up") {
     const p = owesPairs()[0]; if (!p) return { tool, invalid: true, lines: ["Nothing to settle: nobody owes anything for shared costs"] };
@@ -240,7 +240,7 @@ function renderChat() {
     box.innerHTML = chat.msgs.map((m, i) => m.role === "user"
       ? `<div class="msg me">${m.voice ? '<span class="vtag">🎙</span> ' : ""}${esc(m.text)}</div>`
       : `<div class="msg ai${m.error ? " err" : ""}"><div>${m.pending ? '<span class="spin" aria-hidden="true"></span>' + esc(m.pendingText || "Thinking…") : fmtReply(m.text)}</div>` +
-        (m.actions && m.actions.length ? `<div class="act-card${m.done ? " done" : ""}">${m.actions.map(x => `<div class="act-line${x.invalid ? " bad" : ""}">${esc(x.lines.join(" · "))}</div>`).join("")}` +
+        (m.actions && m.actions.length ? `<div class="act-card${m.done ? " done" : ""}">${m.actions.map(x => `<div class="act-line${x.invalid ? " bad" : ""}">${esc(x.lines.join("; "))}</div>`).join("")}` +
           (m.done ? `<small>${m.done === "yes" ? "Saved ✓" : "Not saved"}</small>` : m.actions.some(x => !x.invalid) && !state.readOnly ? `<div class="row-btns"><button class="primary" type="button" data-ok="${i}">Confirm</button>${m.actions.length === 1 && m.actions[0].tool === "propose_entries" ? `<button class="ghost" type="button" data-editact="${i}">Edit first</button>` : ""}<button class="icon-btn" type="button" data-no="${i}">Not now</button></div>` : "") + `</div>` : "") +
         (m.note ? `<small>${esc(m.note)}</small>` : "") +
         (i === chat.msgs.length - 1 && !m.pending && !chat.busy && m.sugg && m.sugg.length ? `<div class="chips follow">${m.sugg.filter(x => typeof x === "string" && x.trim()).slice(0, 3).map(x => `<button type="button" class="chipq">${esc(x.trim().slice(0, 80))}</button>`).join("")}</div>` : "") +
@@ -329,7 +329,7 @@ async function askChat(voiceWav) {
         const name = String(c.tool || ""), args = c.args || {};
         if (ACTIONS.includes(name)) {
           const x = prepareAction(name, args);
-          if (x) { actions.push(x); results.push({ prepared_change: x.lines.join(" · "), can_save: !x.invalid }); }
+          if (x) { actions.push(x); results.push({ prepared_change: x.lines.join("; "), can_save: !x.invalid }); }
           else results.push({ change: name, problem: "Missing details (like the amount)" });
           continue;
         }
@@ -339,7 +339,7 @@ async function askChat(voiceWav) {
       }
       if (!looked.length && actions.length) {
         // only changes to confirm: no need to ask Gemini again
-        reply.text = (plan && plan.reply) || (actions.some(x => !x.invalid) ? "Here's what I'll save. Check it and tap Confirm." : actions.map(x => x.lines.join(" · ")).join("\n"));
+        reply.text = (plan && plan.reply) || (actions.some(x => !x.invalid) ? "Here's what I'll save. Check it and tap Confirm." : actions.map(x => x.lines.join("; ")).join("\n"));
         reply.sugg = [];
       } else {
         reply.pendingText = "Looking it up…"; renderChat();
@@ -376,6 +376,13 @@ async function askChat(voiceWav) {
 export function initChat() {
   $("chatFab").hidden = false;
   $("chatFab").addEventListener("click", openChat);
+  // tuck the chat button away while scrolling down; it comes back as soon as you scroll up (or reach the top)
+  let lastY = window.scrollY;
+  addEventListener("scroll", () => {
+    const y = window.scrollY, dy = y - lastY; if (Math.abs(dy) < 6) return; lastY = y;
+    $("chatFab").classList.toggle("tucked", dy > 0 && y > 80);
+  }, { passive: true });
+  window.addEventListener("hashchange", () => { $("chatFab").classList.remove("tucked"); lastY = window.scrollY; });
   $("chatClose").addEventListener("click", closeChat);
   $("chatClear").addEventListener("click", () => { if (chat.abort) chat.abort.abort(); chat.msgs = []; chat.busy = false; renderChat(); });
   $("chatStop").addEventListener("click", () => { if (chat.abort) chat.abort.abort(); });

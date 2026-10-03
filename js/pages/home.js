@@ -19,19 +19,17 @@ function delta(a, b) {
 
 function renderHero() {
   const t = monthTotals(ui.month), prev = monthTotals(shiftMonth(ui.month, -1)), hasIncome = t.income > 0;
-  $("heroLabel").textContent = isAll() ? groupName() + " · left to spend this month" : isMine(ui.view) ? "Left to spend this month" : pname(ui.view) + " · left to spend this month";
+  $("heroLabel").textContent = isAll() ? "Left to spend this month: " + groupName() : isMine(ui.view) ? "Left to spend this month" : "Left to spend this month: " + pname(ui.view);
   const big = $("leftBig"); big.textContent = money(t.left); big.classList.toggle("neg", t.left < 0);
   let sub;
   if (!hasIncome && t.spent === 0 && t.netSaved === 0) sub = "Add " + (isAll() ? "income" : poss(ui.view) + " income") + " for " + monthName(ui.month, true) + " to see what's left.";
   else if (!hasIncome) sub = "No income logged for this month yet.";
   else if (t.left < 0) sub = (isMine(ui.view) ? "You've" : whoName() + " has") + " gone " + money(-t.left) + " over this month's income.";
   else {
-    const pct = Math.round(t.left / t.income * 100); let extra = "";
     if (ui.month === monthKey(new Date())) {
       const d = new Date(), daysLeft = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate() - d.getDate() + 1;
-      extra = " · about " + money(t.left / daysLeft, { whole: true }) + " a day for the " + daysLeft + " day" + (daysLeft === 1 ? "" : "s") + " left";
-    }
-    sub = pct + "% of " + (isAll() ? "the group's" : poss(ui.view)) + " income is still free" + extra + ".";
+      sub = "About " + money(t.left / daysLeft, { whole: true }) + " a day for the " + daysLeft + " day" + (daysLeft === 1 ? "" : "s") + " left.";
+    } else sub = "What was left at the end of " + monthName(ui.month) + ".";
   }
   $("leftSub").textContent = sub;
   $("copyIncome").hidden = state.readOnly || hasIncome || !inMonth(shiftMonth(ui.month, -1)).some(e => e.type === "income" && canEdit(e));
@@ -40,11 +38,11 @@ function renderHero() {
   const base = Math.max(t.income, t.spent + Math.max(t.netSaved, 0)) || 0;
   const parts = [{ k: "Spent", v: t.spent, c: "var(--c-spent)" }, { k: "Saved", v: Math.max(t.netSaved, 0), c: "var(--c-saved)" }, { k: "Left", v: Math.max(t.left, 0), c: "var(--c-left)" }];
   $("split").innerHTML = base ? parts.filter(p => p.v > 0).map(p => `<div title="${p.k}: ${esc(money(p.v))}" style="width:${p.v / base * 100}%;background:${p.c}"></div>`).join("") : "";
-  $("legend").innerHTML = parts.map(p => `<span><i style="background:${p.c}"></i>${p.k} <b class="num">${esc(money(p.v))}</b>${t.income ? ` <span class="muted">${Math.round(p.v / t.income * 100)}%</span>` : ""}</span>`).join("");
+  $("legend").innerHTML = parts.map(p => `<span><i style="background:${p.c}"></i>${p.k}${t.income ? ` <b class="num">${Math.round(p.v / t.income * 100)}%</b>` : ""}</span>`).join("");
   $("sIncome").textContent = money(t.income); $("sIncomeH").textContent = delta(t.income, prev.income);
   $("sSpent").textContent = money(t.spent); $("sSpentH").textContent = delta(t.spent, prev.spent);
   $("sSaved").textContent = money(t.netSaved);
-  $("sSavedH").textContent = t.withdraw ? money(t.withdraw) + " withdrawn" : (t.income ? Math.round(t.netSaved / t.income * 100) + "% of income" : " ");
+  $("sSavedH").textContent = t.withdraw ? money(t.withdraw) + " withdrawn" : "\u00a0";
   const isPast = ui.month < monthKey(new Date());
   $("sTotal").textContent = money(totalSavings(isPast ? ui.month : null));
   $("sTotalH").textContent = isPast ? "at end of " + monthName(ui.month, true) : (isAll() ? "everyone, all goals" : "across all goals");
@@ -65,12 +63,12 @@ function renderTiles() {
   }
   if (!hide.has("loans")) {
     const ls = openLoans(who), owedToMe = sum(ls.filter(l => l.direction === "lent"), loanOutstanding), iOwe = sum(ls.filter(l => l.direction === "borrowed"), loanOutstanding);
-    tiles.push(`<a href="#loans" class="tile"><div class="label">Loans</div><div class="v num">${ls.length ? esc(money(iOwe, { whole: true })) : "None"}</div><div class="h">${ls.length ? "owed by " + (isAll() ? "the group" : "you") + " · " + esc(money(owedToMe, { whole: true })) + " owed to " + (isAll() ? "the group" : "you") : "No open loans"}</div></a>`);
+    tiles.push(`<a href="#loans" class="tile"><div class="label">Loans</div><div class="v num">${ls.length ? esc(money(iOwe, { whole: true })) : "None"}</div><div class="h">${ls.length ? "owed by " + (isAll() ? "the group" : "you") + ", " + esc(money(owedToMe, { whole: true })) + " owed to " + (isAll() ? "the group" : "you") : "No open loans"}</div></a>`);
   }
   if (!hide.has("goals")) {
     const gs = visibleGoals(who).filter(g => +g.target > 0);
     const g = gs.map(g => ({ g, p: Math.min(100, Math.round(goalBalance(g.id) / +g.target * 100)) })).sort((a, b) => b.p - a.p)[0];
-    tiles.push(`<a href="#goals" class="tile"><div class="label">Goals</div><div class="v">${g ? g.p + "%" : "None"}</div><div class="h">${g ? esc(g.g.name) + (gs.length > 1 ? " · +" + (gs.length - 1) + " more" : "") : "Create one on the Goals page"}</div></a>`);
+    tiles.push(`<a href="#goals" class="tile"><div class="label">Goals</div><div class="v">${g ? g.p + "%" : "None"}</div><div class="h">${g ? esc(g.g.name) + (gs.length > 1 ? " and " + (gs.length - 1) + " more" : "") : "Create one on the Goals page"}</div></a>`);
   }
   $("tiles").innerHTML = tiles.join(""); $("tiles").hidden = !tiles.length;
   $("tileCfg").innerHTML = ui.tileCfg ? `<p class="hint">Choose what shows here on this device:</p><div class="tile-opts">${TILES.map(([k, l]) => `<label class="check"><input type="checkbox" data-tk="${k}" ${hide.has(k) ? "" : "checked"}><span>${l}</span></label>`).join("")}</div>` : "";
@@ -113,7 +111,7 @@ function renderBudgets() {
   $("budgetBtn").textContent = cats.length ? "Edit budgets" : "Set budgets";
   box.innerHTML = cats.length ? cats.map(c => {
     const lim = +b[c], sp = spentIn(ui.month, ui.view, c), pct = Math.round(sp / lim * 100), cls = pct >= 100 ? "over" : pct >= 80 ? "near" : "";
-    return `<div class="bud ${cls}"><div class="bud-top"><span>${esc(c)}</span><span class="num">${esc(money(sp, { whole: true }))} of ${esc(money(lim, { whole: true }))}</span></div><div class="meter"><div style="width:${Math.min(100, pct)}%"></div></div><small>${pct >= 100 ? "Over by " + esc(money(sp - lim, { whole: true })) : esc(money(lim - sp, { whole: true })) + " left · " + pct + "% used"}</small></div>`;
+    return `<div class="bud ${cls}"><div class="bud-top"><span>${esc(c)}</span><span class="num">${esc(money(sp, { whole: true }))} of ${esc(money(lim, { whole: true }))}</span></div><div class="meter"><div style="width:${Math.min(100, pct)}%"></div></div><small>${pct >= 100 ? "Over by " + esc(money(sp - lim, { whole: true })) : esc(money(lim - sp, { whole: true })) + " left, " + pct + "% used"}</small></div>`;
   }).join("") : `<p class="hint">No budgets yet. Set a monthly limit for any category and you'll get a heads-up at 80%.</p>`;
 }
 
@@ -144,7 +142,7 @@ function renderTrend() {
   });
   $("trendChart").innerHTML = svg + "</svg>";
   const tot = data.reduce((a, d) => ({ inc: a.inc + d.inc, out: a.out + d.out }), { inc: 0, out: 0 });
-  $("trendNote").textContent = whoName() + " · 12 months: in " + money(tot.inc, { whole: true }) + ", out " + money(tot.out, { whole: true });
+  $("trendNote").textContent = whoName() + ", last 12 months: in " + money(tot.inc, { whole: true }) + ", out " + money(tot.out, { whole: true });
   const k = ui.trendSel, det = $("trendDetail");
   if (!k) { det.hidden = true; return; }
   const es = state.entries.filter(e => effMonth(e) === k && countsMoney(e) && (who === "all" || e.person === who));

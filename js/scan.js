@@ -488,7 +488,7 @@ function renderImport() {
   $("scanList").innerHTML = `<div class="imp">
     <div class="imp-stats"><div><span class="label">Spent</span><b class="num">${esc(money(sumOf(r.add, "out")))}</b><small>${outN} entr${outN === 1 ? "y" : "ies"} added</small></div>
       <div><span class="label">Income</span><b class="num">${esc(money(sumOf(r.add, "in")))}</b><small>${inN} entr${inN === 1 ? "y" : "ies"} added</small></div></div>
-    ${Object.keys(byCat).length ? `<p class="hint">${Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([c, v]) => esc(c) + " " + esc(money(v, { whole: true }))).join(" · ")}</p>` : ""}
+    ${Object.keys(byCat).length ? `<p class="hint">${Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([c, v]) => esc(c) + " " + esc(money(v, { whole: true }))).join(", ")}</p>` : ""}
     <p class="hint">Skipped ${r.dup.length} already in Pocket Ledger and ${r.own.length} between your own accounts.</p>
     ${list(r.add, "Added (" + r.add.length + ")")}${list(r.dup, "Already in Pocket Ledger (" + r.dup.length + ")")}${list(r.own, "Between your own accounts (" + r.own.length + ")")}
     <div class="row-btns">${r.add.length ? `<button class="primary" type="button" data-imp="see">See entries</button><button class="ghost" type="button" data-imp="undo">Undo this import</button>` : `<button class="primary" type="button" data-imp="close">Close</button>`}</div>

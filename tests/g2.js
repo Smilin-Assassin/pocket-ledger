@@ -50,7 +50,7 @@ const users = { "adam@x.com": "secret12", "lina@x.com": "secret12", "ali@x.com":
   check(bar.some(b => /Adam's \(view only\)/.test(b)), "Lina has Adam's dashboard (view only)", bar);
   await p.click("#spaceBar button:nth-child(" + (bar.findIndex(t => /view only/.test(t)) + 1) + ")"); await p.waitForTimeout(1500);
   check(/Adam's dashboard/.test(await T.text("#readonlyBanner")), "read-only banner", await T.text("#readonlyBanner"));
-  check(/Adam · left to spend/.test(await p.textContent("#heroLabel")), "hero uses Adam's name", await p.textContent("#heroLabel"));
+  check(/Left to spend this month: Adam/.test(await p.textContent("#heroLabel")), "hero uses Adam's name", await p.textContent("#heroLabel"));
   await T.nav("entries");
   rows = await T.rows();
   check(rows.length === 2 && rows.every(r => /\[\]$/.test(r)), "Adam's entries, no edit buttons", rows);

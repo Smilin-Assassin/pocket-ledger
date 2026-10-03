@@ -60,7 +60,7 @@ export const page = {
           <div class="goal-top"><h3>${esc(g.name)}<span class="owner-tag">${esc(g.owner === "shared" ? "Shared" : g.owner === meId() ? "Yours" : pname(g.owner))}</span></h3><span class="pct num">${pct}%</span></div>
           <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="${esc(g.name)} progress"><div style="width:${pct}%"></div></div>
           <div class="goal-meta num"><span>${esc(money(bal, { whole: true }))} of ${esc(money(tgt, { whole: true }))}</span><span>${esc(plan)}</span></div>
-          ${g.owner === "shared" && bal ? `<div class="split-by num">${people().map(x => esc(x.id === meId() ? "You" : x.name) + " " + esc(money(goalBalance(g.id, x.id), { whole: true }))).join(" · ")}</div>` : ""}
+          ${g.owner === "shared" && bal ? `<div class="split-by num">${people().map(x => esc(x.id === meId() ? "You" : x.name) + " " + esc(money(goalBalance(g.id, x.id), { whole: true }))).join(", ")}</div>` : ""}
           ${state.readOnly ? "" : `<div class="goal-acts"><button type="button" class="ghost" data-gadd="${g.id}">Add money</button>${mine ? `<button type="button" class="ghost" data-gedit="${g.id}">Edit</button><button type="button" class="icon-btn danger" data-gdel="${g.id}" aria-label="Delete goal">Delete</button>` : ""}</div>`}
         </div>`;
       }).join("");

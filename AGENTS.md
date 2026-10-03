@@ -19,6 +19,7 @@ A household money tracker PWA for a couple in the Maldives (MVR). Plain ES modul
 - **Account digits are last-4 only**, and only ever compared with account numbers, never amounts.
 - Bills/reminders are never auto-added. Loans stay out of "left to spend" unless ticked.
 - Maldivian dates are DD/MM/YYYY.
+- **Design rules (Impeccable + taste-skill):** labels in sentence case (no small all-caps eyebrows); no boxes inside boxes; status as a small dot or tint, never a thick coloured side stripe; show each number once; use the middle dot (·) at most once per line, commas in sentences; keep text at WCAG AA contrast and phone tap targets at 40-44px.
 
 ## How the owner works
 - Plain English, short answers, no jargon. He decides product questions; ask when a choice is his.

@@ -209,7 +209,7 @@ let trash = [];
 export function describe(c, x) {
   x = x || {};
   const m = v => { try { return new Intl.NumberFormat(undefined, { style: "currency", currency: state.settings.currency || "MVR", currencyDisplay: "code" }).format(+v || 0); } catch { return String(v); } };
-  if (c === "entries") return (x.type === "income" ? "Income" : x.type === "save" ? "Saved" : x.type === "withdraw" ? "Took out" : "Spent") + " " + m(x.amount) + (x.category ? " · " + x.category : "") + (x.note ? " · " + x.note : "") + (x.date ? " · " + x.date : "");
+  if (c === "entries") return (x.type === "income" ? "Income" : x.type === "save" ? "Saved" : x.type === "withdraw" ? "Took out" : "Spent") + " " + m(x.amount) + (x.category ? ", " + x.category : "") + (x.note ? ", " + x.note : "") + (x.date ? ", " + x.date : "");
   if (c === "goals") return "Goal: " + (x.name || "untitled");
   if (c === "loans") return "Loan: " + (x.counterparty || "someone") + " · " + m(x.amount);
   if (c === "recurring") return "Reminder: " + (x.note || x.category || "bill") + " · " + m(x.amount);

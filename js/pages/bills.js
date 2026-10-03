@@ -15,7 +15,7 @@ export function renderDue(el, limit) {
   const shown = limit ? bills.slice(0, limit) : bills;
   el.innerHTML = shown.map(b => {
     const key = b.r.id + "|" + b.k, paying = ui.payFor === key, mine = canEdit(b.r);
-    return `<div class="bill ${b.level}"><div class="bill-main"><b>${esc(b.r.note || b.r.category)}</b><span>${esc(money(+b.r.amount, { whole: true }))} · ${dueText(b)}${isAll() ? " · " + esc(pname(b.r.person)) : ""}</span></div>
+    return `<div class="bill ${b.level}"><div class="bill-main"><b>${esc(b.r.note || b.r.category)}</b><span>${esc(money(+b.r.amount, { whole: true }))}, ${dueText(b)}${isAll() ? ", " + esc(pname(b.r.person)) : ""}</span></div>
       ${!mine ? "" : paying ? `<span class="row-btns"><input class="bill-amt" data-billamt="1" type="number" inputmode="decimal" value="${+b.r.amount}" aria-label="Amount paid"><button class="primary" type="button" data-billok="${esc(key)}">Save</button><button class="icon-btn" type="button" data-billx="1">Cancel</button></span>`
         : `<span class="row-btns"><button class="ghost" type="button" data-bill="${esc(key)}">${b.r.type === "income" ? "Received" : "Paid"}</button><button class="icon-btn" type="button" data-billskip="${esc(key)}">Skip</button></span>`}</div>`;
   }).join("") + (limit && bills.length > limit ? `<a class="bill-more" href="#bills">+${bills.length - limit} more in Bills &amp; reminders</a>` : "");
@@ -51,7 +51,7 @@ function renderList() {
     const kk = r.startMonth && r.startMonth > now ? r.startMonth : now;
     const done = billDone(r, kk), st = billStatus(r, kk), mine = canEdit(r);
     const dot = r.paused ? "off" : done ? "done" : st.left < 0 ? "red" : st.show ? st.level : "green";
-    return `<div class="rec"><span class="rec-dot ${dot}" title="${done ? "Done this month" : dueText(st)}"></span><div class="rec-main"><b>${esc(r.note || r.category)}</b><small>${esc(money(+r.amount))} · day ${r.day} · reminds ${remindDays(r)} day${remindDays(r) === 1 ? "" : "s"} before${isAll() ? " · " + esc(pname(r.person)) : ""} · ${r.paused ? "paused" : done ? "done for " + monthName(kk, true) : dueText(st)}</small></div>
+    return `<div class="rec"><span class="rec-dot ${dot}" title="${done ? "Done this month" : dueText(st)}"></span><div class="rec-main"><b>${esc(r.note || r.category)}</b><small>${esc(money(+r.amount))}, day ${r.day}, reminds ${remindDays(r)} day${remindDays(r) === 1 ? "" : "s"} before${isAll() ? ", " + esc(pname(r.person)) : ""}. ${r.paused ? "paused" : done ? "done for " + monthName(kk, true) : dueText(st)}</small></div>
       <span class="row-btns"><button class="icon-btn" type="button" data-ics="${r.id}" title="Add to your phone's calendar">Calendar</button>${mine ? `<button class="icon-btn" type="button" data-rpause="${r.id}">${r.paused ? "Resume" : "Pause"}</button><button class="icon-btn danger" type="button" data-rdel="${r.id}">Delete</button>` : ""}</span></div>`;
   }).join("") : `<div class="empty"><span>No bills or reminders yet.</span><span class="hint">Add rent, phone, electricity or water. You can also tell the chat "rent is 5,500 on the 1st every month".</span></div>`;
 }

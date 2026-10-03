@@ -54,7 +54,7 @@ function renderImports() {
   const box = $("importList"), groups = {};
   state.entries.filter(e => e.importId).forEach(e => { (groups[e.importId] = groups[e.importId] || { id: e.importId, label: e.importLabel || "Statement", n: 0, out: 0, at: e.created || 0 }); const g = groups[e.importId]; g.n++; if (e.type === "expense") g.out += +e.amount || 0; g.at = Math.min(g.at || Infinity, e.created || Infinity); });
   const list = Object.values(groups).sort((a, b) => b.at - a.at);
-  box.innerHTML = isViewer() || isGroup() ? "" : list.map(g => `<div class="priv-row"><span>${esc(g.label)}<small class="hint"> · ${g.n} entries · ${esc(money(g.out, { whole: true }))} spent · imported ${esc(ago(g.at))}</small></span><button class="icon-btn" type="button" data-undoimp="${esc(g.id)}">Undo</button></div>`).join("");
+  box.innerHTML = isViewer() || isGroup() ? "" : list.map(g => `<div class="priv-row"><span>${esc(g.label)}<small class="hint">: ${g.n} entries, ${esc(money(g.out, { whole: true }))} spent, imported ${esc(ago(g.at))}</small></span><button class="icon-btn" type="button" data-undoimp="${esc(g.id)}">Undo</button></div>`).join("");
 }
 export function renderSettings() {
   renderImports();

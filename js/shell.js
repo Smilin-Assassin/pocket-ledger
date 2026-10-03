@@ -56,7 +56,7 @@ function renderHeader() {
 }
 export function renderShell() {
   renderHeader();
-  $("syncNote").textContent = navigator.onLine ? "Synced" : "Offline · changes will sync";
+  $("syncNote").textContent = navigator.onLine ? "Synced" : "Offline, changes will sync";
   const ro = $("readonlyBanner");
   if (isViewer()) { ro.hidden = false; ro.innerHTML = `<span>You're looking at ${esc(ctx.space.name.replace(/'s$/, ""))}'s dashboard. Only they can change it.</span>`; }
   else if (state.readOnly) { ro.hidden = false; ro.innerHTML = `<span>You can't change anything in this space.</span>`; }

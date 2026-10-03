@@ -707,3 +707,33 @@ input[type="checkbox"], input[type="radio"], progress { accent-color: var(--acce
   .acct-row .icon-btn { min-width: 40px; min-height: 40px; }
   #tileBtn { min-height: 40px; }
 }
+
+/* ===== calmer surfaces (Impeccable + taste-skill) ===== */
+/* labels are plain sentence case, not small all-caps */
+.label, .day, .ad-tile span, .sample-tag, .owner-tag, .flag { text-transform: none; letter-spacing: 0; }
+.label { font-size: .8rem; color: var(--ink-2); }
+.day { font-size: .8rem; }
+.dash-head { justify-content: flex-end; margin: -8px 0 -10px; order: 9; }
+.summary > .tile-cfg { order: 10; }
+/* no boxes inside the dashboard box: tiles sit on the surface like the stats above them */
+.tiles { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px 0; border-top: 1px solid var(--line); padding-top: 16px; }
+.tiles > .tile, .tiles > .tile.t-ok, .tiles > .tile.t-amber, .tiles > .tile.t-red { border: 0; border-radius: 0; padding: 0 14px; border-left: 1px solid var(--line); }
+.tiles > .tile.tile:first-child { border-left: 0; padding-left: 0; }
+a.tile:hover .v { color: var(--accent); }
+@media (max-width: 560px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tiles > .tile.tile:nth-child(odd) { border-left: 0; padding-left: 0; } }
+/* status is a small dot by the label, not a thick stripe */
+.tile .label::before, .bill-main b::before { content: ""; display: none; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; }
+.tile.t-ok .label::before, .tile.t-amber .label::before, .tile.t-red .label::before { display: inline-block; }
+.tile.t-ok .label::before { background: var(--c-left); }
+.tile.t-amber .label::before { background: #D99A1E; }
+.tile.t-red .label::before { background: var(--neg); }
+.bill { border-left: 0; }
+.bill-main b::before { display: inline-block; }
+.bill.green .bill-main b::before { background: var(--c-left); }
+.bill.amber .bill-main b::before { background: #D99A1E; }
+.bill.red .bill-main b::before { background: var(--neg); }
+/* chat button: tucks away while you scroll down, comes back when you scroll up; content never ends underneath it */
+.fab { transition: transform .35s var(--spring-ease, ease), opacity .2s; }
+.fab.tucked { transform: translate3d(0, 24px, 0) scale(.85); opacity: 0; pointer-events: none; }
+@media (max-width: 899.98px) { .main { padding-bottom: calc(176px + env(safe-area-inset-bottom, 0px)); } }
+@media (min-width: 900px) { .main { padding-bottom: 104px; } }

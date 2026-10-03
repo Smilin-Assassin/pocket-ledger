@@ -53,7 +53,7 @@ Run from the repo root:
 python3 -m http.server 8765
 cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g12, in order
 ```
-`tests/` runs Playwright against the real files with Firebase replaced by mocks (`tests/mockfb/`); the Firestore mock checks the security rules so a denied write fails the test. `g1` seeds an old-style household; later tests chain on `pl_state*.json` in the temp folder. g1 migration · g2 sharing, groups, view requests, view-only · g3 joining from a group link · g4 a new person through every page · g5 invites · g6 admin · g7 trash, backup, CSV, chat confirm, shortcuts · g8 BML statement, Undo, bank accounts list · g9 money sent between people · g10 dock, Quick add, Undo, Appearance, every text size · g11 MIB statement, duplicate cross-checks, slip prompt · g12 category drill-down and totals. All test data is made up.
+`tests/` runs Playwright against the real files with Firebase replaced by mocks (`tests/mockfb/`); the Firestore mock checks the security rules so a denied write fails the test. `g1` seeds an old-style household; later tests chain on `pl_state*.json` in the temp folder. g1 migration · g2 sharing, groups, view requests, view-only · g3 joining from a group link · g4 a new person through every page · g5 invites · g6 admin · g7 trash, backup, CSV, chat confirm, shortcuts · g8 BML statement, Undo, bank accounts list · g9 money sent between people · g10 dock, Quick add, Undo, Appearance, every text size · g11 MIB statement, duplicate cross-checks, slip prompt · g12 category drill-down and totals, chat button tucking and never covering content. All test data is made up.
 
 ## Hosting, services and deploying
 

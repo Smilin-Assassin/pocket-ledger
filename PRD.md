@@ -37,7 +37,7 @@ A household in the Maldives wants to know, at any moment, **how much is left to 
 - Notifications (FCM) for bills, budgets, loans; chosen per person in Settings.
 - Backups: Recently deleted (30 days); Back up button shares one JSON file (pick Drive on Android, Files on iPhone); reminder after 14 days. Restore replaces only the personal space.
 - On iPhone: no share-target, no icon shortcuts, push only when installed to home screen (iOS 16.4+).
-- The dock is always 4 or 6 tabs, never 5; rounded, not squircle. All look-and-feel settings live in Settings › Appearance.
+- The dock is always 4 or 6 tabs, never 5; rounded, not squircle; icons are outlines (the pill marks the page). All look-and-feel settings live in Settings › Appearance.
 - Deleting is instant with Undo, not "Are you sure?".
 - Never store more than the last 4 digits of an account; those digits only ever match account numbers, never amounts.
 - Statement imports never skip a payment just because the amount repeats (two taxi rides of 30 on one day are two entries).
@@ -55,7 +55,8 @@ A household in the Maldives wants to know, at any moment, **how much is left to 
 
 ## Release history (newest first)
 
-- October 2026 (pl-v29): polish pass (Impeccable): faint grey text and placeholders now pass WCAG AA in every theme, phone tap targets 40-44px, themed selection/caret/checkboxes/scrollbars, labelled invite link; dock icons are plain outlines (the pill marks the page).
+- October 2026 (pl-v30): calmer Home (Impeccable + taste-skill): labels in sentence case instead of small all-caps; no boxes inside the dashboard box, status shown by a small dot instead of thick coloured stripes (Home tiles, bill banner); each Home number shown once (bar legend shows shares, the big number's line shows the daily amount); fewer middle dots; the chat button tucks away while scrolling down and page bottoms leave room so it never covers anything.
+- October 2026 (pl-v29): polish pass (Impeccable): faint grey text and placeholders pass WCAG AA in every theme; phone tap targets 40-44px; themed selection, caret, checkboxes and scrollbars; labelled invite link; dock icons are plain outlines.
 - October 2026 (pl-v28): personal details removed from the repo (docs, test data, example wording); test data is all made up.
 - October 2026: docs reorganised; HANDOFF.md retired (its content is now in ARCHITECTURE.md, PRD.md and AGENTS.md).
 - October 2026 (pl-v27): tap a category on Home (Where the money went) to see its entries; Entries has a category picker and a total line for whatever is shown (`ui.cat`, `#ledgerTotal`, test g12).

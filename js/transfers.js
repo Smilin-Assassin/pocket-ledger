@@ -79,7 +79,7 @@ export async function openSend() {
   people = await loadPeople();
   if (!people.length) return toast("Sending works with people in your groups. Start or join a group first (Settings › Groups).");
   fillSelect($("xsTo"), people.map((p, i) => [String(i), p.name + (people.filter(x => x.name === p.name).length > 1 ? " (" + p.gname + ")" : "")]), "0");
-  fillSelect($("xsSide"), [["", "Choose…"], ["__none", "Not my spending (just passing it on)"]].concat(EXP_CATS.filter(c => !/loan/i.test(c)).map(c => ["exp:" + c, "My spending · " + c])), "");
+  fillSelect($("xsSide"), [["", "Choose…"], ["__none", "Not my spending (just passing it on)"]].concat(EXP_CATS.filter(c => !/loan/i.test(c)).map(c => ["exp:" + c, "My spending: " + c])), "");
   $("xsAmt").value = ""; $("xsNote").value = ""; $("xsDate").value = todayISO(); $("xsErr").hidden = true;
   $("xferSendWrap").hidden = false; document.body.classList.add("sheet-open");
   setTimeout(() => $("xsAmt").focus(), 60);
