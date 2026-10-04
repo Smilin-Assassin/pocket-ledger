@@ -113,7 +113,7 @@ const satClock = clock(dt => {
 function setSat(on) {
   if (on === satOpen) return; satOpen = on;
   const sat = $("dkSat"); if (!sat) return;
-  if (on) SAT_POS = document.documentElement.getAttribute("data-preset") === "glass" ? SAT_CORNER : SAT_FAN;
+  if (on) SAT_POS = SAT_CORNER; // the + sits in the corner beside the bar for every theme (v37)
   sat.classList.toggle("open", on); sat.setAttribute("aria-hidden", String(!on));
   document.body.classList.toggle("sat-open", on);
   satS.forEach((s, i) => setTimeout(() => { s.t = on ? 1 : 0; if (reduced()) s.snap(); satClock.kick(); }, on ? i * 45 : (2 - i) * 25));

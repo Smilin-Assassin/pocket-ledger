@@ -103,7 +103,7 @@ const { start, URL0 } = require("./lib");
   await p.screenshot({ path: require("os").tmpdir() + "/pl_wide.png" });
   await p.setViewportSize({ width: 412, height: 900 }); await p.waitForTimeout(200);
   const nav2 = await p.evaluate(() => { const r = document.getElementById("dock").getBoundingClientRect(); return { top: Math.round(r.top), w: Math.round(r.width), bottom: Math.round(r.bottom) }; });
-  check(nav2.w === 388 && nav2.top > 800 && nav2.bottom <= 890, "floating dock at the bottom on phones", nav2);
+  check(nav2.w === 316 && nav2.top > 800 && nav2.bottom <= 890, "floating bar at the bottom on phones, with the + beside it", nav2);
   await p.screenshot({ path: require("os").tmpdir() + "/pl_phone.png" });
   check((await T.denied()).length === 0, "no rule denials", await T.denied());
   await T.end();

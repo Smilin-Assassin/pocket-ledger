@@ -63,10 +63,16 @@ function searchEntries() {
   return state.entries.filter(e => (isAll() || e.person === ui.view) &&
     ((e.note || "") + " " + (e.category || "") + " " + String(e.amount) + " " + (e.ref || "") + " " + goalName(e.goalId)).toLowerCase().includes(q));
 }
+// things worth tidying up: possible repeats, and spending or income still under "Other" (last 3 months)
+export function needsLook(who) {
+  const from = shiftMonth(monthKey(new Date()), -2);
+  return state.entries.filter(e => (who === "all" || e.person === who) && canEdit(e) && (e.maybeDup ||
+    ((e.type === "expense" || e.type === "income") && (e.category || "Other") === "Other" && !e.loanId && (e.date || "").slice(0, 7) >= from)));
+}
 function renderLedger() {
   const list = $("ledger");
   if (!state.ready) { list.innerHTML = `<li class="empty">Loading your entries…</li>`; return; }
-  let es = ui.search ? searchEntries() : inMonth(ui.month);
+  let es = ui.filter === "review" ? needsLook(isAll() ? "all" : ui.view) : ui.search ? searchEntries() : inMonth(ui.month);
   if (ui.filter === "expense") es = es.filter(e => e.type === "expense");
   if (ui.filter === "income") es = es.filter(e => e.type === "income");
   if (ui.filter === "savings") es = es.filter(e => e.type === "save" || e.type === "withdraw");
@@ -81,12 +87,12 @@ function renderLedger() {
   // the total of whatever is chosen
   const out = sum(es.filter(e => e.type === "expense"), e => +e.amount), inc = sum(es.filter(e => e.type === "income"), e => +e.amount);
   const sv = sum(es.filter(e => e.type === "save"), e => +e.amount) - sum(es.filter(e => e.type === "withdraw"), e => +e.amount);
-  const what = [ui.cat, ui.filter === "expense" ? "Spent" : ui.filter === "income" ? "Income" : ui.filter === "savings" ? "Savings" : ui.filter === "moved" ? "Moved" : "", ui.search ? "\u201c" + ui.search + "\u201d" : ""].filter(Boolean).join(" · ") || "Everything";
-  $("ledgerTotal").innerHTML = es.length ? `<span><b>${esc(what)}</b> ${ui.search ? "in all months" : "in " + esc(monthName(ui.month))}, ${es.length} entr${es.length === 1 ? "y" : "ies"}</span><span class="lt-sums">${out ? `<b class="num neg">${esc(money(out))}</b> spent` : ""}${out && (inc || sv) ? " · " : ""}${inc ? `<b class="num pos">${esc(money(inc))}</b> in` : ""}${inc && sv ? " · " : ""}${sv ? `<b class="num">${esc(money(sv))}</b> saved` : ""}</span>${ui.cat ? `<button type="button" class="linkish" data-cat-clear="1">Show all categories</button>` : ""}` : "";
+  const what = [ui.cat, ui.filter === "expense" ? "Spent" : ui.filter === "income" ? "Income" : ui.filter === "savings" ? "Savings" : ui.filter === "moved" ? "Moved" : ui.filter === "review" ? "Needs a look" : "", ui.search ? "\u201c" + ui.search + "\u201d" : ""].filter(Boolean).join(" · ") || "Everything";
+  $("ledgerTotal").innerHTML = es.length ? `<span><b>${esc(what)}</b> ${ui.search || ui.filter === "review" ? "in all months" : "in " + esc(monthName(ui.month))}, ${es.length} entr${es.length === 1 ? "y" : "ies"}</span><span class="lt-sums">${out ? `<b class="num neg">${esc(money(out))}</b> spent` : ""}${out && (inc || sv) ? " · " : ""}${inc ? `<b class="num pos">${esc(money(inc))}</b> in` : ""}${inc && sv ? " · " : ""}${sv ? `<b class="num">${esc(money(sv))}</b> saved` : ""}</span>${ui.cat ? `<button type="button" class="linkish" data-cat-clear="1">Show all categories</button>` : ""}` : "";
   $("ledgerTotal").hidden = !es.length;
   if (!es.length) {
     if (ui.search || ui.cat) { list.innerHTML = `<li class="empty"><span>Nothing matches${ui.cat ? " in " + esc(ui.cat) : ""}${ui.search ? ' "' + esc(ui.search) + '"' : ""}${ui.search ? "" : " in " + esc(monthName(ui.month))}.</span></li>`; return; }
-    list.innerHTML = `<li class="empty"><span>${ui.filter === "moved" ? "No moves between your own accounts this month. They're added when you import a bank statement." : ui.filter === "all" ? "Nothing logged " + (isAll() || ui.view === meId() ? "" : "for " + esc(pname(ui.view)) + " ") + "in " + esc(monthName(ui.month)) + " yet." : "No entries of this kind this month."}</span>${state.readOnly ? "" : `<span class="hint">Use the form to add your income first, then each thing you spend.</span>`}</li>`;
+    list.innerHTML = `<li class="empty"><span>${ui.filter === "review" ? "Nothing needs a look. Possible repeats and entries still under Other show up here." : ui.filter === "moved" ? "No moves between your own accounts this month. They're added when you import a bank statement." : ui.filter === "all" ? "Nothing logged " + (isAll() || ui.view === meId() ? "" : "for " + esc(pname(ui.view)) + " ") + "in " + esc(monthName(ui.month)) + " yet." : "No entries of this kind this month."}</span>${state.readOnly ? "" : `<span class="hint">Use the form to add your income first, then each thing you spend.</span>`}</li>`;
     return;
   }
   let html = "", lastDay = "";
@@ -321,7 +327,7 @@ export const page = {
     });
     $("fGoal").addEventListener("change", () => { ui.goalSel = $("fGoal").value; $("purposeRow").hidden = $("fGoal").value !== "__other"; if ($("fGoal").value === "__other") $("fPurpose").focus(); });
     document.querySelectorAll("#ledgerPanel .chip").forEach(c => c.addEventListener("click", () => {
-      ui.filter = c.dataset.f;
+      ui.filter = c.dataset.f; ui.cat = "";
       document.querySelectorAll("#ledgerPanel .chip").forEach(x => x.setAttribute("aria-pressed", String(x === c)));
       renderLedger();
     }));
@@ -363,4 +369,13 @@ export function showCategory(c) {
   document.querySelectorAll(".filters [data-f]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.f === "expense")));
   go("entries");
   setTimeout(() => { renderLedger(); const el = $("ledgerTotal"); if (el) el.scrollIntoView({ behavior: "smooth", block: "center" }); }, 80);
+}
+
+// Home › For you › Tidy up: the Needs a look list
+export function showReview() {
+  ui.filter = "review"; ui.cat = ""; ui.search = "";
+  const q = $("searchQ"); if (q) q.value = "";
+  document.querySelectorAll(".filters [data-f]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.f === "review")));
+  go("entries");
+  setTimeout(() => { renderLedger(); const el = $("ledgerPanel"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80);
 }

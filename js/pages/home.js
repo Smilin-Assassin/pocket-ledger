@@ -157,6 +157,50 @@ function renderTrend() {
     ${topc ? `<small>Biggest spend: ${esc(topc[0])}, ${esc(money(topc[1], { whole: true }))}</small>` : `<small>No spending recorded.</small>`}`;
 }
 
+// ---------- compare: the last 3 months side by side, or this year so far against last year ----------
+function renderCompare() {
+  const box = $("cmpBox"); if (!box) return;
+  const who = ui.view, mode = ui.cmp || "3m", mine = e => countsMoney(e) && (who === "all" || e.person === who);
+  document.querySelectorAll("#cmpSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.cmp === mode)));
+  const f0 = v => money(v, { whole: true });
+  if (mode === "3m") {
+    const ks = [shiftMonth(ui.month, -2), shiftMonth(ui.month, -1), ui.month], by = {}, inc = [0, 0, 0], out = [0, 0, 0];
+    state.entries.filter(mine).forEach(e => { const i = ks.indexOf(effMonth(e)); if (i < 0) return;
+      if (e.type === "income") inc[i] += +e.amount;
+      if (e.type === "expense") { out[i] += +e.amount; const c = e.category || "Other"; (by[c] = by[c] || [0, 0, 0])[i] += +e.amount; } });
+    const cats = Object.keys(by).sort((a, b) => sum(by[b], x => x) - sum(by[a], x => x)).slice(0, 8);
+    const chg = (a, b) => !a ? "" : (b > a * 1.05 ? `<i class="up">▲ ${Math.round((b / a - 1) * 100)}%</i>` : b < a * .95 ? `<i class="down">▼ ${Math.round((1 - b / a) * 100)}%</i>` : "");
+    const row = (name, v, cls) => `<tr class="${cls || ""}"><th scope="row">${esc(name)}</th>${v.map((x, i) => `<td class="num">${x ? esc(f0(x)) : "–"}${i === 2 ? chg(v[1], v[2]) : ""}</td>`).join("")}</tr>`;
+    box.innerHTML = !inc.some(Boolean) && !out.some(Boolean) ? `<p class="hint">Nothing logged in these three months yet.</p>` :
+      `<div class="cmp-tbl"><table><thead><tr><th></th>${ks.map(k => `<th class="num">${esc(monthName(k, true))}</th>`).join("")}</tr></thead><tbody>
+      ${row("Income", inc, "cmp-in")}${row("Spent", out, "cmp-out")}${cats.map(c => row(c, by[c])).join("")}</tbody></table></div><p class="hint">The arrow compares ${esc(monthName(ui.month, true))} with ${esc(monthName(ks[1], true))}.</p>`;
+    return;
+  }
+  const y = ui.month.slice(0, 4), m = ui.month.slice(5), py = String(+y - 1);
+  const inYear = (e, yy) => { const k = effMonth(e); return k.slice(0, 4) === yy && k.slice(5) <= m; };
+  const tot = yy => { const es = state.entries.filter(e => mine(e) && inYear(e, yy)), cats = {};
+    es.filter(e => e.type === "expense").forEach(e => { cats[e.category || "Other"] = (cats[e.category || "Other"] || 0) + +e.amount; });
+    return { inc: sum(es.filter(e => e.type === "income"), e => +e.amount), out: sum(es.filter(e => e.type === "expense"), e => +e.amount), sav: sum(es, e => e.type === "save" ? +e.amount : e.type === "withdraw" ? -e.amount : 0), cats }; };
+  const a = tot(y), b = tot(py), upto = new Date(ui.month + "-01T00:00:00").toLocaleDateString(undefined, { month: "short" });
+  const pct = (n, o) => !o ? "" : n > o * 1.05 ? `<i class="up">▲ ${Math.round((n / o - 1) * 100)}%</i>` : n < o * .95 ? `<i class="down">▼ ${Math.round((1 - n / o) * 100)}%</i>` : `<i>about the same</i>`;
+  const cats = Object.keys(a.cats).sort((p, q) => a.cats[q] - a.cats[p]).slice(0, 6);
+  const row = (name, n, o) => `<tr><th scope="row">${esc(name)}</th><td class="num">${n ? esc(f0(n)) : "–"}</td><td class="num">${o ? esc(f0(o)) : "–"}</td><td>${pct(n, o)}</td></tr>`;
+  box.innerHTML = !a.inc && !a.out ? `<p class="hint">Nothing logged in ${y} yet.</p>` :
+    `<div class="cmp-tbl"><table><thead><tr><th></th><th class="num">${y}</th><th class="num">${py}</th><th></th></tr></thead><tbody>
+    ${row("Income", a.inc, b.inc)}${row("Spent", a.out, b.out)}${row("Saved", a.sav, b.sav)}${cats.map(c => row(c, a.cats[c], b.cats[c] || 0)).join("")}</tbody></table></div>
+    <p class="hint">January to ${esc(upto)} each year${b.inc || b.out ? "" : ". Nothing logged last year yet, so there's nothing to compare against"}.</p>`;
+}
+
+// ---------- your accounts: the latest balance from each imported statement ----------
+function renderAccounts() {
+  const box = $("acctBar"); if (!box) return;
+  const bal = (!isGroup() && state.settings.balances) || {}, list = Object.values(bal).filter(b => b && typeof b.bal === "number").sort((x, y) => (x.name || "").localeCompare(y.name || ""));
+  box.hidden = !list.length;
+  if (box.hidden) return;
+  const total = sum(list, b => b.bal);
+  box.innerHTML = `<div class="smart-head"><b>Your accounts</b><small>From your latest statements</small></div><ul>${list.map(b => `<li><span>${esc(b.name || b.bank || "Account")}<small>as of ${esc(new Date(b.asOf + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" }))}</small></span><b class="num">${esc(money(b.bal))}</b></li>`).join("")}</ul>${list.length > 1 ? `<div class="acct-tot"><span>Together</span><b class="num">${esc(money(total))}</b></div>` : ""}`;
+}
+
 export const page = {
   init() {
     wireDue($("dueBar"), () => page.render());
@@ -190,12 +234,13 @@ export const page = {
       src.forEach((e, i) => db.add({ type: "income", amount: +e.amount, category: e.category, note: e.note || "", date: ui.month + "-" + String(Math.min(+e.date.slice(8), last)).padStart(2, "0"), created: Date.now() + i, person: e.person }));
       toast("Copied " + src.length + " income entr" + (src.length === 1 ? "y" : "ies"));
     });
+    $("cmpSeg").addEventListener("click", ev => { const b = ev.target.closest("[data-cmp]"); if (b) { ui.cmp = b.dataset.cmp; renderCompare(); } });
     $("trendChart").addEventListener("click", ev => { const g = ev.target.closest("g.mon"); if (!g) return; ui.trendSel = g.dataset.k; renderTrend(); });
     $("trendDetail").addEventListener("click", ev => { const b = ev.target.closest("[data-trendgo]"); if (b) { ui.month = b.dataset.trendgo; ui.trendSel = null; changed(); } });
     let rt = null; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("pg-home").hidden) renderTrend(); }, 200); });
   },
   render() {
     renderDue($("dueBar"), 4);
-    renderOwes(); renderSmart(); renderHero(); renderTiles(); renderCats(); renderBudgets(); renderRecent(); renderTrend();
+    renderOwes(); renderSmart(); renderAccounts(); renderHero(); renderTiles(); renderCats(); renderBudgets(); renderRecent(); renderTrend(); renderCompare();
   }
 };

@@ -11,8 +11,10 @@
   window.plApplyTheme = function () {
     // Glass (Apple's Liquid Glass look) is the default on iPhone, iPad and Mac; everyone can pick any theme
     var apple = /iPhone|iPad|iPod|Macintosh|Mac OS X/.test(navigator.userAgent || "");
-    var mode = g("pl-mode") || "auto", preset = g("pl-preset") || (apple ? "glass" : "lagoon");
-    var dark = preset !== "glass" && (mode === "dark" || (mode === "auto" && mq && mq.matches));
+    // themes kept in v37: Glass (light and dark), Sunset, Monsoon; older choices move to Sunset
+    var mode = g("pl-mode") || "auto", preset = g("pl-preset") || (apple ? "glass" : "sunset");
+    if (preset !== "glass" && preset !== "sunset" && preset !== "monsoon") preset = "sunset";
+    var dark = mode === "dark" || (mode === "auto" && mq && mq.matches);
     d.toggleAttribute("data-apple", apple);
     if (preset === "glass" && !apple && !document.getElementById("plInter")) {
       var l = document.createElement("link"); l.id = "plInter"; l.rel = "stylesheet";
@@ -38,7 +40,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=36">
+<link rel="stylesheet" href="css/app.css?v=37">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -89,7 +91,6 @@
     </header>
 
     <div class="banner" id="readonlyBanner" hidden></div>
-    <div class="banner info" id="reqBar" hidden></div>
     <div class="xfer-bar" id="xferBar" hidden></div>
     <div class="banner info" id="backupNag" hidden></div>
 
@@ -98,6 +99,7 @@
       <div class="bills-bar" id="dueBar" hidden></div>
       <div class="banner info owes" id="owesBar" hidden></div>
       <section class="smart" id="smartBar" aria-label="Suggestions" hidden></section>
+      <section class="accts" id="acctBar" aria-label="Your accounts" hidden></section>
       <section class="summary" aria-label="This month">
         <div class="dash-head"><button class="icon-btn" type="button" id="tileBtn" aria-label="Customize the dashboard">Customize</button></div>
         <div class="tile-cfg" id="tileCfg" hidden></div>
@@ -143,6 +145,10 @@
         <div class="trend-detail" id="trendDetail" hidden></div>
         <p class="hint" id="trendNote"></p>
       </section>
+      <section class="panel" id="cmpPanel">
+        <div class="panel-head"><h2>Compare</h2><div class="modeseg two cmp-seg" id="cmpSeg" role="group" aria-label="Compare"><button type="button" data-cmp="3m" aria-pressed="true">Last 3 months</button><button type="button" data-cmp="yr" aria-pressed="false">This year</button></div></div>
+        <div id="cmpBox" class="cmp"></div>
+      </section>
     </section>
 
     <!-- ===================== ENTRIES ===================== -->
@@ -165,6 +171,7 @@
               <button class="chip" type="button" data-f="income" aria-pressed="false">Income</button>
               <button class="chip" type="button" data-f="savings" aria-pressed="false">Savings</button>
               <button class="chip" type="button" data-f="moved" aria-pressed="false">Moved</button>
+              <button class="chip" type="button" data-f="review" aria-pressed="false">Needs a look</button>
             </div>
           </div>
           <div class="lt-row"><select id="catFilter" aria-label="Category"></select></div>
@@ -295,7 +302,7 @@
     <section class="page" id="pg-settings" data-page="settings" hidden>
       <nav class="set-index" id="setIndex" aria-label="Settings sections">
         <a href="#settings/you">You</a><a href="#settings/look">Appearance</a><a href="#settings/lock">App lock</a><a href="#settings/ai">Gemini</a><a href="#settings/notify">Notifications</a>
-        <a href="#settings/groups">Groups</a><a href="#settings/privacy">Privacy</a><a href="#settings/invites" id="invIdx" hidden>Invites</a><a href="#settings/trash">Recently deleted</a><a href="#settings/data">Backup</a><a href="#settings/account">Account</a>
+        <a href="#settings/groups">Groups</a><a href="#settings/invites" id="invIdx" hidden>Invites</a><a href="#settings/trash">Recently deleted</a><a href="#settings/data">Backup</a><a href="#settings/account">Account</a>
         <a href="#admin" id="adminIdx" hidden>Admin</a>
       </nav>
 
@@ -326,8 +333,8 @@
       <section class="panel setsec" id="set-look">
         <h2>Appearance on this device</h2>
         <div class="modeseg" id="modeSeg" role="group" aria-label="Light or dark"><button type="button" data-mode="auto">Automatic</button><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div>
-        <p class="hint" id="glassNote" hidden>Glass is a light theme only, like Apple's. Pick another theme for dark mode.</p>
-        <div class="themes" role="group" aria-label="Theme"><button class="theme-sw" type="button" data-preset="glass"><span class="chip"><i style="background:#F2F2F7"></i><i style="background:#FFFFFF"></i><i style="background:#0088FF"></i></span>Glass</button><button class="theme-sw" type="button" data-preset="lagoon"><span class="chip"><i style="background:#F3F6F5"></i><i style="background:#0B5F57"></i><i style="background:#0F1716"></i></span>Lagoon</button><button class="theme-sw" type="button" data-preset="atoll"><span class="chip"><i style="background:#F1F5FA"></i><i style="background:#1D5FAE"></i><i style="background:#0C1320"></i></span>Atoll</button><button class="theme-sw" type="button" data-preset="sand"><span class="chip"><i style="background:#F5F1E8"></i><i style="background:#4E6A2C"></i><i style="background:#16140F"></i></span>Sandbank</button><button class="theme-sw" type="button" data-preset="monsoon"><span class="chip"><i style="background:#EDEFF3"></i><i style="background:#3B4A6E"></i><i style="background:#111419"></i></span>Monsoon</button><button class="theme-sw" type="button" data-preset="sunset"><span class="chip"><i style="background:#F7F1F4"></i><i style="background:#7B3A6A"></i><i style="background:#181116"></i></span>Sunset</button></div>
+        <p class="hint" id="glassNote" hidden>Glass follows Apple's own light and dark looks.</p>
+        <div class="themes" role="group" aria-label="Theme"><button class="theme-sw" type="button" data-preset="glass"><span class="chip"><i style="background:#F2F2F7"></i><i style="background:#0088FF"></i><i style="background:#000000"></i></span>Glass</button><button class="theme-sw" type="button" data-preset="sunset"><span class="chip"><i style="background:#F7F1F4"></i><i style="background:#7B3A6A"></i><i style="background:#181116"></i></span>Sunset</button><button class="theme-sw" type="button" data-preset="monsoon"><span class="chip"><i style="background:#EDEFF3"></i><i style="background:#3B4A6E"></i><i style="background:#111419"></i></span>Monsoon</button></div>
         <div class="field"><span class="flabel">Text size</span>
           <div class="modeseg four" id="fsSeg" role="group" aria-label="Text size"><button type="button" data-fs="s">Small</button><button type="button" data-fs="m">Normal</button><button type="button" data-fs="l">Large</button><button type="button" data-fs="xl">Extra large</button></div></div>
         <label class="check" id="amoledRow"><input type="checkbox" id="setAmoled"><span>Pure black in dark mode<small>Deeper blacks that save battery on AMOLED screens.</small></span></label>
@@ -394,12 +401,6 @@
           <div class="field"><label for="grpJoinCode">Invite link or code</label><input id="grpJoinCode" autocomplete="off" spellcheck="false"></div>
           <div><button class="ghost" id="grpJoin" type="button">Join</button></div>
         </div></details>
-      </section>
-
-      <section class="panel setsec" id="set-privacy">
-        <h2>Privacy</h2>
-        <p class="hint">Your own entries (in Me) are private. Only people you allow can see them, and they can never change anything.</p>
-        <div id="privList" class="grp-list"></div>
       </section>
 
       <section class="panel setsec" id="invSec" hidden>
@@ -611,6 +612,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=36"></script>
+<script type="module" src="app.js?v=37"></script>
 </body>
 </html>

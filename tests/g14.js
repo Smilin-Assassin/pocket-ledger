@@ -10,7 +10,7 @@ const seed = {
   [H]: { type: "personal", owner: U, members: [U], ai: { server: true }, settings: { currency: "MVR", opening: 0, openingBy: {}, people: [{ id: U, name: "Tom", bank: "THMS.A.HASSAN", accounts: [{ bank: "BML", name: "", last4: "4821" }, { bank: "MIB", name: "Savings", last4: "7302" }] }] } },
   ["households/P2"]: { type: "personal", owner: U2, members: [U2], settings: { currency: "MVR", people: [{ id: U2, name: "Sue" }] } },
   [G]: { type: "group", owner: U2, members: [U2, U], names: { [U]: "Tom", [U2]: "Sue" }, name: "Home", settings: { currency: "MVR" } },
-  [G + "/transfers/t1"]: { from: U2, fromName: "Sue", to: U, toName: "Tom", amount: 500, date: "2026-08-05", note: "Fees", created: 5, author: U2 },
+  ["transfers/t1"]: { from: U2, fromName: "Sue", to: U, toName: "Tom", amount: 500, date: "2026-08-05", note: "Fees", created: 5, author: U2 },
   // a shop the bank names oddly, earlier sorted wrongly as Eating out
   [H + "/entries/v0"]: { type: "expense", amount: 80, date: "2026-07-20", category: "Eating out", note: "Coral Home Pvt Ltd", person: U, author: U, created: 1 },
   [H + "/entries/s1"]: { type: "expense", amount: 40, date: "2026-08-01", category: "Other", note: "Stop 2 Shop", person: U, author: U, created: 2 },

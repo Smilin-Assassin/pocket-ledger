@@ -265,7 +265,7 @@ function bmlRows(rows) {
     const favara = /favara|ips/i.test(r[2]);
     out.push({ date: dmy(r[5]) || dmy(r[7]) || r[0].replace(/\//g, "-"), dir: debit > 0 ? "out" : "in", amount: debit > 0 ? debit : credit,
       name: favara ? r[5] : r[6], ref: r[3], kind: /purchase|pos/i.test(r[2]) ? "purchase" : /transfer|favara|ips/i.test(r[2]) ? "transfer" : "other",
-      label: r[2], acct: (r.join(" ").match(/\b\d{8,}\b/g) || []).join(" ") });
+      label: r[2], acct: (r.join(" ").match(/\b\d{8,}\b/g) || []).join(" "), bal: r[10] !== undefined && r[10] !== "" ? money2(r[10]) : null });
   }
   return out;
 }
@@ -274,7 +274,7 @@ function bmlRows(rows) {
 export function isMibCsv(rows) { const h = (rows[0] || []).map(x => x.toUpperCase()); return h.includes("POSTED DATE") && h.includes("RUNNING BALANCE") && h.includes("AMOUNT"); }
 export function mibRows(rows) {
   const h = rows[0].map(x => x.toUpperCase()), at = n => h.indexOf(n), out = [];
-  const iP = at("POSTED DATE"), iT = at("TRANSACTION TYPE"), iR = at("REFERENCE"), iD = at("DESCRIPTION"), iA = at("AMOUNT");
+  const iP = at("POSTED DATE"), iT = at("TRANSACTION TYPE"), iR = at("REFERENCE"), iD = at("DESCRIPTION"), iA = at("AMOUNT"), iB = at("RUNNING BALANCE");
   for (const r of rows.slice(1)) {
     const type = String(r[iT] || "").trim(), amt = money2(r[iA]), posted = String(r[iP] || "").slice(0, 10);
     if (!(Math.abs(amt) > 0) || !ISO.test(posted) || /b\/f balance|c\/f balance|opening|closing/i.test(type)) continue;
@@ -295,7 +295,7 @@ export function mibRows(rows) {
     else { name = (parts[1] && /[a-z]{3}/i.test(parts[1]) ? parts[1] : type).replace(/\s+/g, " "); kind = /pay/i.test(type) ? "bill" : "other"; }
     const remark = kind === "transfer" && !/favara|ips/i.test(type) ? (parts[2] || "") : "";
     out.push({ date, dir: amt < 0 ? "out" : "in", amount: Math.abs(amt), name: name.replace(/\s+/g, " ").trim(), ref, kind, label: type.replace(/\d{6,}/g, "").trim(),
-      remark: remark && remark !== "-" ? remark : "", otherBank: bank, acct: (String(r[iD] || "").match(/\b\d{10,}\b/g) || []).join(" ") });
+      remark: remark && remark !== "-" ? remark : "", otherBank: bank, acct: (String(r[iD] || "").match(/\b\d{10,}\b/g) || []).join(" "), bal: iB >= 0 && r[iB] !== "" ? money2(r[iB]) : null, posted });
   }
   return out;
 }
@@ -303,7 +303,8 @@ function statementPrompt(kind) {
   return [
     "You are reading a bank statement (" + kind + ") from the Maldives for a personal money tracker. List EVERY transaction. Reply with JSON only.",
     "",
-    "Reply with exactly: {\"bank\": \"BML\" | \"MIB\" | \"other bank name\", \"holder\": \"account holder name or null\", \"account_last4\": \"last 4 digits of this statement's account or null\", \"rows\": [[date, direction, amount, other_party, reference, kind, other_account]]}",
+    "Reply with exactly: {\"bank\": \"BML\" | \"MIB\" | \"other bank name\", \"holder\": \"account holder name or null\", \"account_last4\": \"last 4 digits of this statement's account or null\", \"closing_balance\": number or null, \"closing_date\": \"YYYY-MM-DD or null\", \"rows\": [[date, direction, amount, other_party, reference, kind, other_account]]}",
+    "- closing_balance: the account balance at the end of the statement (closing / C/F balance, or the last running balance), as a number. closing_date: the date of that balance.",
     "- date: the transaction date as YYYY-MM-DD. If the details contain a date written DD-MM-YYYY (day first), use that; otherwise the posting date. 03-09-2026 is 3 September 2026.",
     "- direction: \"out\" for a debit (money leaving the account), \"in\" for a credit.",
     "- amount: positive number, no commas.",
@@ -319,7 +320,7 @@ async function aiRows(file) {
   if (!aiReady()) throw { code: "no_key" };
   if (/pdf/i.test(file.type || "") || /\.pdf$/i.test(file.name || "")) {
     const res = await geminiJson(statementPrompt("PDF"), [file]);
-    return { rows: normAi(res.rows), bank: res.bank, holder: res.holder, last4: res.account_last4 };
+    return { rows: normAi(res.rows), bank: res.bank, holder: res.holder, last4: res.account_last4, closing: typeof res.closing_balance === "number" ? res.closing_balance : null, closingDate: ISO.test(String(res.closing_date || "")) ? res.closing_date : null };
   }
   // another bank's CSV: send the text in pieces
   const lines = (await file.text()).split(/\r?\n/).filter(l => l.trim());
@@ -505,6 +506,7 @@ async function importStatement(file) {
     const ids = all.length ? await db.addMany(all) : [];
     res.add.forEach((r, i) => { r.id = ids[i]; });
     lastImport = { ids, importId, label, months, res };
+    saveBalance(rows, extra, here);
     renderImport();
   } catch (e) {
     importAnyway = false;
@@ -521,6 +523,22 @@ async function importStatement(file) {
     status(esc(msg) + (e && e.message && code === "http" ? '<br><small class="muted">Details: ' + esc(String(e.message).slice(0, 200)) + "</small>" : ""), false);
     $("scanFoot").hidden = false; $("scanAdd").hidden = true;
   }
+}
+// the account's latest balance, shown on Home under Your accounts (kept in your own space)
+function saveBalance(rows, extra, name) {
+  let bal = null, asOf = null;
+  if (typeof extra.closing === "number") { bal = extra.closing; asOf = extra.closingDate || rows.map(r => r.date).sort().pop(); }
+  else {
+    const withBal = rows.filter(r => typeof r.bal === "number" && !isNaN(r.bal)); if (!withBal.length) return;
+    // statements list oldest-first or newest-first: the end the latest date is on holds the closing balance
+    const first = withBal[0], last = withBal[withBal.length - 1], d = r => r.posted || r.date;
+    const end = d(first) > d(last) ? first : last; bal = end.bal; asOf = withBal.map(r => r.date).sort().pop();
+  }
+  if (typeof bal !== "number" || isNaN(bal)) return;
+  const key = String(extra.last4 || extra.bank || "account").replace(/[^A-Za-z0-9]/g, "") || "account";
+  const cur = (state.settings.balances || {})[key];
+  if (cur && cur.asOf && asOf && cur.asOf > asOf) return;           // an older statement doesn't replace a newer balance
+  db.saveSettings({ balances: Object.assign({}, state.settings.balances || {}, { [key]: { name: name === "This account" ? (extra.bank || "Account") : name, bank: extra.bank || "", bal: r2(bal), asOf } }) });
 }
 let importAnyway = false, pendingFile = null;
 function askForDetails(file) {

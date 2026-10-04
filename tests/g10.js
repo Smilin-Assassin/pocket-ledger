@@ -1,4 +1,4 @@
-// g10: the dock (4 or 6 tabs, More), Quick add from the +, Undo on bills and goals, Settings › Appearance.
+// g10: the bar (4 or 6 tabs, dip and bubble, More), Quick add from the +, Undo on bills and goals, Settings › Appearance.
 const { start, loadState } = require("./lib");
 
 (async () => {
@@ -19,9 +19,11 @@ const { start, loadState } = require("./lib");
   for (let i = 1; i <= 8; i++) { await p.mouse.move(b1[0] + (b2[0] - b1[0]) * i / 8, b1[1]); await p.waitForTimeout(16); }
   await p.mouse.up(); await p.waitForTimeout(600);
   check(/#bills/.test(p.url()), "sliding across the dock lands on Bills", p.url());
-  const blobW = await p.$eval("#dkBlob", e => parseFloat(e.style.width));
-  const tabW = await p.$eval("#dock [data-p=bills]", e => e.getBoundingClientRect().width);
-  check(Math.abs(blobW - (tabW - 10)) < 3, "highlight settled on the tab", [blobW, tabW]);
+  // the bubble (and the dip under it) settle centred on the tab, showing its icon
+  const bub = await p.$eval("#dkBubble", e => { const r = e.getBoundingClientRect(); return r.x + r.width / 2; });
+  const tabC = await p.$eval("#dock [data-p=bills]", e => { const r = e.getBoundingClientRect(); return r.x + r.width / 2; });
+  check(Math.abs(bub - tabC) < 3, "bubble settled on the tab", [bub, tabC]);
+  check(/path\(/.test(await p.$eval("#dkBar", e => e.style.clipPath)) && (await p.$$eval("#dkBubble svg", s => s.length)) === 1, "the bar has its dip and the bubble shows the icon");
   // More lists the other pages
   await p.click("#dock [data-p=more]"); await p.waitForTimeout(500);
   const more = await p.$$eval("#moreList [data-more]", b => b.map(x => x.dataset.more));
@@ -113,8 +115,8 @@ const { start, loadState } = require("./lib");
   // highlight lines up with every tab at every text size (Small/Large zoom the page), dock and side menu
   const off = async () => p.evaluate(() => {
     const vis = e => e && e.offsetParent !== null;
-    if (vis(document.getElementById("dock"))) { const b = document.getElementById("dkBlob").getBoundingClientRect(), t = document.querySelector("#dock .dk-tab.on").getBoundingClientRect();
-      return Math.max(Math.abs((b.left + b.right) / 2 - (t.left + t.right) / 2), Math.abs((b.top + b.bottom) / 2 - (t.top + t.bottom) / 2)); }
+    if (vis(document.getElementById("dock"))) { const b = document.getElementById("dkBubble").getBoundingClientRect(), t = document.querySelector("#dock .dk-tab.on").getBoundingClientRect();
+      return Math.abs((b.left + b.right) / 2 - (t.left + t.right) / 2); }
     const b = document.querySelector(".nav-blob").getBoundingClientRect(), a = document.querySelector('#nav a[aria-current="page"]').getBoundingClientRect();
     return Math.max(Math.abs(b.top - a.top), Math.abs(b.bottom - a.bottom), Math.abs((b.left + b.right) / 2 - (a.left + a.right) / 2)); });
   const bad = [];

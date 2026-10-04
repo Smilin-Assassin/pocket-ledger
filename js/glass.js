@@ -1,5 +1,5 @@
 // Glass theme extras.
-// 1. Touch light: pressing a glass surface (tab bar, +, chat button, month switcher, side menu)
+// 1. Touch light: pressing a glass surface (+, chat button, month switcher, side menu)
 //    lights it up under your finger, and the light follows as you slide. transform/opacity only.
 // 2. Lens edges (Chrome, Edge and Android only): the glass really bends what's behind it at its
 //    rim, like Apple's. Each surface gets an SVG displacement map drawn to its exact size.
@@ -12,7 +12,7 @@ const UA = navigator.userAgent || "";
 export const lensOK = !/iPhone|iPad|iPod|Macintosh|Mac OS X|Firefox|FxiOS/.test(UA) && /Chrome\/|Chromium\//.test(UA);
 
 // ---------- 1. touch light ----------
-const GLOW = ".dk, .dk-plus, .fab, .monthnav, .nav";
+const GLOW = ".dk-plus, .fab, .monthnav, .nav";
 let lit = null, litId = -1, raf = 0, lx = 0, ly = 0;
 function place(el, e) {
   const r = el.getBoundingClientRect(), z = zoom();
@@ -36,7 +36,7 @@ function initLight() {
 }
 
 // ---------- 2. lens edges ----------
-const LENS = { dock: "dock", plus: "dkPlus", fab: "chatFab", month: "monthNav", nav: "nav" };
+const LENS = { dock: "dkBar", plus: "dkPlus", fab: "chatFab", month: "monthNav", nav: "nav" };
 const BEZEL = { dock: 16, plus: 14, fab: 12, month: 12, nav: 18 }, SCALE = { dock: 34, plus: 26, fab: 24, month: 22, nav: 30 };
 const made = {};
 // a map the size of the surface: red = sideways shift, green = up/down shift, 128 = none.

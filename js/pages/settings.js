@@ -1,4 +1,4 @@
-// Settings: your details, this device, groups, privacy, invites, recently deleted, backup, account.
+// Settings: your details, this device, groups, invites, recently deleted, backup, account.
 import { $, esc, num, lsGet, lsSet, toast, ago, busy } from "../util.js";
 import { ctx, state, ui, db, meId, isGroup, isViewer, isOwner, people, pname, pcolor, hRef, uRef, PCOLORS, changed } from "../store.js";
 import * as lock from "../lock.js";
@@ -81,11 +81,10 @@ async function saveMyDetails() {
 
 // ---------- appearance (this device) ----------
 function syncAppearance() {
-  const mode = lsGet("pl-mode") || "auto", preset = document.documentElement.getAttribute("data-preset") || "lagoon", fs = lsGet("pl-fs") || "m";
+  const mode = lsGet("pl-mode") || "auto", preset = document.documentElement.getAttribute("data-preset") || "sunset", fs = lsGet("pl-fs") || "m";
   const glass = preset === "glass";
-  document.querySelectorAll("#modeSeg button").forEach(b => { b.disabled = glass; });
   $("glassNote").hidden = !glass; $("amoledRow").hidden = glass;
-  document.querySelectorAll("#set-look [data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === (glass ? "light" : mode))));
+  document.querySelectorAll("#set-look [data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
   document.querySelectorAll("#set-look .theme-sw").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.preset === preset)));
   document.querySelectorAll("#fsSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.fs === fs)));
   $("setAmoled").checked = lsGet("pl-amoled") === "1";
@@ -131,59 +130,11 @@ async function renderGroups() {
   }).join("");
 }
 
-// ---------- privacy: who can see my own dashboard ----------
-async function requestsWhere(field) {
-  const q = await F().getDocs(F().query(F().collection(ctx.db, "viewRequests"), F().where(field, "==", meId())));
-  return q.docs.map(d => Object.assign({ id: d.id }, d.data()));
-}
-async function renderPrivacy() {
-  const box = $("privList");
-  let mineOut = [], toMe = [];
-  try { [mineOut, toMe] = await Promise.all([requestsWhere("from"), requestsWhere("to")]); }
-  catch { box.innerHTML = `<p class="hint">Connect to the internet to see who can view your dashboard.</p>`; return; }
-  const seeing = toMe.filter(r => r.status === "accepted"), others = {};
-  (ctx.spaces || []).filter(s => s.type === "group").forEach(s => {
-    const d = groupDocs[s.id] || (s.id === ctx.hid ? state.household : null); if (!d) return;
-    (d.members || []).forEach(u => { if (u !== meId()) others[u] = { name: (d.names || {})[u] || "Member", group: s.id }; });
-  });
-  const asked = new Set(mineOut.filter(r => r.status === "pending" || r.status === "accepted").map(r => r.to));
-  let html = `<p class="hint">${seeing.length ? "These people can see your own dashboard (view only):" : "Nobody else can see your own entries."}</p>`;
-  html += seeing.map(r => `<div class="priv-row"><span>${esc(r.fromName || "Someone")}</span><button class="ghost" type="button" data-revoke="${esc(r.id)}|${esc(r.from)}">Stop sharing</button></div>`).join("");
-  const outs = mineOut.filter(r => r.status === "pending" || r.status === "declined");
-  if (outs.length) html += `<p class="hint">Your requests:</p>` + outs.map(r => `<div class="priv-row"><span>${esc(r.toName || "Someone")}: ${r.status === "pending" ? "waiting" : "said no"}</span><button class="icon-btn" type="button" data-cancelreq="${esc(r.id)}">${r.status === "pending" ? "Cancel" : "Clear"}</button></div>`).join("");
-  const can = Object.keys(others).filter(u => !asked.has(u));
-  if (can.length) html += `<p class="hint">Ask to see someone's own dashboard:</p>` + can.map(u => `<div class="priv-row"><span>${esc(others[u].name)}</span><button class="ghost" type="button" data-ask="${esc(u)}|${esc(others[u].group)}" data-askname="${esc(others[u].name)}">Ask to see</button></div>`).join("");
-  box.innerHTML = html;
-}
-
-// ---------- someone asked to see my dashboard (banner on every page) ----------
-let reqQueue = [];
+// ---------- dashboard viewing was removed in v37: anyone you'd let look in loses access ----------
 export async function checkRequests() {
-  if (!ctx.F || !ctx.profile.personal || isViewer()) return;
-  try { const q = await F().getDocs(F().query(F().collection(ctx.db, "viewRequests"), F().where("to", "==", meId()), F().where("status", "==", "pending"))); reqQueue = q.docs.map(d => Object.assign({ id: d.id }, d.data())); }
-  catch { reqQueue = []; }
-  renderReqBar();
-}
-function renderReqBar() {
-  const bar = $("reqBar"), r = reqQueue[0];
-  bar.hidden = !r; $("settingsBadge").hidden = !r;
-  if (!r) return;
-  bar.innerHTML = `<span><b>${esc(r.fromName || "Someone")}</b> would like to see your own dashboard. They'd only be able to look, not change anything. You can stop it any time in Settings › Privacy.</span><span class="row-btns"><button class="primary" type="button" data-reqok="${esc(r.id)}">Allow</button><button class="ghost" type="button" data-reqno="${esc(r.id)}">Don't allow</button></span>`;
-}
-async function answerRequest(ev) {
-  const b = ev.target.closest("button"); if (!b) return;
-  const r = reqQueue.find(x => x.id === (b.dataset.reqok || b.dataset.reqno)); if (!r) return;
-  try {
-    if (b.dataset.reqok) {
-      await F().updateDoc(hRef(ctx.profile.personal), { viewers: F().arrayUnion(r.from) });
-      await F().updateDoc(F().doc(ctx.db, "viewRequests", r.id), { status: "accepted", space: ctx.profile.personal, toName: ctx.profile.name || pname(meId()), answered: Date.now() });
-      toast((r.fromName || "They") + " can now see your dashboard");
-    } else {
-      await F().updateDoc(F().doc(ctx.db, "viewRequests", r.id), { status: "declined", answered: Date.now() });
-      toast("Request declined");
-    }
-    reqQueue = reqQueue.filter(x => x.id !== r.id); renderReqBar();
-  } catch { toast("That didn't work. Check your connection and try again."); }
+  if (!ctx.F || !ctx.profile.personal || isViewer() || isGroup()) return;
+  const v = (state.household && state.household.viewers) || [];
+  if (v.length) F().updateDoc(hRef(ctx.profile.personal), { viewers: [] }).catch(() => {});
 }
 
 // ---------- invites (admins only) ----------
@@ -293,17 +244,6 @@ async function onClick(ev) {
       let c = $("grpJoinCode").value.trim(); const m = c.match(/join=([A-Za-z0-9_-]+)/); if (m) c = m[1];
       if (!/^[A-Za-z0-9_-]{3,40}$/.test(c)) return toast("That invite code doesn't look right.");
       await ctx.joinGroup(c); toast("You joined the group"); ctx.switchTo(c);
-    } else if (d.ask) {
-      const [to, group] = d.ask.split("|");
-      await F().setDoc(F().doc(F().collection(ctx.db, "viewRequests")), { from: meId(), fromName: ctx.profile.name || pname(meId()), to, toName: d.askname || "", status: "pending", created: Date.now(), group });
-      toast("Asked. They'll see your request next time they open Pocket Ledger."); renderPrivacy();
-    } else if (d.cancelreq) {
-      await F().deleteDoc(F().doc(ctx.db, "viewRequests", d.cancelreq)); renderPrivacy();
-    } else if (d.revoke) {
-      const [rid, who] = d.revoke.split("|");
-      await F().updateDoc(hRef(ctx.profile.personal), { viewers: F().arrayRemove(who) });
-      await F().updateDoc(F().doc(ctx.db, "viewRequests", rid), { status: "revoked", answered: Date.now() });
-      toast("They can't see your dashboard any more"); renderPrivacy();
     } else if (b.id === "invMake") {
       const note = $("invNote").value.trim().slice(0, 40), group = $("invGroup").value, code = newCode(), expires = Date.now() + 7 * 864e5;
       b.disabled = true;
@@ -343,7 +283,6 @@ export const page = {
       dockDraft = PAGES.filter(p => dockDraft.includes(p));
       if (dockDraft.length === 3) { M.dock = dockDraft.slice(); motionSaved(); } else syncAppearance();
     });
-    $("reqBar").addEventListener("click", answerRequest);
     $("signOutBtn").addEventListener("click", () => ctx.signOut());
     $("exportBtn2").addEventListener("click", exportCsv);
     lock.initSettings(); notify.initSettings(); gem.initSettings(); backup.initSettings();
@@ -356,7 +295,7 @@ export const page = {
     $("acctInfo").textContent = "Signed in as " + ((ctx.user && ctx.user.email) || "you") + ".";
     $("adminLink").hidden = !ctx.admin; $("adminIdx").hidden = !ctx.admin;
     $("set-you").hidden = isViewer(); $("set-ai").hidden = isViewer();
-    renderGroups().then(renderPrivacy); renderInvites(); renderTrash(); renderXferRules();
+    renderGroups(); renderInvites(); renderTrash(); renderXferRules();
     $("smartOn").checked = smartOn(); $("placesOn").checked = placesOn();
   },
   render() {

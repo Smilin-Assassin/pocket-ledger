@@ -1,5 +1,5 @@
 // Pocket Ledger service worker: makes the app open offline and installable.
-const VERSION = "pl-v36";
+const VERSION = "pl-v37";
 const SHELL = ["./", "./index.html", "./app.js", "./config.js", "./manifest.webmanifest", "./css/app.css",
   "./js/main.js", "./js/util.js", "./js/store.js", "./js/actions.js", "./js/shell.js", "./js/gemini.js", "./js/scan.js", "./js/chat.js",
   "./js/lock.js", "./js/notify.js", "./js/backup.js", "./js/transfers.js", "./js/motion.js", "./js/dock.js", "./js/quick.js", "./js/glass.js", "./js/smart.js",
@@ -64,9 +64,11 @@ self.addEventListener("push", e => {
 });
 self.addEventListener("notificationclick", e => {
   e.notification.close();
-  const url = (e.notification.data && e.notification.data.url) || "./";
+  const d = e.notification.data || {}, url = d.url || (d.FCM_MSG && d.FCM_MSG.data && d.FCM_MSG.data.url) || "./";
+  const hash = (url.split("#")[1] || "");
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
-    for (const c of list) { if ("focus" in c) return c.focus(); }
+    // the app is already open: bring it forward and go to the page the notification is about
+    for (const c of list) { if ("focus" in c) { if (hash) c.postMessage({ go: hash }); return c.focus(); } }
     return self.clients.openWindow(url);
   }));
 });

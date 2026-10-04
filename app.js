@@ -164,10 +164,6 @@ async function main() {
       const s = await getSnap(H(id));
       if (s && s.exists() && (s.data().members || []).includes(user.uid)) list.push({ id, name: s.data().name || "Group", type: "group", role: "member", owner: s.data().owner, ai: aiOn(s.data()) });
     }
-    try {
-      const q = await F.getDocs(F.query(F.collection(db, "viewRequests"), F.where("from", "==", user.uid), F.where("status", "==", "accepted")));
-      q.docs.forEach(d => { const r = d.data(); if (r.space) list.push({ id: r.space, name: (r.toName || "Someone") + "'s", type: "personal", role: "viewer", req: d.id }); });
-    } catch {}
     return list;
   }
 

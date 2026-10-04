@@ -20,13 +20,13 @@ A household in the Maldives wants to know, at any moment, **how much is left to 
 - **Getting data in:** Quick add (number pad, most-used categories); scanning receipts, bank slips and screenshots with Gemini (check before adding); BML and MIB CSV statements read exactly; PDF statements via Gemini; Gemini chat by text or voice with one-tap confirm; share-to-app on Android.
 - **Together:** private space plus groups; ask to view someone's dashboard; money sent straight to a person (no group needed), chosen once then added automatically, with a push notification; who-owes-whom and settle up; the creator can delete a group.
 - **Safety:** invite-only accounts, admin page (never shows money), app lock, Undo on deletes, Recently deleted (30 days), backups and restore.
-- **Look and feel:** themes, light/dark/AMOLED, text size, motion presets, a floating dock with 4 or 6 tabs, vibrations; all in Settings › Appearance.
+- **Look and feel:** Glass (Apple, light and dark), Sunset and Monsoon themes, light/dark/AMOLED, text size, motion presets, a floating dock with 4 or 6 tabs, vibrations; all in Settings › Appearance.
 - **Alerts:** bills, budgets, loans, money sent to you (FCM push, per-person choices).
 
 ## Rules decided with the owner (keep these)
 
 - **Privacy:** everyone has a private space ("Me"). Groups (renameable, one person can be in several) hold shared things. Group entries are visible to all members but **only the person who added something can edit/delete it** (enforced by rules via `author`). Only the group owner renames it or opens invitations.
-- Someone can **ask to see** another member's own dashboard; the owner allows/declines; viewers are read-only; it can be revoked in Settings › Privacy.
+- Viewing someone else's own dashboard was removed in v37.
 - **Invite-only:** new accounts need an invite link (`?invite=CODE`, optional `&join=GROUP`), one use, 7 days, made by an admin in Settings. Existing users from before were let in automatically. The owner is admin. Admin page (side menu on wide screens, Settings › Account on phones) shows people, last active, Gemini use per day/person, daily AI limit, remove/restore access, delete accounts that signed up without an invite. It never shows money.
 - Use "your" on the user's own dashboard; use the person's name only when viewing someone else's.
 - Save type has an "Other" option with a box below for the purpose. Income has "Counts for: this month / next month" (default this month).
@@ -48,13 +48,12 @@ A household in the Maldives wants to know, at any moment, **how much is left to 
 - Investment tracking or financial advice.
 
 ## Next
-1. Notifications open the right page (the server sends `APP_URL`; the app already supports `#bills`, `#loans`, … so the functions just need to add them).
-2. Month and year comparisons (last 3 months, the year so far).
-3. Offline check on real phones.
+1. Offline check on real phones.
 4. Android app: a thin installable wrapper first; reading bank SMS only if it's worth Google's review.
 
 ## Release history (newest first)
 
+- October 2026 (pl-v37): New phone bar for every theme: a floating bar with a curved dip, the current tab's icon in a round bubble above it and its name in bold below; tap or slide and the dip flows along while the bubble springs over; the + is its own circle beside the bar. Glass now has Apple's dark look and follows Automatic / Light / Dark. Themes trimmed to Glass, Sunset and Monsoon (Sunset is the new default off Apple devices). Home adds Your accounts (latest balance from each imported statement), a Compare panel (last 3 months side by side, or this year against the same months last year), and a "could use a look" nudge that opens Entries › Needs a look (possible repeats, things still under Other). Tapping a notification opens its page. Removed: viewing someone else's dashboard (anyone given access loses it), and the old group-based money sending.
 - October 2026 (pl-v36): Send money to anyone in Pocket Ledger, no shared group needed (pick someone you've dealt with, or find them by their email). The first time someone sends you money you choose how it counts; after that it's added to your income automatically with a notification (you can change the note, category and date, never the amount; Settings › Notifications lists who's automatic). Group creators can delete their group (everything in it, for everyone). Statement rows that only look like something already there (same amount, a day or two apart) are now added and listed as "Possible repeats" with Keep or Remove; only the same bank reference is skipped. Smart help on Home, worked out on the phone: regular payments to turn into bills, a category running above your usual, a nudge after quiet days, and optional places (entries remember roughly where; back near a place you've paid at, Home offers to log it again). Unknown shops in statements are looked up online by Gemini. Show/hide eye on password and PIN boxes. The chat no longer slides off the screen while Gemini is thinking.
 - October 2026 (pl-v35): Moves between your own accounts (for example MIB to BML) are kept as "Moved" entries that don't count as income or spending, stored once even when both statements show them; any of them can be switched to Save. Changing one entry's category remembers it for that shop and offers to change all the others; Entries has a Find & replace for bulk category changes. The chat can show tables, pie and bar charts with a Download CSV button (the app works out the numbers). Money sent to you is accepted only in your own space (groups show a short note). Editing an imported entry no longer cuts it loose from its import, so Undo import finds it. Settings, Send money and Accept no longer hang on "Saving…".
 - October 2026 (pl-v34): Glass gets two Apple touches. Pressing any glass surface (tab bar, +, chat button, month switcher, side menu) lights it up under your finger, the light follows as you slide, and the bar swells slightly while held. On Chrome, Edge and Android the glass also really bends what is behind it at its rim (an SVG lens map drawn per surface); Safari can't do this, so Apple devices keep the plain glass.

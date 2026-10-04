@@ -1,7 +1,9 @@
 // Navigation that feels alive.
-// Phones: a floating dock with a liquid highlight (tap, or hold and slide across it), the + in the
-// middle, and always 4 or 6 tabs so it stays symmetrical. Pages that don't fit live under More.
-// Wide screens: the side menu, with the same liquid highlight moving up and down.
+// Phones (v37): a floating bar with a curved dip; the current tab's icon rides in a round bubble that
+// sits in the dip, its name in bold underneath. Tap a tab (or hold and slide across the bar) and the
+// dip flows along the bar while the bubble springs over. The + sits in its own circle beside the bar.
+// Always 4 or 6 tabs; pages that don't fit live under More.
+// Wide screens: the side menu, with a liquid highlight moving up and down.
 import { $, esc } from "./util.js";
 import { ctx, state, ui, openBills } from "./store.js";
 import { go, currentPage, onRoute } from "./shell.js";
@@ -24,32 +26,27 @@ export const icon = (p, size) => `<svg width="${size || 22}" height="${size || 2
 
 const phoneMQ = window.matchMedia("(max-width: 899.98px)");
 const isPhone = () => phoneMQ.matches;
-// Glass (Apple look): labels under every icon, the + sits in its own circle beside the bar
 export const isGlass = () => document.documentElement.getAttribute("data-preset") === "glass";
-const minTab = () => isGlass() ? 44 : 46, slot = () => isGlass() ? 72 : 62, pad = () => isGlass() ? 32 : 24;
 // Settings › Text size zooms the page; screen measurements must be divided by it
 export const zoom = () => { const z = parseFloat(getComputedStyle(document.body).zoom); return z > 0 ? z : 1; };
 const layoutWidth = () => Math.min(window.innerWidth / zoom(), 560);
-// 6 tabs only when each still gets a comfortable thumb-sized target
-export function fitsSix() { const w = layoutWidth() - pad() - 12 - slot(); return Math.floor(w / minTab()) >= 6; }
+// 6 tabs only when each still gets a comfortable thumb-sized target (the + takes 62px plus a 10px gap)
+export function fitsSix() { const w = layoutWidth() - 24 - 72 - 12; return Math.floor(w / 48) >= 6; }
 export const dockPages = () => (M.tabs === 6 && fitsSix()) ? PAGES.slice() : M.dock.concat("more");
 const tabFor = p => { const l = dockPages(); return l.includes(p) ? p : "more"; };
 
-let dock, blob, tabs = [];
+let dock, bar, bubble, bubIc, tabs = [], shown = "";
 
-// ---------- building the dock ----------
+// ---------- building the bar ----------
 export function buildDock() {
   dock = $("dock"); if (!dock) return;
-  const list = dockPages(), half = list.length / 2, cur = tabFor(currentPage());
+  const list = dockPages(), cur = tabFor(currentPage());
   const btn = p => `<button class="dk-tab${cur === p ? " on" : ""}" type="button" data-p="${p}" aria-label="${NAMES[p]}"${cur === p ? ' aria-current="page"' : ""}>${icon(p)}<span class="lbl">${NAMES[p]}</span><i class="badge" data-badge="${p}" hidden></i></button>`;
-  dock.innerHTML = `<i class="dk-blob" id="dkBlob"></i><div class="dk-half">${list.slice(0, half).map(btn).join("")}</div><div class="dk-slot" aria-hidden="true"></div><div class="dk-half">${list.slice(half).map(btn).join("")}</div>`;
+  dock.innerHTML = `<div class="dk-bar" id="dkBar"></div><span class="dk-bubble" id="dkBubble" aria-hidden="true"><span class="dk-bub-ic"></span></span><div class="dk-tabs">${list.map(btn).join("")}</div>`;
   dock.dataset.n = list.length;
-  blob = $("dkBlob"); tabs = [...dock.querySelectorAll(".dk-tab")];
-  const per = (layoutWidth() - pad() - 12 - slot()) / list.length;
-  dock.classList.toggle("tight", per < 64 && !isGlass());
-  setMin(false);
+  bar = $("dkBar"); bubble = $("dkBubble"); bubIc = bubble.firstChild; tabs = [...dock.querySelectorAll(".dk-tab")]; shown = "";
   renderMore(); dockBadges();
-  requestAnimationFrame(() => { aim(); L.snap(); R.snap(); H.snap(); paint(); });
+  requestAnimationFrame(() => { aim(); X.snap(); V.snap(); swapIcon(true); paint(); refreshLens("dock"); });
 }
 export function dockBadges() {
   if (!dock) return;
@@ -62,44 +59,67 @@ export function dockBadges() {
   setB("more", (!billsShown && n) || (!setShown && settingsDot), "", "dot");
 }
 
-// ---------- More: pages that aren't in your dock ----------
+// ---------- More: pages that aren't in your bar ----------
 function renderMore() {
   const box = $("moreList"); if (!box) return;
   const inDock = dockPages(), hidden = PAGES.filter(p => !inDock.includes(p)).concat(ctx.admin ? ["admin"] : []);
   box.innerHTML = hidden.map(p => `<button class="more-item" type="button" data-more="${p}"><span class="mi-ic">${icon(p)}</span><span><b>${NAMES[p]}</b><small>${esc(ABOUT[p])}</small></span><svg class="mi-go" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>`).join("")
-    || `<p class="hint">Every page is in your dock.</p>`;
+    || `<p class="hint">Every page is in your bar.</p>`;
 }
 
-// ---------- the liquid highlight ----------
-const L = new Spring(0), R = new Spring(0), H = new Spring(1);
+// ---------- the dip and the bubble ----------
+// X: where the dip and bubble are (layout px across the bar, so text-size zoom doesn't matter).
+// V: a lagging copy of X; the gap between them stretches the bubble sideways and lowers it a touch.
+const X = new Spring(0), V = new Spring(0);
 let scrub = false, keepUntil = 0;
-const INSET = 5;
+const BUB = 50, DIP_W = 41, DIP_D = 32, RR = 24;      // bubble size, dip half-width and depth, bar corner radius
 function aim() {
   if (scrub || !dock) return;
   const el = tabs.find(t => t.dataset.p === tabFor(currentPage())); if (!el) return;
-  // layout positions (not screen positions): unaffected by text-size zoom or transforms
-  L.t = el.offsetLeft + INSET; R.t = el.offsetLeft + el.offsetWidth - INSET;
+  X.t = el.offsetLeft + el.offsetWidth / 2;
 }
-function tune() {
-  const { k, zeta, trail } = params();
-  const right = (L.t + R.t) / 2 > (L.x + R.x) / 2, lead = right ? R : L, follow = right ? L : R;
-  lead.k = k * 1.15; lead.z = zeta; follow.k = k * trail * trail; follow.z = Math.min(1.2, zeta + (1 - trail) * .25);
-  H.k = k * 1.4; H.z = zeta * .8;
+function tune() { const { k, zeta, trail } = params(); X.k = k; X.z = zeta; V.k = k * trail * trail * .8; V.z = Math.min(1.1, zeta + .15); V.t = X.x; }
+// the bar's outline: a rounded bar whose top edge dips smoothly around x = cx
+const dipAt = (x, cx) => { const t = Math.abs(x - cx) / DIP_W; if (t >= 1) return 0; return DIP_D * Math.pow((Math.cos(Math.PI * t) + 1) / 2, .42); };
+function outline(w, h, cx) {
+  const top = x => {
+    let y = dipAt(x, cx);
+    if (x < RR) y = Math.max(y, RR - Math.sqrt(Math.max(0, RR * RR - (RR - x) * (RR - x))));
+    if (x > w - RR) y = Math.max(y, RR - Math.sqrt(Math.max(0, RR * RR - (x - (w - RR)) * (x - (w - RR)))));
+    return y;
+  };
+  const pts = [], add = x => pts.push(x.toFixed(1) + "," + top(x).toFixed(1));
+  // fine steps in the corners and the dip, nothing in between (straight)
+  for (let x = 0; x <= RR; x += 2) add(x);
+  const a = Math.max(RR, cx - DIP_W), b = Math.min(w - RR, cx + DIP_W);
+  if (a < b) for (let x = a; x <= b; x += 2) add(x);
+  for (let x = w - RR; x <= w; x += 2) add(x);
+  add(w);
+  return `path('M${pts.join(" L")} L${w},${h - RR} A${RR},${RR} 0 0 1 ${w - RR},${h} L${RR},${h} A${RR},${RR} 0 0 1 0,${h - RR} Z')`;
 }
+let lastW = 0;
 function paint() {
-  if (!blob) return;
-  const rest = Math.max(10, R.t - L.t), w = Math.max(10, R.x - L.x), st = Math.max(0, w - rest) / rest;
-  H.t = 1 - Math.min(.32, st * .5);
-  blob.style.width = w.toFixed(2) + "px";
-  blob.style.transform = `translate3d(${L.x.toFixed(2)}px,0,0) scaleY(${H.x.toFixed(4)})`;
+  if (!bar || !dock) return;
+  const w = dock.offsetWidth, h = dock.offsetHeight; if (!w) return;
+  lastW = w;
+  const cx = Math.max(BUB / 2 + 2, Math.min(w - BUB / 2 - 2, X.x));
+  bar.style.clipPath = outline(w, h, cx);
+  const lag = X.x - V.x, st = Math.min(.22, Math.abs(lag) / 260);
+  bubble.style.transform = `translate3d(${(cx - BUB / 2).toFixed(2)}px,${(st * 18).toFixed(2)}px,0) scale(${(1 + st).toFixed(4)},${(1 - st * .7).toFixed(4)})`;
+}
+// the bubble shows the current tab's icon; when it changes it pops in
+function swapIcon(now) {
+  const p = tabFor(currentPage()); if (!bubIc || p === shown) return;
+  shown = p; bubIc.innerHTML = icon(p, 24);
+  if (!now && !reduced() && bubIc.animate) bubIc.animate([{ transform: "scale(.4) rotate(-20deg)", opacity: 0 }, { transform: "scale(1.12)", opacity: 1, offset: .6 }, { transform: "none", opacity: 1 }], { duration: 380, easing: "cubic-bezier(.3,1.4,.5,1)" });
 }
 const dockClock = clock((dt, now) => {
   if (!dock || !isPhone()) return false;
-  aim(); tune(); L.run(dt); R.run(dt); H.run(dt); paint();
-  return !(L.idle() && R.idle() && H.idle() && !scrub && now > keepUntil);
+  aim(); tune(); X.run(dt); V.run(dt); paint();
+  return !(X.idle() && V.idle() && !scrub && now > keepUntil);
 });
 function kick() {
-  if (reduced()) { aim(); L.snap(); R.snap(); H.t = 1; H.snap(); paint(); setTimeout(() => { aim(); L.snap(); R.snap(); paint(); }, 200); return; }
+  if (reduced()) { aim(); X.snap(); V.snap(); paint(); return; }
   dockClock.kick();
 }
 
@@ -144,12 +164,12 @@ function onPage(id, first) {
   if (dock) {
     const cur = tabFor(id);
     tabs.forEach(t => { const on = t.dataset.p === cur; t.classList.toggle("on", on); if (on) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
-    keepUntil = performance.now() + 1100; kick();
+    swapIcon(false); keepUntil = performance.now() + 1100; kick();
   }
   kickNav(!first);
 }
 
-// ---------- tap, or hold and slide across to scrub ----------
+// ---------- tap, or hold and slide across the bar ----------
 let press = null;
 function wireDock() {
   dock.addEventListener("pointerdown", e => {
@@ -158,11 +178,11 @@ function wireDock() {
     try { dock.setPointerCapture(e.pointerId); } catch {}
   });
   dock.addEventListener("pointermove", e => {
-    if (!press || e.pointerId !== press.id || minned) return;
+    if (!press || e.pointerId !== press.id) return;
     if (!press.moved && Math.abs(e.clientX - press.x) < 8) return;
     press.moved = true; scrub = true;
-    const d = dock.getBoundingClientRect(), x = (e.clientX - d.left) / zoom(), half = Math.max(22, tabs[0].offsetWidth / 2);
-    L.t = x - half; R.t = x + half;
+    const d = dock.getBoundingClientRect(), x = (e.clientX - d.left) / zoom();
+    X.t = Math.max(0, Math.min(dock.offsetWidth, x));
     let over = press.over, best = 1e9;
     tabs.forEach((t, i) => { const dist = Math.abs(t.offsetLeft + t.offsetWidth / 2 - x); if (dist < best) { best = dist; over = i; } });
     if (over !== press.over) { tabs.forEach((t, i) => t.classList.toggle("hover", i === over)); press.over = over; buzz(5); }
@@ -172,9 +192,7 @@ function wireDock() {
     if (!press || e.pointerId !== press.id) return;
     const p = press; press = null; scrub = false;
     tabs.forEach(t => t.classList.remove("hover"));
-    // tapping the shrunken bar opens it back up, like iOS
-    if (minned) { if (e.type !== "pointercancel") { setMin(false); buzz(6); } return; }
-    const i = p.moved ? p.over : tabs.findIndex(t => { const r = t.getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top - 12 && e.clientY <= r.bottom + 12; });
+    const i = p.moved ? p.over : tabs.findIndex(t => { const r = t.getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top - 30 && e.clientY <= r.bottom + 12; });
     if (e.type !== "pointercancel" && i >= 0) pick(tabs[i].dataset.p);
     kick();
   };
@@ -183,63 +201,6 @@ function wireDock() {
   // keyboard (Enter / Space on a tab)
   dock.addEventListener("click", e => { if (e.detail === 0) { const t = e.target.closest(".dk-tab"); if (t) pick(t.dataset.p); } });
 }
-// ---------- Glass: the bar shrinks to the current tab while you scroll down (iOS 26) ----------
-// 0 = full bar, 1 = just the current tab. While your finger is moving the page, the bar moves with it
-// (one update per screen frame, however many scroll events arrive). Holding still keeps it exactly
-// where it is. Only once you let go and the page stops does it glide on a spring, carrying on at the
-// speed you were going, to the end you were heading for (or the closer end if you'd stopped).
-const TRAVEL = 70;                       // px of scrolling for a full shrink or grow
-let minned = false, prog = 0, pend = 0, vel = 0, mode = "", touching = false, lastMove = 0;
-const S = new Spring(0);                 // works in 0..100 so the spring's rest threshold is fine-grained
-const dockOn = () => isGlass() && isPhone();
-function setProg(v) {
-  v = Math.max(0, Math.min(1, v));
-  const w = $("dockWrap"); if (!w || v === prog) return;
-  const was = prog; prog = v; w.style.setProperty("--p", v.toFixed(4));
-  const m = v > .5; if (m !== minned) { minned = m; w.classList.toggle("dk-min", m); }
-  // the highlight is faded out while the bar is changing; put it back on the tab once fully open
-  // (reading the layout only here, not every frame, keeps the motion cheap)
-  if (v === 0 && was > 0 && dock && !scrub) { aim(); L.snap(); R.snap(); paint(); }
-  if (v === 0 || v === 1) refreshLens("dock");            // Android: redraw the lens for the new size
-}
-const progClock = clock((dt, now) => {
-  if (pend) {                                            // following the finger
-    const next = Math.max(0, Math.min(1, prog + pend / TRAVEL)); pend = 0;
-    const v = (next - prog) / Math.max(dt, 1 / 240);
-    vel = vel * .4 + v * .6; mode = "follow"; lastMove = now; setProg(next);
-    return;
-  }
-  if (mode === "follow") {
-    vel *= Math.pow(.02, dt);                            // finger held still: the speed dies away
-    if (touching || now - lastMove < 90) return touching ? false : undefined;
-    // let go and the page has stopped: glide, starting at the speed it was moving
-    const aim1 = prog + vel * .18, t = window.scrollY > 80 && aim1 > .5 ? 1 : 0;
-    S.x = prog * 100; S.v = Math.max(-900, Math.min(900, vel * 100)); S.t = t * 100; mode = "glide";
-  }
-  if (mode === "glide") {
-    S.k = 260; S.z = .9; S.run(dt); setProg(S.x / 100);
-    if (S.idle()) { S.snap(); setProg(S.t / 100); mode = ""; vel = 0; return false; }
-    return;
-  }
-  return false;
-});
-function glideTo(t) {
-  if (!dockOn()) t = 0;
-  pend = 0; S.x = prog * 100; S.v = 0; S.t = t * 100; mode = "glide";
-  if (reduced()) { S.snap(); setProg(t); mode = ""; return; }
-  progClock.kick();
-}
-function setMin(on) { glideTo(on ? 1 : 0); }
-function onScrollDock(dy, y) {
-  if (!dockOn()) { if (prog) glideTo(0); return; }
-  if (y <= 8) { if (prog) glideTo(0); return; }        // back at the top: always the full bar
-  if (reduced()) { if (Math.abs(dy) > 4) glideTo(dy > 0 && y > 80 ? 1 : 0); return; }
-  pend += dy; progClock.kick();
-}
-addEventListener("touchstart", () => { touching = true; }, { passive: true });
-const lift = () => { touching = false; if (mode === "follow") { lastMove = performance.now(); progClock.kick(); } };
-addEventListener("touchend", lift, { passive: true });
-addEventListener("touchcancel", lift, { passive: true });
 function pick(p) {
   buzz(8);
   if (p === tabFor(currentPage()) && (p !== "more" || currentPage() === "more")) { window.scrollTo({ top: 0, behavior: reduced() ? "auto" : "smooth" }); return; }
@@ -257,8 +218,7 @@ export function initDock() {
   ["settingsBadge", "billsBadge"].forEach(id => { const el = $(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ["hidden"] }); });
   onRoute(onPage);
   let lastY = window.scrollY;
-  addEventListener("scroll", () => { const y = window.scrollY, dy = y - lastY; lastY = y; if (dy) onScrollDock(dy, y); }, { passive: true });
-  addEventListener("hashchange", () => { setMin(false); lastY = window.scrollY; });
+  addEventListener("hashchange", () => { lastY = window.scrollY; });
   document.addEventListener("click", e => { const b = e.target.closest("[data-more]"); if (b) go(b.dataset.more); });
   let rz = 0, wasPhone = isPhone(), lastW = window.innerWidth;
   addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => {
@@ -266,7 +226,7 @@ export function initDock() {
     if (window.innerWidth === lastW && isPhone() === wasPhone) return;
     lastW = window.innerWidth; wasPhone = isPhone(); buildDock(); kickNav(true);
   }, 120); });
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { aim(); L.snap(); R.snap(); paint(); kickNav(true); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { aim(); X.snap(); V.snap(); paint(); kickNav(true); });
   // measure the screen's refresh rate once the app has settled (shown in Settings › Appearance)
   setTimeout(() => { if (document.visibilityState === "visible") measureHz(); }, 1500);
 }

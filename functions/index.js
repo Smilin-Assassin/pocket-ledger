@@ -28,8 +28,11 @@ const MODEL_CHAIN = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash",
 const DAILY_AI_LIMIT = 300; // Gemini calls per person per day
 
 // ---------- notifications ----------
+// tapping a notification opens the page it's about
+const PAGE_FOR = { bills: "#bills", budgets: "#home", loans: "#loans", transfers: "#home" };
 async function sendTo(uids, title, body, kind) {
   let sent = 0;
+  const url = APP_URL + (PAGE_FOR[kind] || "");
   for (const uid of [...new Set(uids)]) {
     const ref = db.doc("users/" + uid);
     const snap = await ref.get();
@@ -42,8 +45,8 @@ async function sendTo(uids, title, body, kind) {
     const res = await getMessaging().sendEachForMulticast({
       tokens,
       notification: { title, body },
-      webpush: { notification: { icon: ICON, badge: ICON, tag: kind || "pocket-ledger" }, fcmOptions: { link: APP_URL } },
-      data: { kind: kind || "", url: APP_URL }
+      webpush: { notification: { icon: ICON, badge: ICON, tag: kind || "pocket-ledger" }, fcmOptions: { link: url } },
+      data: { kind: kind || "", url }
     });
     const dead = [];
     res.responses.forEach((r, i) => {

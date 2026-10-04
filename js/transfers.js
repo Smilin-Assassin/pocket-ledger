@@ -2,7 +2,6 @@
 // (addressed straight to the other person, no shared group needed). The receiver's app adds it
 // to their own private space: the first time from someone they pick how it counts, after that
 // it's added automatically (they can still change the note and category, never the amount).
-// Older transfers recorded in a group's "transfers" are still picked up.
 import { $, esc, money, num, r2, todayISO, fmtDate, toast, fillSelect } from "./util.js";
 import { ctx, state, meId, isViewer, isGroup, hRef, uRef, EXP_CATS, INC_CATS, pname, mySettings, changed } from "./store.js";
 import { callFn } from "./notify.js";
@@ -32,12 +31,6 @@ export async function checkTransfers() {
     const q = await F().getDocs(F().query(F().collection(ctx.db, "transfers"), F().where("to", "==", me)));
     q.docs.forEach(d => incoming.push(Object.assign({ id: d.id }, d.data())));
   } catch {}
-  for (const g of myGroups()) {
-    try {
-      const q = await F().getDocs(F().query(F().collection(hRef(g.id), "transfers"), F().where("to", "==", me)));
-      q.docs.forEach(d => incoming.push(Object.assign({ id: d.id, gid: g.id, gname: g.name }, d.data())));
-    } catch {}
-  }
   if (!incoming.length) { pending = []; return render(); }
   let seen;
   try { const q = await F().getDocs(F().collection(hRef(ctx.profile.personal), "transfersSeen")); seen = new Set(q.docs.map(d => d.id)); }

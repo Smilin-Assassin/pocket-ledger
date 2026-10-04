@@ -3,7 +3,7 @@ import { $, toast } from "./util.js";
 import { ctx, state, connect, onChange, lastSeenMark } from "./store.js";
 import { registerPage, initShell, renderShell, route, go } from "./shell.js";
 import { page as home } from "./pages/home.js";
-import { page as entries, focusAdd, showCategory } from "./pages/entries.js";
+import { page as entries, focusAdd, showCategory, showReview, needsLook } from "./pages/entries.js";
 import { page as loans } from "./pages/loans.js";
 import { page as bills } from "./pages/bills.js";
 import { page as goals } from "./pages/goals.js";
@@ -19,7 +19,7 @@ import { initTransfers, checkTransfers } from "./transfers.js";
 import { initDock, dockBadges, buildDock } from "./dock.js";
 import { initQuick, openQuick } from "./quick.js";
 import { initGlass } from "./glass.js";
-import { initSmart, setAddFn } from "./smart.js";
+import { initSmart, setAddFn, setLookFn, setNeedsLook } from "./smart.js";
 
 // a screenshot shared into the app from another app (Android share sheet)
 async function takeSharedFiles() {
@@ -51,9 +51,11 @@ function handleShortcut() {
 export function boot(fb) {
   [["home", home], ["entries", entries], ["loans", loans], ["bills", bills], ["goals", goals], ["settings", settings], ["admin", admin], ["more", { init() {}, render() { dockBadges(); } }]].forEach(([id, p]) => { registerPage(id, p); p.init(); });
   initShell(); initDock(); initGlass(); initQuick(); initScan(); initStatements(); initTransfers(); initChat(); initLock(); initNag();
-  setAddFn(pre => focusAdd("expense", null, pre)); initSmart(showCategory);
+  setAddFn(pre => focusAdd("expense", null, pre)); setLookFn(showReview); setNeedsLook(needsLook); initSmart(showCategory);
   $("quickX").addEventListener("click", () => { $("quick").hidden = true; });
   document.addEventListener("click", ev => { const b = ev.target.closest("[data-go-add]"); if (b) focusAdd("expense"); const c = ev.target.closest("[data-cat-go]"); if (c) showCategory(c.dataset.catGo); });
+  // a notification was tapped while the app was open: go to its page
+  if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", ev => { const h = ev.data && ev.data.go; if (h && /^[a-z/]+$/.test(h)) location.hash = h; });
   connect(fb);
   $("app").hidden = false;
   let wasAdmin = null;
