@@ -93,7 +93,8 @@ function outline(w, h, cx) {
   // fine steps in the corners and the dip, nothing in between (straight)
   for (let x = 0; x <= RR; x += 2) add(x);
   const a = Math.max(RR, cx - DIP_W), b = Math.min(w - RR, cx + DIP_W);
-  if (a < b) for (let x = a; x <= b; x += 2) add(x);
+  // always end exactly on the dip's edges: stopping a step short left the rest of the bar slanting up to the corner
+  if (a < b) { for (let x = a; x < b; x += 2) add(x); add(b); }
   for (let x = w - RR; x <= w; x += 2) add(x);
   add(w);
   return `M${pts.join(" L")} L${w},${h - RR} A${RR},${RR} 0 0 1 ${w - RR},${h} L${RR},${h} A${RR},${RR} 0 0 1 0,${h - RR} Z`;
