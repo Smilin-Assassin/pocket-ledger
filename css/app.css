@@ -554,13 +554,15 @@ html { -webkit-tap-highlight-color: transparent; }
   .dk { pointer-events: auto; position: relative; flex: 1 1 auto; min-width: 0; height: 64px; touch-action: none; user-select: none; -webkit-user-select: none;
     filter: drop-shadow(0 8px 18px var(--dk-shadow)) drop-shadow(0 1px 2px color-mix(in srgb, var(--ink) 10%, transparent)); }
   .dk-bar { position: absolute; inset: 0; border-radius: 24px; background: var(--dk-bar); will-change: clip-path; }
-  .dk-bubble { position: absolute; left: 0; top: -23px; width: 50px; height: 50px; border-radius: 50%; background: var(--dk-bar); color: var(--accent);
+  .dk-line { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 0; display: none; }
+  .dk-line path { fill: none; stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .dk-bubble { position: absolute; left: 0; top: -25px; width: 50px; height: 50px; border-radius: 50%; background: var(--dk-bar); color: var(--accent);
     display: grid; place-items: center; z-index: 2; pointer-events: none; will-change: transform; transform-origin: 50% 100%;
     box-shadow: 0 6px 16px color-mix(in srgb, var(--ink) 14%, transparent); }
   .dk-bub-ic { display: grid; place-items: center; }
   .dk-bub-ic svg { width: 24px; height: 24px; stroke-width: 2.1; }
   .dk-bub-ic .fill { display: none; }
-  .dk-tabs { position: absolute; inset: 0; display: flex; z-index: 1; }
+  .dk-tabs { position: absolute; inset: 0; display: flex; z-index: 3; }
   .dk-tab { position: relative; flex: 1 1 0; min-width: 0; border: 0; background: none; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
     gap: 3px; padding-top: 12px; color: var(--ink-3); font: inherit; font-size: 11px; font-weight: 500; letter-spacing: .01em; cursor: pointer; transition: color .25s; }
   .dk-tab svg { flex: none; transition: transform .4s var(--spring-ease, ease), opacity .2s; }
@@ -573,7 +575,7 @@ html { -webkit-tap-highlight-color: transparent; }
   .dk-tab.hover { color: var(--ink); }
   .dk-tab .badge { top: 6px; left: calc(50% + 6px); }
   .dk-tab .badge.dot { top: 9px; left: calc(50% + 9px); }
-  .dk-tab.on .badge { top: -22px; left: calc(50% + 12px); z-index: 3; }
+  .dk-tab.on .badge { top: -24px; left: calc(50% + 12px); }
   /* the +: its own circle beside the bar */
   .dk-plus { pointer-events: auto; position: relative; flex: none; width: 62px; height: 62px; margin: 0; border: 0; border-radius: 50%;
     background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; z-index: 2; touch-action: none; cursor: pointer; will-change: transform;
@@ -1106,7 +1108,11 @@ circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest
 /* ---------- phones: the bar with the dip and bubble, in glass (v37) ---------- */
 @media (max-width: 899.98px) {
   :root[data-preset="glass"] .dk { filter: none; }
-  :root[data-preset="glass"] .dk-bar { background: var(--g-fill); -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); box-shadow: var(--g-edge); }
+  /* glass is pale and its shadow is cut off by the dip shape: draw the outline so the dip reads clearly */
+  :root[data-preset="glass"] .dk-line { display: block; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .10)); }
+  :root[data-preset="glass"] .dk-line path { stroke: rgba(60, 60, 67, .22); }
+  :root[data-preset="glass"][data-theme="dark"] .dk-line path { stroke: rgba(255, 255, 255, .16); }
+  :root[data-preset="glass"] .dk-bar { background: var(--g-fill-strong); -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); box-shadow: var(--g-edge); }
   :root[data-preset="glass"] .dk-bubble { background: var(--g-fill-strong); -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); color: var(--tint); box-shadow: var(--g-edge), var(--g-lift); }
   :root[data-preset="glass"] .dk-tab { color: var(--ink-2); font-size: 10px; font-weight: 500; letter-spacing: 0; }
   :root[data-preset="glass"] .dk-tab svg { width: 25px; height: 25px; }
@@ -1170,6 +1176,7 @@ circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest
 /* ---------- Glass: lens edges on Chrome / Android (js/glass.js draws a map per surface) ---------- */
 /* a clearer glass so the bending shows; text on it stays readable thanks to the lighter blur + white fill */
 :root[data-preset="glass"][data-lens] { --g-lens-fill: rgba(255, 255, 255, .6); }
+:root[data-preset="glass"][data-lens]:not([data-theme="dark"]) #dkBar { background: rgba(255, 255, 255, .86); }
 :root[data-preset="glass"][data-lens][data-theme="dark"] { --g-lens-fill: rgba(30, 30, 32, .5); }
 :root[data-preset="glass"][data-lens] #dkBar { background: var(--g-lens-fill); -webkit-backdrop-filter: blur(9px) saturate(190%) url(#lens-dock); backdrop-filter: blur(9px) saturate(190%) url(#lens-dock); }
 :root[data-preset="glass"][data-lens] #dkPlus { -webkit-backdrop-filter: blur(6px) saturate(190%) url(#lens-plus); backdrop-filter: blur(6px) saturate(190%) url(#lens-plus); }

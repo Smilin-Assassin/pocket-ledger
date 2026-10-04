@@ -35,16 +35,16 @@ export function fitsSix() { const w = layoutWidth() - 24 - 72 - 12; return Math.
 export const dockPages = () => (M.tabs === 6 && fitsSix()) ? PAGES.slice() : M.dock.concat("more");
 const tabFor = p => { const l = dockPages(); return l.includes(p) ? p : "more"; };
 
-let dock, bar, bubble, bubIc, tabs = [], shown = "";
+let dock, bar, line, bubble, bubIc, tabs = [], shown = "";
 
 // ---------- building the bar ----------
 export function buildDock() {
   dock = $("dock"); if (!dock) return;
   const list = dockPages(), cur = tabFor(currentPage());
   const btn = p => `<button class="dk-tab${cur === p ? " on" : ""}" type="button" data-p="${p}" aria-label="${NAMES[p]}"${cur === p ? ' aria-current="page"' : ""}>${icon(p)}<span class="lbl">${NAMES[p]}</span><i class="badge" data-badge="${p}" hidden></i></button>`;
-  dock.innerHTML = `<div class="dk-bar" id="dkBar"></div><span class="dk-bubble" id="dkBubble" aria-hidden="true"><span class="dk-bub-ic"></span></span><div class="dk-tabs">${list.map(btn).join("")}</div>`;
+  dock.innerHTML = `<div class="dk-bar" id="dkBar"></div><svg class="dk-line" aria-hidden="true"><path/></svg><span class="dk-bubble" id="dkBubble" aria-hidden="true"><span class="dk-bub-ic"></span></span><div class="dk-tabs">${list.map(btn).join("")}</div>`;
   dock.dataset.n = list.length;
-  bar = $("dkBar"); bubble = $("dkBubble"); bubIc = bubble.firstChild; tabs = [...dock.querySelectorAll(".dk-tab")]; shown = "";
+  bar = $("dkBar"); line = dock.querySelector(".dk-line path"); bubble = $("dkBubble"); bubIc = bubble.firstChild; tabs = [...dock.querySelectorAll(".dk-tab")]; shown = "";
   renderMore(); dockBadges();
   requestAnimationFrame(() => { aim(); X.snap(); V.snap(); swapIcon(true); paint(); refreshLens("dock"); });
 }
@@ -72,7 +72,7 @@ function renderMore() {
 // V: a lagging copy of X; the gap between them stretches the bubble sideways and lowers it a touch.
 const X = new Spring(0), V = new Spring(0);
 let scrub = false, keepUntil = 0;
-const BUB = 50, DIP_W = 41, DIP_D = 32, RR = 24;      // bubble size, dip half-width and depth, bar corner radius
+const BUB = 50, GAP = 6, DIP_W = BUB / 2 + GAP, DIP_D = BUB / 2 + GAP, RR = 24;   // bubble size, gap around it, dip (a half circle), bar corner radius
 function aim() {
   if (scrub || !dock) return;
   const el = tabs.find(t => t.dataset.p === tabFor(currentPage())); if (!el) return;
@@ -80,7 +80,8 @@ function aim() {
 }
 function tune() { const { k, zeta, trail } = params(); X.k = k; X.z = zeta; V.k = k * trail * trail * .8; V.z = Math.min(1.1, zeta + .15); V.t = X.x; }
 // the bar's outline: a rounded bar whose top edge dips smoothly around x = cx
-const dipAt = (x, cx) => { const t = Math.abs(x - cx) / DIP_W; if (t >= 1) return 0; return DIP_D * Math.pow((Math.cos(Math.PI * t) + 1) / 2, .42); };
+// the dip is a half circle centred on the bar's top edge, a little wider than the bubble
+const dipAt = (x, cx) => { const dx = Math.abs(x - cx); return dx >= DIP_W ? 0 : Math.sqrt(DIP_W * DIP_W - dx * dx); };
 function outline(w, h, cx) {
   const top = x => {
     let y = dipAt(x, cx);
@@ -95,7 +96,7 @@ function outline(w, h, cx) {
   if (a < b) for (let x = a; x <= b; x += 2) add(x);
   for (let x = w - RR; x <= w; x += 2) add(x);
   add(w);
-  return `path('M${pts.join(" L")} L${w},${h - RR} A${RR},${RR} 0 0 1 ${w - RR},${h} L${RR},${h} A${RR},${RR} 0 0 1 0,${h - RR} Z')`;
+  return `M${pts.join(" L")} L${w},${h - RR} A${RR},${RR} 0 0 1 ${w - RR},${h} L${RR},${h} A${RR},${RR} 0 0 1 0,${h - RR} Z`;
 }
 let lastW = 0;
 function paint() {
@@ -103,7 +104,8 @@ function paint() {
   const w = dock.offsetWidth, h = dock.offsetHeight; if (!w) return;
   lastW = w;
   const cx = Math.max(BUB / 2 + 2, Math.min(w - BUB / 2 - 2, X.x));
-  bar.style.clipPath = outline(w, h, cx);
+  // the bar is cut to this shape; the same shape is drawn as a thin rim so the dip shows on pale glass too
+  const d = outline(w, h, cx); bar.style.clipPath = `path('${d}')`; if (line) line.setAttribute("d", d);
   const lag = X.x - V.x, st = Math.min(.22, Math.abs(lag) / 260);
   bubble.style.transform = `translate3d(${(cx - BUB / 2).toFixed(2)}px,${(st * 18).toFixed(2)}px,0) scale(${(1 + st).toFixed(4)},${(1 - st * .7).toFixed(4)})`;
 }
