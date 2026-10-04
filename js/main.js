@@ -53,7 +53,7 @@ export function boot(fb) {
   initShell(); initDock(); initGlass(); initQuick(); initScan(); initStatements(); initTransfers(); initChat(); initLock(); initNag();
   setAddFn(pre => focusAdd("expense", null, pre)); setLookFn(showReview); setNeedsLook(needsLook); initSmart(showCategory);
   $("quickX").addEventListener("click", () => { $("quick").hidden = true; });
-  document.addEventListener("click", ev => { const b = ev.target.closest("[data-go-add]"); if (b) focusAdd("expense"); const c = ev.target.closest("[data-cat-go]"); if (c) showCategory(c.dataset.catGo); });
+  document.addEventListener("click", ev => { const b = ev.target.closest("[data-go-add]"); if (b) focusAdd("expense"); const c = ev.target.closest("[data-cat-go]"); if (c) showCategory(c.dataset.catGo, c.dataset.meal); });
   // a notification was tapped while the app was open: go to its page
   if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", ev => { const h = ev.data && ev.data.go; if (h && /^[a-z/]+$/.test(h)) location.hash = h; });
   connect(fb);

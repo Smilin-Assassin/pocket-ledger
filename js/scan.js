@@ -1,6 +1,6 @@
 // Scan a receipt, bill or bank screenshot: Gemini reads it, you check, then add.
 import { $, esc, money, num, r2, sum, todayISO, toast, ISO, fmtDate, monthName, daysBetween } from "./util.js";
-import { state, ui, meId, isGroup, people, pname, visibleGoals, catOptions, guessCategory, EXP_CATS, INC_CATS, TYPE_LABEL, changed, db } from "./store.js";
+import { state, ui, meId, isGroup, people, pname, visibleGoals, catOptions, guessCategory, EXP_CATS, INC_CATS, TYPE_LABEL, changed, db, EAT, mealAt, mealFromNote } from "./store.js";
 import { budgetCheck } from "./actions.js";
 import { aiReady, geminiJson, geminiText, parseJsonText } from "./gemini.js";
 import { go } from "./shell.js";
@@ -40,7 +40,7 @@ function scanPrompt(n) {
     "- Savings goals: " + (goals.length ? goals.join(", ") : "none") + ".",
     "",
     "What to record:",
-    "- A shop receipt, bill or TAX INVOICE (a printed slip, often photographed in someone's hand, maybe creased or at an angle): it is ONE expense, never income, never a transfer. The amount is the final total actually paid: use \"Grand Total\", \"Total\", \"Net Total\" or \"Amount Due\" (after discounts, including GST/TGST and service charge). Ignore Sub Total, GST lines, Tendered/Cash/Paid, Change/Balance and item rates. Small rounding differences between Sub Total + GST and Grand Total are normal: trust the Grand Total and don't ask about it. Do not list line items separately. Note: the shop name (from the top of the slip), then EVERY item on the slip in short plain words (1-3 words each, add x2 for quantities above 1), like \"Hardware Shop: bolster case x2, bucket, cutting board, hanger, bolster\". Count the item lines and check none is missed. Only if the note would go over 150 characters, list the biggest items and end with \"+ N more\". Pick the category from what was bought: groceries or food items -> Food & groceries; restaurant or cafe -> Eating out; household items, clothes, electronics, hardware -> Shopping; pharmacy -> Health; fuel or fares -> Transport.",
+    "- A shop receipt, bill or TAX INVOICE (a printed slip, often photographed in someone's hand, maybe creased or at an angle): it is ONE expense, never income, never a transfer. The amount is the final total actually paid: use \"Grand Total\", \"Total\", \"Net Total\" or \"Amount Due\" (after discounts, including GST/TGST and service charge). Ignore Sub Total, GST lines, Tendered/Cash/Paid, Change/Balance and item rates. Small rounding differences between Sub Total + GST and Grand Total are normal: trust the Grand Total and don't ask about it. Do not list line items separately. Note: the shop name (from the top of the slip), then EVERY item on the slip in short plain words (1-3 words each, add x2 for quantities above 1), like \"Hardware Shop: bolster case x2, bucket, cutting board, hanger, bolster\". Count the item lines and check none is missed. Only if the note would go over 150 characters, list the biggest items and end with \"+ N more\". Pick the category from what was bought: groceries or food items -> Food & groceries; restaurant, cafe, takeaway, or ready-to-eat snacks and short eats (gulha, bajiya, samosa, chips, a drink to have now) -> Eating out, and then also set meal; household items, clothes, electronics, hardware -> Shopping; pharmacy -> Health; fuel or fares -> Transport.",
     "- On a shop receipt, a \"Remittance instruction\", beneficiary name, BML/MIB account numbers, TIN, cashier, bill number, phone or Viber numbers are just the shop's details. They do NOT make it a bank transfer and are not the amount. \"Cust. Name: Cash Sales\" just means a walk-in customer.",
     "- A bank app screen, transfer confirmation or SMS alert: each money-out is an expense, each money-in is income (salary, transfers received). A transfer clearly into the user's own savings account is type \"save\".",
     "- Bank transfer receipts (for example Bank of Maldives or MIB, showing From, To, Reference, Transaction date and Amount): From is the sender and To is the recipient. Decide the direction by cross-checking two things, the account number and the name. (1) Account: only a printed ACCOUNT NUMBER counts (a long digit string, usually 13 to 17 digits, shown under From/To, Account, Beneficiary or Debit/Credit account). Compare its LAST 4 digits with the people's digits. Amounts (like 1,000.00 or 1000), references, dates, times, phone numbers and card numbers are NEVER account numbers, even when they contain the same 4 digits. If the To account ends in a person's digits, it points to money IN for that person; if the From account does, it points to money OUT. (2) Name: match the From and To names loosely against the people's names and bank names (initials, abbreviations like AMTH or MOHD, and dots are fine). The account number wins over the name, because senders often save people under nicknames like \"Teacher\" or \"Boss\". If the account and the name point in opposite directions, or only part of an account number is visible, or nothing matches, set type to null and ask whether the money went out or came in, naming the two sides. In the note, name the OTHER party: \"From MOHD.NASEEM\" for money in, \"Transfer to Ali\" for money out. For money in, ignore the nickname the sender used for the recipient. For money out, pick the category from the recipient when it is clear (a shop is Shopping), otherwise Other. For money in, use the income categories (Side income if unsure).",
@@ -54,11 +54,12 @@ function scanPrompt(n) {
     "- date is the transaction date as YYYY-MM-DD. If the year is missing, use the most recent such date not after today. If no date is shown, set null and ask, offering \"Today\" with value \"" + todayISO() + "\".",
     "- If the amount is in a different currency from " + cur + ", put the original amount in amount, set currency to that code, and ask how much to record in " + cur + ".",
     "- category must be one of the categories above when one fits, otherwise \"Other\".",
+    "- meal: only for Eating out. breakfast, lunch, dinner or snacks (short eats, tea-time, drinks, packets eaten on the go). Use the words on the slip, else the printed time (before 11:00 breakfast, before 15:00 lunch, before 18:00 snacks, later dinner). null if it isn't Eating out or you can't tell.",
     "- Ask at most 2 short, plain questions per transaction, only when something is really unclear. Give 2-4 answer options when you can. Each option is {\"label\": what the button says, \"value\": the value to put in the field}. For type, values are expense, income, save or withdraw. For amount, values are plain numbers. For date, values are YYYY-MM-DD.",
     "- confidence is high when everything is clearly readable, medium if you inferred something, low if the image is hard to read.",
     "",
     "Reply with exactly this JSON shape:",
-    '{"summary": "one short sentence on what you found", "transactions": [{"type": "expense" | "income" | "save" | "withdraw" | null, "amount": number | null, "currency": "MVR", "date": "YYYY-MM-DD" | null, "category": "...", "note": "...", "person": "name" | null, "ref": "..." | null, "confidence": "high" | "medium" | "low", "questions": [{"field": "amount" | "date" | "type" | "category" | "note", "question": "...", "options": [{"label": "...", "value": "..."}]}]}]}',
+    '{"summary": "one short sentence on what you found", "transactions": [{"type": "expense" | "income" | "save" | "withdraw" | null, "amount": number | null, "currency": "MVR", "date": "YYYY-MM-DD" | null, "category": "...", "meal": "breakfast" | "lunch" | "dinner" | "snacks" | null, "note": "...", "person": "name" | null, "ref": "..." | null, "confidence": "high" | "medium" | "low", "questions": [{"field": "amount" | "date" | "type" | "category" | "note", "question": "...", "options": [{"label": "...", "value": "..."}]}]}]}',
     "If there are no transactions in the image, return an empty transactions list and say why in summary."
   ].join("\n");
 }
@@ -82,7 +83,7 @@ export async function startScan(files) {
         options: (Array.isArray(q.options) ? q.options : []).slice(0, 4).map(o => ({ label: String(o.label ?? o.value ?? ""), value: String(o.value ?? o.label ?? "") }))
       })).filter(q => q.question);
       return { include: true, type: type || "expense", typeKnown: !!type, amount, date: typeof t.date === "string" && ISO.test(t.date) ? t.date : null,
-        currency: String(t.currency || cur0).toUpperCase().slice(0, 3), category: String(t.category || "") || (type === "income" ? "Salary" : "Other"),
+        currency: String(t.currency || cur0).toUpperCase().slice(0, 3), category: String(t.category || "") || (type === "income" ? "Salary" : "Other"), meal: ["breakfast", "lunch", "dinner", "snacks"].includes(t.meal) ? t.meal : "",
         note: String(t.note || "").slice(0, 160), goalId: "", ref: typeof t.ref === "string" ? t.ref.trim().slice(0, 40) : "", confidence: String(t.confidence || ""), questions: qs, src: "scan" };
     });
     items.forEach(it => { if (it.ref && state.entries.some(e => e.ref === it.ref)) it.include = false; });
@@ -206,6 +207,7 @@ export function initScan() {
       if (it.ref) e.ref = it.ref;
       if (it.type === "save" || it.type === "withdraw") { e.goalId = it.goalId || ""; e.category = "Savings"; }
       else e.category = (it.category || "").trim() || (it.type === "income" ? "Salary" : "Other");
+      if (it.type === "expense" && e.category === EAT) { const m = it.meal || mealFromNote(e.note); if (m) e.meal = m; }
       if (it.split && it.type === "expense") e.split = it.split;
       db.add(e); budgetCheck(e);
     });
@@ -253,6 +255,8 @@ function csvRows(text) {
   if (f || row.length) { row.push(f); if (row.some(v => v.trim())) rows.push(row); }
   return rows.map(r => r.map(v => v.trim().replace(/^="(.*)"$/, "$1").trim()));
 }
+// "DD-MM-YYYY HH-MM-SS" (or with colons): the hour, else null (6-digit card codes are not times)
+const hourOf = v => { const m = String(v || "").match(/^\d{2}-\d{2}-\d{4}\s+(\d{2})[-:]\d{2}[-:]\d{2}/); return m && +m[1] < 24 ? +m[1] : null; };
 const dmy = v => { const m = String(v || "").match(/^(\d{2})-(\d{2})-(\d{4})/); return m ? m[3] + "-" + m[2] + "-" + m[1] : ""; };
 const money2 = v => num(String(v || "").replace(/,/g, ""));
 // Bank of Maldives CSV export: read exactly, no Gemini needed
@@ -265,7 +269,7 @@ function bmlRows(rows) {
     const favara = /favara|ips/i.test(r[2]);
     out.push({ date: dmy(r[5]) || dmy(r[7]) || r[0].replace(/\//g, "-"), dir: debit > 0 ? "out" : "in", amount: debit > 0 ? debit : credit,
       name: favara ? r[5] : r[6], ref: r[3], kind: /purchase|pos/i.test(r[2]) ? "purchase" : /transfer|favara|ips/i.test(r[2]) ? "transfer" : "other",
-      label: r[2], acct: (r.join(" ").match(/\b\d{8,}\b/g) || []).join(" "), bal: r[10] !== undefined && r[10] !== "" ? money2(r[10]) : null });
+      label: r[2], hour: hourOf(r[5]), acct: (r.join(" ").match(/\b\d{8,}\b/g) || []).join(" "), bal: r[10] !== undefined && r[10] !== "" ? money2(r[10]) : null });
   }
   return out;
 }
@@ -295,7 +299,7 @@ export function mibRows(rows) {
     else { name = (parts[1] && /[a-z]{3}/i.test(parts[1]) ? parts[1] : type).replace(/\s+/g, " "); kind = /pay/i.test(type) ? "bill" : "other"; }
     const remark = kind === "transfer" && !/favara|ips/i.test(type) ? (parts[2] || "") : "";
     out.push({ date, dir: amt < 0 ? "out" : "in", amount: Math.abs(amt), name: name.replace(/\s+/g, " ").trim(), ref, kind, label: type.replace(/\d{6,}/g, "").trim(),
-      remark: remark && remark !== "-" ? remark : "", otherBank: bank, acct: (String(r[iD] || "").match(/\b\d{10,}\b/g) || []).join(" "), bal: iB >= 0 && r[iB] !== "" ? money2(r[iB]) : null, posted });
+      remark: remark && remark !== "-" ? remark : "", otherBank: bank, hour: hourOf(parts[0]), acct: (String(r[iD] || "").match(/\b\d{10,}\b/g) || []).join(" "), bal: iB >= 0 && r[iB] !== "" ? money2(r[iB]) : null, posted });
   }
   return out;
 }
@@ -355,7 +359,7 @@ function ownInfo(extra) {
 }
 function myDetails() { return state.my || people().find(p => p.id === meId()) || {}; }
 const titleCase = s => String(s || "").toLowerCase().replace(/(^|[\s\-\/&(])([a-z])/g, (m, a, c) => a + c.toUpperCase()).replace(/\b(Pvt|Ltd|Llc|Mv|Mib|Bml|Atm|Ips)\b/g, w => w.toUpperCase()).trim();
-const FALLBACK = [[/stop 2 shop|mart|super ?market|grocer|fish|fruit/i, "Food & groceries"], [/food|cafe|café|bistro|restaurant|bakery|pizza|burger|kitchen/i, "Eating out"],
+const FALLBACK = [[/stop 2 shop|mart|super ?market|grocer|fish|fruit/i, "Food & groceries"], [/food|cafe|café|bistro|restaurant|bakery|pizza|burger|kitchen|hotaa|hotel|tea ?shop|canteen/i, "Eating out"],
   [/mwsc|stelco|fenaka|water|electric|council/i, "Rent & bills"], [/ooredoo|dhiraagu|internet|fahipay/i, "Phone & internet"], [/pharmacy|chemist|hospital|clinic|medical/i, "Health"],
   [/netflix|spotify|google|microsoft|apple|steam|playstation|clash/i, "Entertainment"], [/fuel|petrol|taxi|ferry|transport/i, "Transport"]];
 async function categorize(rows) {
@@ -489,8 +493,9 @@ async function importStatement(file) {
     const cnt = {}; rows.forEach(r => { const k = r.date.slice(0, 7); cnt[k] = (cnt[k] || 0) + 1; });
     const main = months.filter(k => cnt[k] >= Math.max(3, rows.length * 0.15));
     const label = (extra.bank || "Bank") + " statement · " + (main.length ? main : months).map(k => monthName(k, true)).join(", ");
+    const mealOf = r => r.dir === "out" && r.category === EAT ? (mealFromNote(r.note) || (r.hour != null ? mealAt(r.hour) : "")) : "";
     const entries = res.add.map((r, i) => Object.assign({ type: r.dir === "out" ? "expense" : "income", amount: r2(r.amount), date: r.date, category: r.category, note: r.note,
-      person: meId(), created: Date.now() + i, source: "statement", importId, importLabel: label }, r.ref ? { ref: r.ref.slice(0, 40) } : {}, r.maybeDup ? { maybeDup: r.maybeDup.id } : {}));
+      person: meId(), created: Date.now() + i, source: "statement", importId, importLabel: label }, r.ref ? { ref: r.ref.slice(0, 40) } : {}, r.maybeDup ? { maybeDup: r.maybeDup.id } : {}, mealOf(r) ? { meal: mealOf(r) } : {}));
     const moves = res.own.map((r, i) => Object.assign({ type: "move", moved: true, amount: r2(r.amount), date: r.date, category: "Moved", note: (r.from + " → " + r.to).slice(0, 160),
       acctFrom: r.from, acctTo: r.to, legs: [r.leg], person: meId(), created: Date.now() + entries.length + i, source: "statement", importId, importLabel: label }, r.ref ? { ref: r.ref.slice(0, 40), refs: [r.ref.slice(0, 40)] } : { refs: [] }));
     // the other side of a move already saved from another statement: fill in this side, don't add it again

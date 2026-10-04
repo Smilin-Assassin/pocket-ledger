@@ -1,6 +1,6 @@
 // Quick add: the + in the dock grows into a sheet with a number pad. Hold the + for Scan / Type it / Voice.
 import { $, esc, money, todayISO, dShort, getCurrency, toast } from "./util.js";
-import { state, db, meId, catOptions } from "./store.js";
+import { state, db, meId, catOptions, EAT, MEALS, mealAt, mealFromNote, mealName } from "./store.js";
 import { budgetCheck } from "./actions.js";
 import { Spring, clock, params, reduced, buzz, ease } from "./motion.js";
 import { focusAdd } from "./pages/entries.js";
@@ -8,7 +8,7 @@ import { openScanPicker } from "./scan.js";
 import { openChat, startRec } from "./chat.js";
 import { zoom } from "./dock.js";
 
-let q = { type: "expense", val: "", cat: "", date: "", note: "" };
+let q = { type: "expense", val: "", cat: "", date: "", note: "", meal: "", mealPicked: false };
 const P = new Spring(0);
 let from = null, isOpen = false;
 
@@ -27,6 +27,11 @@ function render() {
   $("qaVal").textContent = shown(q.val);
   const list = chips(q.type); if (!list.includes(q.cat)) q.cat = list[0] || (q.type === "income" ? "Salary" : "Other");
   $("qaChips").innerHTML = list.map(c => `<button type="button" class="qa-chip" data-cat="${esc(c)}" aria-pressed="${c === q.cat}">${esc(c)}</button>`).join("");
+  // Eating out: the meal, guessed from the note or the clock (today only); tap to change or clear
+  const eat = q.type === "expense" && q.cat === EAT;
+  if (eat && !q.mealPicked) q.meal = mealFromNote($("qaNote").value) || ((q.date || todayISO()) === todayISO() ? mealAt(new Date().getHours()) : "");
+  $("qaMeals").hidden = !eat;
+  $("qaMeals").innerHTML = eat ? MEALS.map(([m, n]) => `<button type="button" class="qa-meal" data-meal="${m}" aria-pressed="${m === q.meal}">${n}</button>`).join("") : "";
   const today = q.date === todayISO();
   $("qaDate").innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>${today ? "Today" : esc(dShort(q.date))}`;
   $("qaDate").classList.toggle("set", !today);
@@ -34,7 +39,7 @@ function render() {
   $("qaSave").textContent = q.type === "expense" ? "Add expense" : "Add income";
 }
 function reset() {
-  q = { type: "expense", val: "", cat: "", date: todayISO(), note: "" };
+  q = { type: "expense", val: "", cat: "", date: todayISO(), note: "", meal: "", mealPicked: false };
   $("qaNote").value = ""; $("qaNoteRow").hidden = true; $("qaNoteBtn").hidden = false;
   render();
 }
@@ -86,13 +91,13 @@ function press(k) {
   const a = $("qaAmt"); if (a.animate && !reduced()) a.animate([{ transform: "scale(1.04)" }, { transform: "none" }], { duration: 300, easing: ease() });
 }
 function entry() {
-  return { type: q.type, amount: Math.round(parseFloat(q.val) * 100) / 100, date: q.date || todayISO(), category: q.cat, note: $("qaNote").value.trim(), person: meId(), created: Date.now() };
+  return { type: q.type, amount: Math.round(parseFloat(q.val) * 100) / 100, date: q.date || todayISO(), category: q.cat, note: $("qaNote").value.trim(), person: meId(), created: Date.now(), ...(q.type === "expense" && q.cat === EAT && q.meal ? { meal: q.meal } : {}) };
 }
 function save() {
   const e = entry(); if (!(e.amount > 0)) return;
   const id = db.add(e); budgetCheck(e);
   closeQuick();
-  setTimeout(() => toast((e.type === "income" ? "Income added: " : "Added ") + money(e.amount) + " · " + e.category, { action: "Undo", onAction: () => db.removeMany([id]) }), 180);
+  setTimeout(() => toast((e.type === "income" ? "Income added: " : "Added ") + money(e.amount) + " · " + (e.meal ? mealName(e.meal) : e.category), { action: "Undo", onAction: () => db.removeMany([id]) }), 180);
 }
 
 // ---------- hold the + : Scan / Type it / Voice ----------
@@ -131,14 +136,16 @@ export function initQuick() {
   $("qaPad").addEventListener("click", e => { const b = e.target.closest("button[data-k]"); if (b) press(b.dataset.k); });
   $("qaType").addEventListener("click", e => { const b = e.target.closest("button[data-v]"); if (!b || b.dataset.v === q.type) return; q.type = b.dataset.v; q.cat = ""; buzz(6); render(); });
   $("qaChips").addEventListener("click", e => { const b = e.target.closest("[data-cat]"); if (!b) return; q.cat = b.dataset.cat; buzz(4); render(); });
+  $("qaMeals").addEventListener("click", e => { const b = e.target.closest("[data-meal]"); if (!b) return; q.meal = q.meal === b.dataset.meal ? "" : b.dataset.meal; q.mealPicked = true; buzz(4); render(); });
   $("qaDate").addEventListener("click", () => { const d = $("qaDateIn"); d.value = q.date; d.max = todayISO(); try { d.showPicker(); } catch { d.hidden = false; d.focus(); } });
   $("qaDateIn").addEventListener("change", () => { if ($("qaDateIn").value) { q.date = $("qaDateIn").value; render(); } $("qaDateIn").hidden = true; });
   $("qaNoteBtn").addEventListener("click", () => { $("qaNoteBtn").hidden = true; $("qaNoteRow").hidden = false; $("qaNote").focus(); });
   $("qaSave").addEventListener("click", save);
   $("qaMore").addEventListener("click", () => {
     const e = entry(); closeQuick();
-    focusAdd(e.type, "", { amount: e.amount > 0 ? e.amount : "", category: e.category, date: e.date, note: e.note });
+    focusAdd(e.type, "", { amount: e.amount > 0 ? e.amount : "", category: e.category, date: e.date, note: e.note, meal: e.meal });
   });
+  $("qaNote").addEventListener("input", () => { if (q.cat === EAT && !q.mealPicked) render(); });
   $("qaScrim").addEventListener("click", closeQuick);
   $("qaX").addEventListener("click", closeQuick);
   document.addEventListener("keydown", e => {

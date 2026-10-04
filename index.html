@@ -40,7 +40,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=39">
+<link rel="stylesheet" href="css/app.css?v=40">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -164,7 +164,7 @@
             <span class="row-btns"><button class="ghost" type="button" id="frBtn" title="Change the category of many entries at once">Find &amp; replace</button><button class="ghost" type="button" id="exportBtn" title="Download all entries as a spreadsheet (CSV)">Export CSV</button></span>
           </div>
           <div class="ledger-tools">
-            <input id="searchQ" class="search" type="search" placeholder="Search all months" aria-label="Search all months" autocomplete="off">
+            <input id="searchQ" class="search" type="search" placeholder="Search this month" aria-label="Search this month" autocomplete="off">
             <div class="filters" role="group" aria-label="Filter entries">
               <button class="chip" type="button" data-f="all" aria-pressed="true">All</button>
               <button class="chip" type="button" data-f="expense" aria-pressed="false">Spent</button>
@@ -198,6 +198,8 @@
               <div class="field" id="goalField" hidden><label for="fGoal" id="goalLabel">Put it into</label><select id="fGoal"></select></div>
               <div class="field"><label for="fDate">Date</label><input id="fDate" type="date" required></div>
             </div>
+            <div class="field" id="mealRow" hidden><span class="flabel" id="mealLabel">Meal <span class="muted">(optional)</span></span>
+              <div class="modeseg four" id="mealSeg" role="group" aria-labelledby="mealLabel"><button type="button" data-meal="breakfast" aria-pressed="false">Breakfast</button><button type="button" data-meal="lunch" aria-pressed="false">Lunch</button><button type="button" data-meal="dinner" aria-pressed="false">Dinner</button><button type="button" data-meal="snacks" aria-pressed="false">Snacks</button></div></div>
             <div class="move-note" id="moveRow" hidden><span id="moveText">Moved between your own accounts. It isn't counted as income or spending.</span><button class="linkish" type="button" id="moveToggle">Count it as savings instead</button></div>
             <div class="field" id="purposeRow" hidden><label for="fPurpose">What are you saving for?</label><input id="fPurpose" maxlength="40" placeholder="e.g. Wedding gift, Eid"></div>
             <div class="field" id="forRow" hidden><label for="fFor">Counts for</label><select id="fFor"><option value="this">This month</option><option value="next">Next month</option></select></div>
@@ -532,6 +534,7 @@
       <button class="qa-x" type="button" id="qaX" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
     <div class="qa-amt num qa-f" id="qaAmt" aria-live="polite"><small id="qaCur">MVR</small><span id="qaVal">0</span><span class="qa-caret" aria-hidden="true"></span></div>
     <div class="qa-chips qa-f" id="qaChips" role="group" aria-label="Category"></div>
+    <div class="qa-meals qa-f" id="qaMeals" role="group" aria-label="Meal" hidden></div>
     <div class="qa-row qa-f"><button type="button" class="qa-pill" id="qaDate"></button><input type="date" id="qaDateIn" class="qa-datein" hidden aria-label="Date"><button type="button" class="qa-pill" id="qaNoteBtn">+ Add a note</button>
       <div class="qa-note" id="qaNoteRow" hidden><input id="qaNote" maxlength="160" placeholder="Note, e.g. Lunch at Seagull" aria-label="Note"></div></div>
     <div class="qa-pad qa-f" id="qaPad"></div>
@@ -612,6 +615,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=39"></script>
+<script type="module" src="app.js?v=40"></script>
 </body>
 </html>

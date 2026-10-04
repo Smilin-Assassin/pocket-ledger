@@ -35,6 +35,6 @@ A household money tracker PWA for a couple in the Maldives (MVR). Plain ES modul
 ## Testing
 ```
 python3 -m http.server 8765        # in the repo root
-cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g16, in order
+cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g17, in order
 ```
 Firebase is swapped for the mocks in `tests/mockfb/` (the Firestore mock models the security rules). Each test prints ok/FAIL and exits non-zero on failure.

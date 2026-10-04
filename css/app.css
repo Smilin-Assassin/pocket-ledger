@@ -331,6 +331,10 @@ button { cursor: pointer; }
 .cat .fill { height: 100%; background: var(--c-bar); border-radius: 0 4px 4px 0; }
 .cat .v { text-align: right; font-weight: 600; }
 .cat .v small { color: var(--ink-3); font-weight: 400; margin-left: 4px; }
+.cat-meals { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 2px; padding-left: calc(8.5em + 10px); font-size: .8rem; }
+.cat-meals button { border: 0; background: var(--sunk); color: var(--ink-2); border-radius: 999px; padding: 6px 12px; min-height: 40px; font: inherit; }
+.cat-meals button b { color: var(--ink); font-weight: 600; margin-left: 2px; }
+@media (max-width: 520px) { .cat-meals { padding-left: 0; } }
 
 /* Goals */
 .goals { display: grid; gap: 12px; }
@@ -378,6 +382,7 @@ details.box > div { display: grid; gap: 10px; margin-top: 12px; }
 .setsec { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
 .setsec h3 { font-size: .95rem; }
 .ok { font-size: .85rem; color: var(--pos); }
+.trash-more { min-height: 40px; margin-top: 4px; }
 .linkish { border: 0; background: transparent; color: var(--accent); font-weight: 600; padding: 6px 0; justify-self: start; }
 .gate { position: fixed; inset: 0; z-index: 20; background: var(--bg); overflow: auto; display: grid; justify-items: center; align-items: start; padding-inline: 16px; padding-block: calc(24px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)); }
 .gate-card { width: min(100%, 440px); display: grid; gap: 18px; margin-top: 5vh; }
@@ -622,6 +627,9 @@ body.qa-open { overflow: hidden; }
 .qa-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px; margin-inline: -18px; padding-inline: 18px; scroll-padding-inline: 18px; overscroll-behavior-x: contain; }
 .qa-chips::-webkit-scrollbar { display: none; }
 .qa-chip { flex: none; border: 0; padding: 9px 14px; border-radius: 999px; background: var(--sunk); font: inherit; font-weight: 600; font-size: .88rem; color: var(--ink-2); transition: background .2s, color .2s, transform .3s var(--spring-ease, ease); }
+.qa-meals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: -4px; }
+.qa-meal { border: 0; min-height: 40px; padding: 6px 4px; border-radius: 999px; background: transparent; box-shadow: inset 0 0 0 1.5px var(--line, rgba(0,0,0,.12)); font: inherit; font-weight: 600; font-size: .82rem; color: var(--ink-2); transition: background .2s, color .2s; }
+.qa-meal[aria-pressed="true"] { background: var(--sunk); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--accent); }
 .qa-chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); transform: scale(1.04); }
 .qa-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .qa-pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: none; border-radius: 999px; padding: 7px 12px; font: inherit; font-weight: 600; font-size: .86rem; color: var(--ink-2); }

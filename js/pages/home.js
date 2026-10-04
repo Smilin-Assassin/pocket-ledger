@@ -2,7 +2,7 @@
 import { renderSmart } from "../smart.js";
 import { $, esc, money, num, sum, monthKey, monthName, shiftMonth, lsGet, lsSet, lsJson, toast } from "../util.js";
 import { state, ui, db, isAll, isGroup, isOwner, isMine, pname, pcolor, poss, groupName, meId, monthTotals, totalSavings, inMonth, effMonth, countsMoney,
-  visibleGoals, goalBalance, openBills, dueText, openLoans, loanOutstanding, owesPairs, budgetsFor, spentIn, EXP_CATS, LOAN_OUT, LOAN_BACK_OUT, changed, canEdit } from "../store.js";
+  visibleGoals, goalBalance, openBills, dueText, openLoans, loanOutstanding, owesPairs, budgetsFor, spentIn, EXP_CATS, LOAN_OUT, LOAN_BACK_OUT, changed, canEdit, EAT, MEALS } from "../store.js";
 import { settlePair } from "../actions.js";
 import { rowHtml, wireRows, byNewest } from "./entries.js";
 import { renderDue, wireDue } from "./bills.js";
@@ -94,7 +94,12 @@ function renderCats() {
   $("catNote").textContent = total ? money(total) + " total" : "";
   if (!rows.length) { $("cats").innerHTML = `<div class="empty small">Spending by category will show here.</div>`; return; }
   const max = rows[0][1];
-  $("cats").innerHTML = rows.map(([c, v]) => `<button type="button" class="cat" data-cat-go="${esc(c)}" title="See every ${esc(c)} entry: ${esc(money(v))} (${Math.round(v / total * 100)}%)"><span class="n">${esc(c)}</span><div class="track"><div class="fill" style="width:${Math.max(v / max * 100, 1.5)}%"></div></div><span class="v num">${esc(money(v, { whole: true }))}<small>${Math.round(v / total * 100)}%</small></span></button>`).join("");
+  // Eating out shows its meals under the bar (Breakfast, Lunch, Dinner, Snacks, and any not set yet)
+  const meals = () => { const eat = es.filter(e => e.category === EAT); if (!eat.some(e => e.meal)) return "";
+    const parts = MEALS.map(([m, n]) => [m, n, sum(eat.filter(e => e.meal === m), e => +e.amount)]).filter(x => x[2] > 0);
+    const none = sum(eat.filter(e => !e.meal), e => +e.amount); if (none > 0) parts.push(["none", "Not set", none]);
+    return `<div class="cat-meals" role="group" aria-label="Eating out by meal">${parts.map(([m, n, v]) => `<button type="button" data-cat-go="${EAT}" data-meal="${m}">${esc(n)} <b class="num">${esc(money(v, { whole: true }))}</b></button>`).join("")}</div>`; };
+  $("cats").innerHTML = rows.map(([c, v]) => `<button type="button" class="cat" data-cat-go="${esc(c)}" title="See every ${esc(c)} entry: ${esc(money(v))} (${Math.round(v / total * 100)}%)"><span class="n">${esc(c)}</span><div class="track"><div class="fill" style="width:${Math.max(v / max * 100, 1.5)}%"></div></div><span class="v num">${esc(money(v, { whole: true }))}<small>${Math.round(v / total * 100)}%</small></span></button>` + (c === EAT ? meals() : "")).join("");
 }
 
 function renderBudgets() {

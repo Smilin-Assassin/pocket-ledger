@@ -8,6 +8,18 @@ export const INC_CATS = ["Salary", "Side income", "Overtime", "Gift", "Loan repa
 export const LOAN_OUT = "Loans given", LOAN_IN = "Loan received", LOAN_BACK_IN = "Loan repaid", LOAN_BACK_OUT = "Loan repayment";
 export const PCOLORS = ["#2F6FD6", "#9B4F96", "#0E8A7D", "#C9821B", "#4C9A2A", "#D0526E"];
 export const TYPE_LABEL = { expense: "Spent", income: "Income", save: "Save", withdraw: "Withdraw" };
+// Eating out is one category with a meal inside it (v40): Breakfast, Lunch, Dinner, Snacks. Stored as entry.meal.
+export const EAT = "Eating out";
+export const MEALS = [["breakfast", "Breakfast"], ["lunch", "Lunch"], ["dinner", "Dinner"], ["snacks", "Snacks"]];
+export const mealName = m => (MEALS.find(x => x[0] === m) || [])[1] || "";
+// by the clock: before 11 breakfast, before 3 lunch, before 6 snacks (tea time), then dinner
+export const mealAt = h => h < 4 ? "snacks" : h < 11 ? "breakfast" : h < 15 ? "lunch" : h < 18 ? "snacks" : "dinner";
+// by the words in a note (also short eats and packets you eat on the go, like gulha or bajiya)
+const MEAL_WORDS = [[/breakfast|mas ?huni|roshi/i, "breakfast"], [/\blunch/i, "lunch"], [/dinner|supper/i, "dinner"],
+  [/snack|gulha|bajiya|hedhikaa|short ?eats?|samosa|kavaabu|keemia|boakiba|chips|crisps|biscuit|cake|donut|ice ?cream|hi ?tea|tea ?time/i, "snacks"]];
+export const mealFromNote = note => ((MEAL_WORDS.find(([re]) => re.test(String(note || ""))) || [])[1]) || "";
+// snack words make a note Eating out even if a shop is usually groceries
+export const isSnackNote = note => MEAL_WORDS[3][0].test(String(note || ""));
 const COLS = ["entries", "goals", "loans", "recurring", "settlements"];
 
 // ctx: what app.js hands over after sign-in (Firebase, the user, their spaces)
@@ -81,7 +93,9 @@ function rebuild() {
   if (!st.openingBy) st.openingBy = {};
   const solo = isGroup() ? "" : st.people[0].id;
   COLS.forEach(c => { state[c] = legacyIds(raw[c]); });
-  state.entries.forEach(e => { if (!e.person) e.person = e.author || solo || hh.owner; });
+  state.entries.forEach(e => { if (!e.person) e.person = e.author || solo || hh.owner;
+    if (e.type === "expense" && /^(breakfast|lunch|dinner|snacks?)$/i.test(e.category || "")) { e.meal = e.meal || e.category.toLowerCase().replace(/^snack$/, "snacks"); e.category = EAT; }
+    if (e.meal && e.category !== EAT) delete e.meal; });
   state.goals.forEach(g => { if (!g.owner) g.owner = solo || g.author || "shared"; });
   // Until someone opens the new version, their old private entries still sit in the
   // shared group. Only split costs, shared-goal savings and group things belong there.
@@ -273,7 +287,9 @@ export const openLoans = (who = ui.view) => loansFor(who).filter(l => loanOutsta
 // bills & reminders (never added automatically)
 export const remindDays = r => Math.max(1, Math.min(31, +r.remindDays || 7));
 export const recEntryId = (r, k) => "rec-" + r.id + "-" + k;
-export const billDone = (r, k) => (r.skips || []).includes(k) || state.entries.some(e => e.id === recEntryId(r, k));
+let idSet = null, idSrc = null;
+const entryIds = () => { if (idSrc !== state.entries) { idSrc = state.entries; idSet = new Set(state.entries.map(e => e.id)); } return idSet; };
+export const billDone = (r, k) => (r.skips || []).includes(k) || entryIds().has(recEntryId(r, k));
 export function billStatus(r, k) {
   const due = dateIn(k, r.day), left = daysBetween(todayISO(), due), win = remindDays(r);
   const level = left < 0 || left <= 1 ? "red" : left <= Math.ceil(win / 2) ? "amber" : "green";
@@ -329,6 +345,7 @@ export function ruleFor(note, type) {
 export function guessCategory(note, type) {
   const k = merchantKey(note); if (k.length < 2) return "";
   const rule = ruleFor(note, type); if (rule) return rule;
+  if (type === "expense" && isSnackNote(note)) return EAT;
   const pool = state.entries.filter(e => e.type === type && e.category && e.category !== "Other" && !e.loanId).sort((a, b) => (b.created || 0) - (a.created || 0));
   const hit = pool.find(e => merchantKey(e.note) === k) || (k.length >= 3 ? pool.find(e => merchantKey(e.note).startsWith(k)) : null);
   return hit ? hit.category : "";

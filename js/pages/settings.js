@@ -164,7 +164,8 @@ async function renderInvites() {
 
 // ---------- recently deleted ----------
 const TRASH_DAYS = 30;
-let trash = [];
+let trash = [], trashAll = false;
+const TRASH_SHOW = 3; // the most recent few; "Show all" opens the rest
 export function describe(c, x) {
   x = x || {};
   const m = v => { try { return new Intl.NumberFormat(undefined, { style: "currency", currency: state.settings.currency || "MVR", currencyDisplay: "code" }).format(+v || 0); } catch { return String(v); } };
@@ -186,7 +187,8 @@ async function renderTrash() {
     old.forEach(t => F().deleteDoc(F().doc(F().collection(hRef(), "trash"), t.id)).catch(() => {}));
     trash = all.filter(t => !old.includes(t)).sort((a, b) => b.deletedAt - a.deletedAt);
     box.innerHTML = !trash.length ? `<p class="hint">Nothing deleted in the last ${TRASH_DAYS} days${isGroup() ? " by you in this group" : ""}.</p>`
-      : trash.slice(0, 50).map(t => `<div class="priv-row"><span>${esc(describe(t.col, t.data))}<small class="hint"> · deleted ${esc(ago(t.deletedAt))}</small></span><button class="ghost" type="button" data-untrash="${esc(t.id)}">Restore</button></div>`).join("");
+      : (trashAll ? trash : trash.slice(0, TRASH_SHOW)).map(t => `<div class="priv-row"><span>${esc(describe(t.col, t.data))}<small class="hint"> · deleted ${esc(ago(t.deletedAt))}</small></span><button class="ghost" type="button" data-untrash="${esc(t.id)}">Restore</button></div>`).join("") +
+        (trash.length > TRASH_SHOW ? `<button class="linkish trash-more" type="button" data-trashall="${trashAll ? "" : "1"}">${trashAll ? "Show fewer" : "Show all " + trash.length}</button>` : "");
   } catch { box.innerHTML = `<p class="hint">Connect to the internet to see deleted items.</p>`; }
 }
 
@@ -258,6 +260,8 @@ async function onClick(ev) {
       else navigator.share({ title: "Pocket Ledger", text: "You're invited to Pocket Ledger", url }).catch(() => {});
     } else if (d.invdel) {
       await F().deleteDoc(F().doc(ctx.db, "invites", d.invdel)); renderInvites();
+    } else if (d.trashall !== undefined) {
+      trashAll = !!d.trashall; renderTrash();
     } else if (d.untrash) {
       const t = trash.find(x => x.id === d.untrash); if (!t) return;
       const bt = F().writeBatch(ctx.db);

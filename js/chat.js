@@ -2,7 +2,7 @@
 // numbers come from the app; changes are prepared for one-tap confirmation.
 import { $, esc, money, sum, r2, monthKey, monthName, shiftMonth, monthsBetween, todayISO, fmtDate, isoOk, MONTH, lsGet, lsSet, toast, canHover, saveFile } from "./util.js";
 import { state, ui, meId, isGroup, people, pname, groupName, effMonth, countsMoney, visibleGoals, goalBalance, goalName, totalSavings, loanOutstanding, openLoans,
-  budgetsFor, spentIn, owesPairs, EXP_CATS, INC_CATS, TYPE_LABEL, merchantKey } from "./store.js";
+  budgetsFor, spentIn, owesPairs, EXP_CATS, INC_CATS, TYPE_LABEL, merchantKey, EAT, mealName } from "./store.js";
 import { createLoan, findLoan, recordRepayment, createRecurring, settlePair, setBudget, addEntries } from "./actions.js";
 import { geminiText, parseJsonText } from "./gemini.js";
 import { showProposals } from "./scan.js";
@@ -34,8 +34,8 @@ function filterEntries(a) {
   if (a.type && a.type !== "all") es = es.filter(e => e.type === String(a.type));
   else es = es.filter(e => e.type !== "move"); // moves between your own accounts aren't money in or out
   const cats = [].concat(a.category || []).filter(Boolean).map(c => String(c).toLowerCase());
-  if (cats.length) es = es.filter(e => { const c = (e.category || "").toLowerCase(); return cats.some(x => c === x || c.includes(x) || x.includes(c) && c.length > 3); });
-  if (a.search) { const q = String(a.search).toLowerCase(); es = es.filter(e => ((e.note || "") + " " + (e.category || "") + " " + goalName(e.goalId)).toLowerCase().includes(q)); }
+  if (cats.length) es = es.filter(e => { const c = (e.category || "").toLowerCase(); const m = mealName(e.meal).toLowerCase(); return cats.some(x => c === x || c.includes(x) || x.includes(c) && c.length > 3 || (m && (x === m || x === m + "s"))); });
+  if (a.search) { const q = String(a.search).toLowerCase(); es = es.filter(e => ((e.note || "") + " " + (e.category || "") + " " + mealName(e.meal) + " " + goalName(e.goalId)).toLowerCase().includes(q)); }
   return { es, who, from: isoOk(a.from) ? a.from : "first entry", to: isoOk(a.to) ? a.to : "latest entry" };
 }
 
@@ -44,13 +44,13 @@ const shopName = e => { const k = merchantKey(e.note); return k ? k.replace(/(^|
 function groupEntries(es, by) {
   const g = {};
   es.forEach(e => {
-    const k = by === "category" ? (e.category || "Other") : by === "month" ? (e.date || "").slice(0, 7) : by === "person" ? pname(e.person) : by === "type" ? e.type : by === "day" ? e.date : by === "shop" ? shopName(e) : "all";
+    const k = by === "category" ? (e.category || "Other") : by === "meal" ? (e.category === EAT ? (mealName(e.meal) || "Meal not set") : "Not eating out") : by === "month" ? (e.date || "").slice(0, 7) : by === "person" ? pname(e.person) : by === "type" ? e.type : by === "day" ? e.date : by === "shop" ? shopName(e) : "all";
     (g[k] = g[k] || { key: k, total: 0, count: 0 }); g[k].total += +e.amount; g[k].count++;
   });
   const time = by === "month" || by === "day";
   return Object.values(g).map(x => Object.assign(x, { total: r2(x.total) })).sort((x, y) => time ? x.key.localeCompare(y.key) : y.total - x.total);
 }
-const GROUP_COL = { category: "Category", month: "Month", shop: "Shop or person", person: "Person", type: "Type", day: "Day" };
+const GROUP_COL = { category: "Category", meal: "Meal", month: "Month", shop: "Shop or person", person: "Person", type: "Type", day: "Day" };
 const keyLabel = (by, k) => by === "month" ? monthName(k, true) : by === "day" ? fmtDate(k) : by === "type" ? (TYPE_LABEL[k] || k) : k;
 // a table / chart the chat shows under its reply, with a Download CSV button. The app works out every number.
 function makeReport(a) {
@@ -86,7 +86,7 @@ const TOOLS = {
   list(a) {
     const { es, who, from, to } = filterEntries(a), lim = Math.max(1, Math.min(+a.limit || 15, 40));
     const sorted = es.slice().sort(a.sort === "largest" ? (x, y) => y.amount - x.amount : a.sort === "oldest" ? (x, y) => x.date.localeCompare(y.date) : (x, y) => y.date.localeCompare(x.date));
-    return { person: whoLabel(who), from, to, count: es.length, shown: sorted.slice(0, lim).map(e => ({ date: e.date, type: e.type, amount: +e.amount, category: e.category || "", note: e.note || "", person: pname(e.person), goal: goalName(e.goalId) || undefined })) };
+    return { person: whoLabel(who), from, to, count: es.length, shown: sorted.slice(0, lim).map(e => ({ date: e.date, type: e.type, amount: +e.amount, category: e.category || "", meal: mealName(e.meal) || undefined, note: e.note || "", person: pname(e.person), goal: goalName(e.goalId) || undefined })) };
   },
   month_summary(a) {
     const k = MONTH.test(String(a.month || "")) ? a.month : monthKey(new Date()), who = resolvePerson(a.person);
@@ -155,7 +155,7 @@ function planPrompt(q, voice) {
     "", "Context:", chatContext(), "",
     "Quick facts (already worked out, exact): " + quickFacts(), "",
     "Lookups:",
-    '- totals {from, to, person, type, category, search, groupBy}: sum and count of matching entries. groupBy: "category", "month", "shop", "person", "type", "day" or "none". "shop" groups by the shop or person named in the note.',
+    '- totals {from, to, person, type, category, search, groupBy}: sum and count of matching entries. groupBy: "category", "meal", "month", "shop", "person", "type", "day" or "none". Eating out entries can have a meal (Breakfast, Lunch, Dinner, Snacks); for "how much on lunch/breakfast/snacks" use category "Eating out" with groupBy "meal". "shop" groups by the shop or person named in the note.',
     '- report {title, chart, from, to, person, type, category, search, groupBy, sort, limit}: use whenever the user wants to SEE or DOWNLOAD data: a table, chart, graph, pie, breakdown, list to export, CSV, spreadsheet or Excel file. The app draws it in the chat with a Download CSV button. chart: "pie" for shares of a whole (groupBy category, shop or person), "bar" for change over time (groupBy month or day), "table" for a plain list (groupBy "none" lists every matching entry). title: a short name like "Eating out by month, 2026".',
     '- list {from, to, person, type, category, search, sort, limit}: individual entries. sort: "newest", "oldest" or "largest".',
     '- month_summary {month, person}: income, spending, savings and what is left for one month ("YYYY-MM").',
