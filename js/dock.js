@@ -10,7 +10,7 @@ import { go, currentPage, onRoute } from "./shell.js";
 import { refreshLens } from "./glass.js";
 import { M, PAGES, Spring, clock, params, reduced, buzz, ease, applyEase, measureHz } from "./motion.js";
 
-export const NAMES = { home: "Home", entries: "Entries", loans: "Loans", bills: "Bills", goals: "Goals", settings: "Settings", more: "More", admin: "Admin" };
+export const NAMES = { home: "Dashboard", entries: "Entries", loans: "Loans", bills: "Bills", goals: "Goals", settings: "Settings", more: "More", admin: "Admin" };
 const ABOUT = { home: "This month at a glance", entries: "Everything you've added", loans: "Money lent and borrowed", bills: "Bills and reminders", goals: "Savings goals", settings: "Your details, groups, appearance", admin: "People and spaces" };
 const ICON = {
   home: '<path class="fill" fill="currentColor" stroke="none" d="M3.5 10.5 12 4l8.5 6.5V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/><path d="M3.5 10.5 12 4l8.5 6.5V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/>',

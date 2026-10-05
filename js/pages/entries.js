@@ -112,6 +112,10 @@ function renderLedger() {
     list.innerHTML = `<li class="empty"><span>${ui.filter === "review" ? (ui.searchAll ? "Nothing needs a look. Possible repeats and entries still under Other show up here." : "Nothing in " + esc(monthName(ui.month)) + " needs a look.") + (ui.searchAll ? "" : `</span><button type="button" class="linkish" data-search-all="1">Check all months</button><span>`) : ui.filter === "moved" ? "No moves between your own accounts this month. They're added when you import a bank statement." : ui.filter === "all" ? "Nothing logged " + (isAll() || ui.view === meId() ? "" : "for " + esc(pname(ui.view)) + " ") + "in " + esc(monthName(ui.month)) + " yet." : "No entries of this kind this month."}</span>${state.readOnly ? "" : `<span class="hint">Use the form to add your income first, then each thing you spend.</span>`}</li>`;
     return;
   }
+  // long lists (a broad search across all months) draw the newest few hundred first
+  const key = [ui.filter, ui.search, ui.searchAll, ui.cat, ui.meal, ui.month, ui.view].join("|");
+  if (ui.capKey !== key) { ui.capKey = key; ui.cap = LIST_CAP; }
+  const more = es.length - ui.cap; if (more > 0) es = es.slice(0, ui.cap);
   let html = "", lastDay = "";
   es.forEach(e => {
     if (e.date !== lastDay) {
@@ -120,10 +124,23 @@ function renderLedger() {
     }
     html += rowHtml(e);
   });
+  if (more > 0) html += `<li class="empty more-row"><button class="ghost" type="button" data-showmore="1">Show ${Math.min(more, LIST_CAP)} more</button><span class="hint">${more} not shown yet</span></li>`;
   list.innerHTML = html;
 }
 
 // ---------- the form ----------
+export const MAX_AMOUNT = 10000000;
+const LIST_CAP = 300;
+// dates from 2000 up to a year ahead (bills and tickets can be booked ahead); anything else is almost surely a typo
+export const dateOk = d => /^\d{4}-\d{2}-\d{2}$/.test(d || "") && d >= "2000-01-01" && d <= isoPlusDays(366);
+const isoPlusDays = n => { const x = new Date(Date.now() + n * 864e5); return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0"); };
+// something you added in the last 10 minutes with the same amount, type and date (and the same note, if both have one)
+export function likelyRepeat(e) {
+  const now = Date.now(), n = (e.note || "").trim().toLowerCase();
+  return state.entries.find(x => x.type === e.type && Math.abs(+x.amount - +e.amount) < 0.005 && x.date === e.date && x.person === e.person &&
+    now - (x.created || 0) < 10 * 60e3 && (!n || !x.note || x.note.trim().toLowerCase() === n)) || null;
+}
+const agoMin = t => { const m = Math.round((Date.now() - (t || 0)) / 60e3); return m < 1 ? "just now" : m === 1 ? "a minute ago" : m + " minutes ago"; };
 const entryWho = () => meId();
 const defaultDate = () => ui.month === monthKey(new Date()) ? todayISO() : ui.month + "-01";
 // Eating out: which meal. A guess from the note or the clock is pre-picked for new entries; tap again to clear.
@@ -138,7 +155,7 @@ function syncMeal() {
 }
 function syncCatSel() {
   const sel = $("fCatSel"), inp = $("fCat"), v = inp.value.trim(), opts = catOptions(ui.type);
-  sel.innerHTML = `<option value="">Choose a category</option>` + opts.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join("") + `<option value="__other">Other (type your own)…</option>`;
+  sel.innerHTML = `<option value="">Choose a category</option>` + opts.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join("") + `<option value="__other">+ New category…</option>`;
   if (v && opts.includes(v)) { sel.value = v; inp.hidden = true; }
   else if (v || ui.catOther) { sel.value = "__other"; inp.hidden = false; }
   else { sel.value = ""; inp.hidden = true; }
@@ -229,7 +246,9 @@ async function submit(ev) {
   const amount = num($("fAmount").value), date = $("fDate").value;
   const err = m => { $("formErr").textContent = m; $("formErr").hidden = false; };
   if (!(amount > 0)) return err("Enter an amount greater than zero.");
+  if (amount > MAX_AMOUNT) return err("That's over " + money(MAX_AMOUNT, { whole: true }) + ". Check the amount.");
   if (!date) return err("Pick a date.");
+  if (!dateOk(date)) return err("Check the date: " + new Date(date + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) + " looks like a typo.");
   const t = ui.type, goalMode = t === "save" || t === "withdraw";
   const e = { type: t, amount, date, note: $("fNote").value.trim(), created: Date.now(), person: entryWho() };
   if (t === "expense" && $("fSplit").checked && !$("splitRow").hidden) e.split = { with: otherOf(e.person), share: 0.5 };
@@ -239,13 +258,23 @@ async function submit(ev) {
     const g = $("fGoal").value;
     e.goalId = g === "__other" ? "" : (g || ""); e.category = "Savings";
     if (t === "save" && g === "__other") { const pur = $("fPurpose").value.trim(); if (pur) e.note = "Saving for " + pur + (e.note ? " · " + e.note : ""); }
-  } else e.category = $("fCat").value.trim() || (t === "income" ? "Salary" : "Other");
+  } else {
+    const typed = $("fCat").value.trim(), same = catOptions(t).find(c => c.toLowerCase() === typed.toLowerCase());
+    e.category = same || typed || (t === "income" ? "Salary" : "Other");
+  }
   if (t === "expense" && e.category === EAT && ui.fMeal) e.meal = ui.fMeal;
   if (t === "withdraw") {
     const avail = e.goalId ? goalBalance(e.goalId) : totalSavings(null, e.person);
     const before = ui.editId ? (state.entries.find(x => x.id === ui.editId) || {}) : {};
     const back = before.type === "withdraw" && before.goalId === e.goalId && (e.goalId || before.person === e.person) ? +before.amount : 0;
     if (amount > avail + back + 0.004) return err("That's more than you have saved there (" + money(avail + back) + ").");
+  }
+  // the same thing typed twice by mistake: ask once, a second tap adds it anyway (real repeats are fine)
+  if (!ui.editId) {
+    const twin = likelyRepeat(e);
+    const sig = [e.type, e.amount, e.date, (e.note || "").toLowerCase(), e.category || ""].join("|");
+    if (twin && ui.repeatOk !== sig) { ui.repeatOk = sig; return err("You added " + money(twin.amount) + (twin.note ? " (" + twin.note + ")" : "") + " " + agoMin(twin.created) + ". Tap " + $("submitBtn").textContent + " again to add another one."); }
+    ui.repeatOk = "";
   }
   $("formErr").hidden = true;
   const wasEdit = ui.editId;
@@ -349,7 +378,13 @@ export const page = {
     });
     $("mealSeg").addEventListener("click", ev => { const b = ev.target.closest("[data-meal]"); if (!b) return;
       ui.fMeal = ui.fMeal === b.dataset.meal ? "" : b.dataset.meal; ui.mealPicked = true; syncMeal(); });
-    $("fCat").addEventListener("input", () => { $("fCat").dataset.auto = ""; $("catHint").hidden = true; });
+    $("fCat").addEventListener("input", () => {
+      const v = $("fCat").value.trim(), opts = catOptions(ui.type), low = v.toLowerCase();
+      const same = opts.find(c => c.toLowerCase() === low), near = !same && low.length >= 3 && opts.find(c => c.toLowerCase().includes(low) || low.includes(c.toLowerCase()));
+      $("fCat").dataset.auto = "";
+      $("catHint").textContent = !v ? "" : same ? "You already have " + same + ", it'll go there." : near ? "Did you mean " + near + "? A new one gets its own bar and budget." : "New category: it gets its own bar and budget.";
+      $("catHint").hidden = !v; syncMeal();
+    });
     $("fNote").addEventListener("input", () => {
       if (ui.type === "save" || ui.type === "withdraw") return;
       const c = guessCategory($("fNote").value, ui.type), cat = $("fCat");
@@ -366,6 +401,7 @@ export const page = {
     let st = null;
     $("catFilter").addEventListener("change", () => { const [c, m] = $("catFilter").value.split("|"); ui.cat = c; ui.meal = m || ""; renderLedger(); });
     $("ledgerTotal").addEventListener("click", ev => { if (ev.target.closest("[data-cat-clear]")) { ui.cat = ""; ui.meal = ""; renderLedger(); } });
+    $("ledger").addEventListener("click", ev => { if (ev.target.closest("[data-showmore]")) { ui.cap += LIST_CAP; renderLedger(); } });
     $("mealBar").addEventListener("click", ev => { const b = ev.target.closest("[data-meal-f]"); if (b) { ui.meal = b.dataset.mealF; renderLedger(); } });
     $("ledgerPanel").addEventListener("click", ev => { const b = ev.target.closest("[data-search-all]"); if (b) { ui.searchAll = !!b.dataset.searchAll; renderLedger(); } });
     $("searchQ").addEventListener("input", () => { clearTimeout(st); st = setTimeout(() => { ui.search = $("searchQ").value.trim(); if (!ui.search) ui.searchAll = false; renderLedger(); }, 200); });

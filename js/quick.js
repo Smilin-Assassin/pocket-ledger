@@ -3,7 +3,7 @@ import { $, esc, money, todayISO, dShort, getCurrency, toast } from "./util.js";
 import { state, db, meId, catOptions, EAT, MEALS, mealAt, mealFromNote, mealName } from "./store.js";
 import { budgetCheck } from "./actions.js";
 import { Spring, clock, params, reduced, buzz, ease } from "./motion.js";
-import { focusAdd } from "./pages/entries.js";
+import { focusAdd, likelyRepeat, MAX_AMOUNT } from "./pages/entries.js";
 import { openScanPicker } from "./scan.js";
 import { openChat, startRec } from "./chat.js";
 import { zoom } from "./dock.js";
@@ -95,9 +95,13 @@ function entry() {
 }
 function save() {
   const e = entry(); if (!(e.amount > 0)) return;
+  if (e.amount > MAX_AMOUNT) return toast("That's over " + money(MAX_AMOUNT, { whole: true }) + ". Check the amount.");
+  const twin = likelyRepeat(e);
   const id = db.add(e); budgetCheck(e);
   closeQuick();
-  setTimeout(() => toast((e.type === "income" ? "Income added: " : "Added ") + money(e.amount) + " · " + (e.meal ? mealName(e.meal) : e.category), { action: "Undo", onAction: () => db.removeMany([id]) }), 180);
+  // a likely double tap: still added (real repeats happen), but said plainly with Undo
+  setTimeout(() => toast(twin ? "Added again. You added " + money(twin.amount) + " a few minutes ago too, Undo if that was a mistake."
+    : (e.type === "income" ? "Income added: " : "Added ") + money(e.amount) + " · " + (e.meal ? mealName(e.meal) : e.category), { action: "Undo", onAction: () => db.removeMany([id]) }), 180);
 }
 
 // ---------- hold the + : Scan / Type it / Voice ----------

@@ -10,6 +10,7 @@ import { page as goals } from "./pages/goals.js";
 import { page as settings, checkRequests } from "./pages/settings.js";
 import { page as admin } from "./pages/admin.js";
 import { initScan, openScanPicker, handleFiles, initStatements } from "./scan.js";
+import { initCategories } from "./categories.js";
 import { initChat, openChat, startRec } from "./chat.js";
 import { initLock } from "./lock.js";
 import { refreshPush } from "./notify.js";
@@ -42,7 +43,7 @@ function handleShortcut() {
     $("quickTitle").textContent = title; $("quickSub").textContent = sub; $("quickGo").textContent = btn; $("quick").hidden = false;
     $("quickGo").onclick = () => { $("quick").hidden = true; fn(); };
   };
-  if (act === "scan") show("Scan a receipt", "Take a photo or pick a screenshot.", "Open camera or gallery", openScanPicker);
+  if (act === "scan") show("Scan file(s)", "Receipts, screenshots or a bank statement.", "Pick files or take a photo", openScanPicker);
   else if (act === "voice") show("Talk to Pocket Ledger", "Say what happened, like \"Spent 85 on coffee\".", "Start talking", () => { openChat(); startRec(); });
   else if (act === "chat") openChat();
   else if (act === "add") { if (matchMedia("(max-width: 899.98px)").matches) openQuick(); else focusAdd("expense"); }
@@ -50,7 +51,7 @@ function handleShortcut() {
 
 export function boot(fb) {
   [["home", home], ["entries", entries], ["loans", loans], ["bills", bills], ["goals", goals], ["settings", settings], ["admin", admin], ["more", { init() {}, render() { dockBadges(); } }]].forEach(([id, p]) => { registerPage(id, p); p.init(); });
-  initShell(); initDock(); initGlass(); initQuick(); initScan(); initStatements(); initTransfers(); initChat(); initLock(); initNag();
+  initShell(); initDock(); initGlass(); initQuick(); initScan(); initStatements(); initCategories(); initTransfers(); initChat(); initLock(); initNag();
   setAddFn(pre => focusAdd("expense", null, pre)); setLookFn(showReview); setNeedsLook(needsLook); initSmart(showCategory);
   $("quickX").addEventListener("click", () => { $("quick").hidden = true; });
   document.addEventListener("click", ev => { const b = ev.target.closest("[data-go-add]"); if (b) focusAdd("expense"); const c = ev.target.closest("[data-cat-go]"); if (c) showCategory(c.dataset.catGo, c.dataset.meal); });

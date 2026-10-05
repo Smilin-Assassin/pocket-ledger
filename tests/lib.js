@@ -53,5 +53,12 @@ async function start(opts) {
   };
   return T;
 }
-const loadState = n => JSON.parse(fs.readFileSync(STATE(n)));
+// the state an earlier test left (g1 → "", g2 → "2"); when it isn't there (a test run on its own, or in
+// parallel), a saved copy in fixtures/ is used, with group invite windows moved into the future
+const loadState = n => {
+  if (fs.existsSync(STATE(n))) return JSON.parse(fs.readFileSync(STATE(n)));
+  const st = JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", "state" + (n || "") + ".json")));
+  Object.values(st).forEach(d => { if (d && typeof d === "object" && d.joinUntil) d.joinUntil = Date.now() + 7 * 864e5; });
+  return st;
+};
 module.exports = { start, check, loadState, URL0 };

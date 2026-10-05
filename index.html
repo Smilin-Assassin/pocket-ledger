@@ -40,7 +40,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=41">
+<link rel="stylesheet" href="css/app.css?v=42">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -64,7 +64,7 @@
 <div class="app" id="app" hidden>
   <nav class="nav" id="nav" aria-label="Pages">
     <div class="nav-brand"><img src="icons/icon-192.png" alt="" width="34" height="34"><div><b>Pocket Ledger</b><span id="syncNote"></span></div></div>
-    <a href="#home" data-nav="home"><svg class="ico"><use href="#i-home"/></svg><span>Home</span></a>
+    <a href="#home" data-nav="home"><svg class="ico"><use href="#i-home"/></svg><span>Dashboard</span></a>
     <a href="#entries" data-nav="entries"><svg class="ico"><use href="#i-list"/></svg><span>Entries</span></a>
     <a href="#loans" data-nav="loans"><svg class="ico"><use href="#i-loan"/></svg><span>Loans</span></a>
     <a href="#bills" data-nav="bills"><svg class="ico"><use href="#i-bill"/></svg><span>Bills</span><i class="badge" id="billsBadge" hidden></i></a>
@@ -79,7 +79,7 @@
   <main class="main" id="main">
     <header class="pagehead">
       <div class="ph-top">
-        <h1 id="pageTitle">Home</h1>
+        <h1 id="pageTitle">Dashboard</h1>
         <div class="monthnav" id="monthNav" role="group" aria-label="Month">
           <button type="button" id="prevM" aria-label="Previous month">‹</button>
           <strong id="monthLabel" class="num">—</strong>
@@ -142,15 +142,22 @@
           <ul class="ledger" id="recentList"></ul>
         </section>
       </div>
-      <section class="panel">
-        <div class="panel-head"><h2>Last 12 months</h2><span class="legend"><span><i style="background:var(--c-left)"></i>Income</span><span><i style="background:var(--c-spent)"></i>Spent</span></span></div>
-        <div class="trend" id="trendChart"></div>
-        <div class="trend-detail" id="trendDetail" hidden></div>
-        <p class="hint" id="trendNote"></p>
+      <!-- insights: folded cards that open in place (v42), so the Dashboard stays short and the dock keeps its tabs -->
+      <section class="panel fold" id="trendPanel" data-fold="trend">
+        <button class="fold-head" type="button" aria-expanded="false" aria-controls="trendBody"><span class="fold-t"><b>Last 12 months</b><small class="fold-sum" id="trendSum"></small></span><svg class="fold-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="fold-body" id="trendBody" hidden>
+          <div class="panel-head"><span class="legend"><span><i style="background:var(--c-left)"></i>Income</span><span><i style="background:var(--c-spent)"></i>Spent</span></span></div>
+          <div class="trend" id="trendChart"></div>
+          <div class="trend-detail" id="trendDetail" hidden></div>
+          <p class="hint" id="trendNote"></p>
+        </div>
       </section>
-      <section class="panel" id="cmpPanel">
-        <div class="panel-head"><h2>Compare</h2><div class="modeseg two cmp-seg" id="cmpSeg" role="group" aria-label="Compare"><button type="button" data-cmp="3m" aria-pressed="true">Last 3 months</button><button type="button" data-cmp="yr" aria-pressed="false">This year</button></div></div>
-        <div id="cmpBox" class="cmp"></div>
+      <section class="panel fold" id="cmpPanel" data-fold="cmp">
+        <button class="fold-head" type="button" aria-expanded="false" aria-controls="cmpBody"><span class="fold-t"><b>Compare</b><small class="fold-sum" id="cmpSum"></small></span><svg class="fold-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="fold-body" id="cmpBody" hidden>
+          <div class="panel-head"><div class="modeseg two cmp-seg" id="cmpSeg" role="group" aria-label="Compare"><button type="button" data-cmp="3m" aria-pressed="true">Last 3 months</button><button type="button" data-cmp="yr" aria-pressed="false">This year</button></div></div>
+          <div id="cmpBox" class="cmp"></div>
+        </div>
       </section>
     </section>
 
@@ -184,8 +191,8 @@
         </section>
 
         <section class="panel" id="formPanel">
-          <button class="scanbig" type="button" data-scan="1"><svg class="ico"><use href="#i-cam"/></svg><span><b>Scan a receipt or screenshot</b><small>Take a photo or pick one. I'll fill in the details and ask if anything's unclear.</small></span></button>
-          <div class="side-links"><button class="linkish" type="button" data-statement="1">Import a bank statement (PDF or CSV)</button><button class="linkish" type="button" data-xfer="1">Send money to someone</button></div>
+          <button class="scanbig" type="button" data-scan="1"><svg class="ico"><use href="#i-cam"/></svg><span><b>Scan file(s)</b><small>Receipts, screenshots or a bank statement (CSV works best). I'll fill in the details and ask if anything's unclear.</small></span></button>
+          <div class="side-links"><button class="linkish" type="button" data-xfer="1">Send money to someone</button></div>
           <div class="panel-head"><h2 id="formTitle">Add an entry</h2><button class="icon-btn" type="button" id="cancelEdit" hidden>Cancel edit</button></div>
           <div class="seg" role="group" aria-label="Entry type">
             <button type="button" data-t="expense" aria-pressed="true">Spent</button>
@@ -308,7 +315,7 @@
     <section class="page" id="pg-settings" data-page="settings" hidden>
       <nav class="set-index" id="setIndex" aria-label="Settings sections">
         <a href="#settings/you">You</a><a href="#settings/look">Appearance</a><a href="#settings/lock">App lock</a><a href="#settings/ai">Gemini</a><a href="#settings/notify">Notifications</a>
-        <a href="#settings/groups">Groups</a><a href="#settings/invites" id="invIdx" hidden>Invites</a><a href="#settings/trash">Recently deleted</a><a href="#settings/data">Backup</a><a href="#settings/account">Account</a>
+        <a href="#settings/groups">Groups</a><a href="#settings/invites" id="invIdx" hidden>Invites</a><a href="#settings/cats">Categories</a><a href="#settings/trash">Recently deleted</a><a href="#settings/data">Backup</a><a href="#settings/account">Account</a>
         <a href="#admin" id="adminIdx" hidden>Admin</a>
       </nav>
 
@@ -388,8 +395,8 @@
         <p class="hint">Your choices apply to all your devices. Alerts are checked every morning at 8:30.</p>
         <h3 class="sub-h">Smart help</h3>
         <div class="tile-opts">
-          <label class="check"><input type="checkbox" id="smartOn" checked><span>Suggestions on Home<small>Regular payments to turn into bills, a category running above your usual, and a nudge after a few quiet days. Worked out on this device from your own entries.</small></span></label>
-          <label class="check"><input type="checkbox" id="placesOn"><span>Remember places<small>Things you add get roughly where you were (about 100 m), and when you're back near a place you've paid at, Home offers to log it again. Only while the app is open; asks for location once.</small></span></label>
+          <label class="check"><input type="checkbox" id="smartOn" checked><span>Suggestions on the Dashboard<small>Regular payments to turn into bills, a category running above your usual, and a nudge after a few quiet days. Worked out on this device from your own entries.</small></span></label>
+          <label class="check"><input type="checkbox" id="placesOn"><span>Remember places<small>Things you add get roughly where you were (about 100 m), and when you're back near a place you've paid at, the Dashboard offers to log it again. Only while the app is open; asks for location once.</small></span></label>
         </div>
         <h3 class="sub-h">Money from people, added automatically</h3>
         <div id="xferRules"></div>
@@ -420,6 +427,11 @@
         <div id="invList" class="grp-list"></div>
       </section>
 
+      <section class="panel setsec" id="set-cats">
+        <div class="panel-head"><h2>Categories</h2><div class="modeseg two" id="catTidySeg" role="group" aria-label="Which categories"><button type="button" data-ct="expense" aria-pressed="true">Spent</button><button type="button" data-ct="income" aria-pressed="false">Income</button></div></div>
+        <p class="hint">Each category of your own gets its own bar, budget and Compare row. Merge any that mean the same thing as another one (Undo is there if you change your mind).</p>
+        <div id="catTidy" class="ct-list"></div>
+      </section>
       <section class="panel setsec" id="set-trash">
         <h2>Recently deleted</h2>
         <p class="hint">Things you deleted in this space in the last 30 days. Tap Restore to bring one back.</p>
@@ -466,7 +478,7 @@
     <button class="dk-plus" id="dkPlus" type="button" aria-label="Add an entry (hold for scan or voice)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
   </div>
   <div class="dk-sat" id="dkSat" aria-hidden="true">
-    <button type="button" data-sat="scan" aria-label="Scan a receipt"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h1.5l1.5-2h6l1.5 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.5"/></svg><span>Scan</span></button>
+    <button type="button" data-sat="scan" aria-label="Scan file(s)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h1.5l1.5-2h6l1.5 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.5"/></svg><span>Scan</span></button>
     <button type="button" data-sat="add" aria-label="Type it in"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h3M13 12h3M8 16h3M13 16h3"/></svg><span>Type it</span></button>
     <button type="button" data-sat="voice" aria-label="Say it"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span>Voice</span></button>
   </div>
@@ -525,7 +537,7 @@
     <div class="formfoot" id="scanFoot" hidden><button class="primary" type="button" id="scanAdd">Add entries</button><button class="ghost" type="button" id="scanMore">Scan another</button></div>
   </section>
 </div>
-<input type="file" id="scanFile" accept="image/*" multiple hidden>
+<input type="file" id="scanFile" accept="image/*,.csv,.pdf,text/csv,text/comma-separated-values,application/pdf" multiple hidden>
 <input type="file" id="stmtFile" accept=".pdf,.csv,application/pdf,text/csv,text/comma-separated-values" hidden>
 
 <div class="toast" id="toast" role="status" hidden></div>
@@ -619,6 +631,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=41"></script>
+<script type="module" src="app.js?v=42"></script>
 </body>
 </html>

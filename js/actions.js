@@ -83,6 +83,14 @@ export function addEntries(list, extra) {
   list.forEach((e, i) => { const x = Object.assign({ created: Date.now() + i }, e, extra || {}); db.add(x); budgetCheck(x); });
 }
 
+// a loan and everything recorded against it (the start entry and repayments) go together; Undo brings all back
+export function removeLoanWithUndo(id) {
+  const loan = rawDoc("loans", id); if (!loan) return;
+  const ents = state.entries.filter(e => e.loanId === id).map(e => [e.id, rawDoc("entries", e.id)]).filter(x => x[1]);
+  ents.forEach(([eid]) => db.removeDoc("entries", eid));
+  db.removeDoc("loans", id);
+  toast("Loan deleted", { action: "Undo", onAction: () => { db.restoreDoc("loans", id, loan); ents.forEach(([eid, d]) => db.restoreDoc("entries", eid, d)); } });
+}
 // delete straight away, with an Undo button instead of "Are you sure?"
 export function removeWithUndo(col, id, label, after) {
   const copy = rawDoc(col, id); if (!copy) return;

@@ -7,6 +7,7 @@ import * as gem from "../gemini.js";
 import * as backup from "../backup.js";
 import { exportCsv } from "./entries.js";
 import { renderXferRules } from "../transfers.js";
+import { renderCategories, initCategories } from "../categories.js";
 import { smartOn, placesOn, setPlaces } from "../smart.js";
 import { M, PAGES, PRESETS, saveMotion, refreshHz, measureHz, reduced } from "../motion.js";
 import { NAMES, fitsSix, motionChanged } from "../dock.js";
@@ -299,12 +300,13 @@ export const page = {
     $("acctInfo").textContent = "Signed in as " + ((ctx.user && ctx.user.email) || "you") + ".";
     $("adminLink").hidden = !ctx.admin; $("adminIdx").hidden = !ctx.admin;
     $("set-you").hidden = isViewer(); $("set-ai").hidden = isViewer();
-    renderGroups(); renderInvites(); renderTrash(); renderXferRules();
+    renderGroups(); renderInvites(); renderTrash(); renderXferRules(); renderCategories();
     $("smartOn").checked = smartOn(); $("placesOn").checked = placesOn();
   },
   render() {
     // live bits only; the rest refreshes when you open Settings or act on it
     if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#set-you")) return;
     if (!$("setName1").value && state.ready) fillMyDetails();
+    if (!(document.activeElement && document.activeElement.closest && document.activeElement.closest("#set-cats"))) renderCategories();
   }
 };

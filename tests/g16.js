@@ -26,7 +26,9 @@ const csv = [
   console.log("g16: compare, needs a look, account balances");
   await T.login("tom@x.com", "#home"); await p.waitForTimeout(900);
 
-  // compare: last 3 months
+  // compare: last 3 months (a folded card since v42: open it first)
+  check(/Spent MVR\s?1,610 in \w+, 61% more than \w+/.test(await T.text("#cmpSum")), "folded Compare says this month against last", await T.text("#cmpSum"));
+  await p.click("#cmpPanel .fold-head"); await p.waitForTimeout(700);
   const tbl = await p.$$eval("#cmpBox tbody tr", r => r.map(x => x.innerText.replace(/\s+/g, " ").trim()));
   check(tbl.some(r => /^Income .*9,000.*9,000.*9,500/.test(r)) && tbl.some(r => /^Eating out .*1,000.*1,000.*1,500 ?▲ 50%/.test(r)), "last 3 months side by side, with the change", tbl);
   // this year so far against last year

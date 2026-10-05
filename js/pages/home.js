@@ -6,6 +6,7 @@ import { state, ui, db, isAll, isGroup, isOwner, isMine, pname, pcolor, poss, gr
 import { settlePair } from "../actions.js";
 import { rowHtml, wireRows, byNewest } from "./entries.js";
 import { renderDue, wireDue } from "./bills.js";
+import { initFolds } from "../fold.js";
 
 Object.assign(ui, { tileCfg: false, editBudgets: false, settling: null, trendSel: null });
 const TILES = [["income", "Income"], ["spent", "Spent"], ["saved", "Saved this month"], ["total", "Total savings"], ["split", "Income split bar"], ["bills", "Bills due"], ["budgets", "Budget alerts"], ["loans", "Loans"], ["goals", "Goals"]];
@@ -151,6 +152,7 @@ function renderTrend() {
   $("trendChart").innerHTML = svg + "</svg>";
   const tot = data.reduce((a, d) => ({ inc: a.inc + d.inc, out: a.out + d.out }), { inc: 0, out: 0 });
   $("trendNote").textContent = whoName() + ", last 12 months: in " + money(tot.inc, { whole: true }) + ", out " + money(tot.out, { whole: true });
+  $("trendSum").textContent = tot.inc || tot.out ? "In " + money(tot.inc, { whole: true }) + ", out " + money(tot.out, { whole: true }) : "Nothing logged yet";
   const k = ui.trendSel, det = $("trendDetail");
   if (!k) { det.hidden = true; return; }
   const es = state.entries.filter(e => effMonth(e) === k && countsMoney(e) && (who === "all" || e.person === who));
@@ -168,6 +170,10 @@ function renderTrend() {
 function renderCompare() {
   const box = $("cmpBox"); if (!box) return;
   const who = ui.view, mode = ui.cmp || "3m", mine = e => countsMoney(e) && (who === "all" || e.person === who);
+  // the folded card's one line: this month's spending against last month's
+  { const pk = shiftMonth(ui.month, -1), mn = k => new Date(k + "-01T00:00:00").toLocaleDateString(undefined, { month: "short" }), sp = k => sum(state.entries.filter(e => mine(e) && e.type === "expense" && effMonth(e) === k), e => +e.amount), a = sp(ui.month), b = sp(pk);
+    $("cmpSum").textContent = !a && !b ? "Nothing to compare yet" : !b ? "Spent " + money(a, { whole: true }) + " in " + mn(ui.month) :
+      "Spent " + money(a, { whole: true }) + " in " + mn(ui.month) + ", " + (Math.abs(a - b) < b * .05 ? "about the same as " : Math.round(Math.abs(a / b - 1) * 100) + "% " + (a > b ? "more" : "less") + " than ") + mn(pk); }
   document.querySelectorAll("#cmpSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.cmp === mode)));
   const f0 = v => money(v, { whole: true });
   if (mode === "3m") {
@@ -244,6 +250,8 @@ export const page = {
     $("cmpSeg").addEventListener("click", ev => { const b = ev.target.closest("[data-cmp]"); if (b) { ui.cmp = b.dataset.cmp; renderCompare(); } });
     $("trendChart").addEventListener("click", ev => { const g = ev.target.closest("g.mon"); if (!g) return; ui.trendSel = g.dataset.k; renderTrend(); });
     $("trendDetail").addEventListener("click", ev => { const b = ev.target.closest("[data-trendgo]"); if (b) { ui.month = b.dataset.trendgo; ui.trendSel = null; changed(); } });
+    initFolds();
+    $("pg-home").addEventListener("fold-open", ev => { if (ev.target.id === "trendPanel") renderTrend(); else renderCompare(); });
     let rt = null; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("pg-home").hidden) renderTrend(); }, 200); });
   },
   render() {

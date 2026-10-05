@@ -5,7 +5,7 @@ import { ctx, state, ui, people, pcolor, isGroup, isViewer, groupName, setView, 
 
 const pages = {};
 let current = "";
-const TITLES = { home: "Home", entries: "Entries", loans: "Loans", bills: "Bills & reminders", goals: "Savings goals", settings: "Settings", admin: "Admin", more: "More" };
+const TITLES = { home: "Dashboard", entries: "Entries", loans: "Loans", bills: "Bills & reminders", goals: "Savings goals", settings: "Settings", admin: "Admin", more: "More" };
 const routeHooks = [];
 export const onRoute = fn => routeHooks.push(fn);
 const MONTH_PAGES = new Set(["home", "entries"]);

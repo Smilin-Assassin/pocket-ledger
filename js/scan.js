@@ -11,9 +11,9 @@ const open = () => { $("scanWrap").hidden = false; document.body.classList.add("
 export function closeScan() { if (scanAbort) scanAbort.abort(); scanAbort = null; items = []; $("scanWrap").hidden = true; document.body.classList.remove("sheet-open"); }
 const status = (html, busy) => { $("scanStatus").innerHTML = (busy ? '<span class="spin" aria-hidden="true"></span>' : "") + html; };
 
+// one picker for everything: photos and screenshots of receipts, and bank statements (CSV or PDF)
 export function openScanPicker() {
   if (state.readOnly) return toast("You can't add entries here.");
-  if (!aiReady()) { go("settings", "ai"); toast("Set up Gemini first (Settings › Gemini)."); return; }
   $("scanFile").click();
 }
 
@@ -152,7 +152,7 @@ function render() {
         <div class="field${miss.includes("date") ? " need" : ""}"><label for="sd${i}">Date</label><input id="sd${i}" type="date" data-i="${i}" data-k="date" value="${it.date || ""}"></div>
         ${goalMode
           ? `<div class="field"><label for="sg${i}">Goal</label><select id="sg${i}" data-i="${i}" data-k="goalId"><option value="">General savings</option>${visibleGoals(meId()).map(g => `<option value="${g.id}"${g.id === it.goalId ? " selected" : ""}>${esc(g.name)}</option>`).join("")}</select></div>`
-          : `<div class="field"><label for="sc${i}">Category</label><select id="sc${i}" data-i="${i}" data-k="catsel">${opts.map(c => `<option value="${esc(c)}"${!it.catOther && c === it.category ? " selected" : ""}>${esc(c)}</option>`).join("")}<option value="__other"${it.catOther ? " selected" : ""}>Other (type your own)…</option></select>${it.catOther ? `<input id="sco${i}" data-i="${i}" data-k="category" value="${esc(it.category)}" placeholder="Type a category" aria-label="Your own category" class="mt6">` : ""}</div>`}
+          : `<div class="field"><label for="sc${i}">Category</label><select id="sc${i}" data-i="${i}" data-k="catsel">${opts.map(c => `<option value="${esc(c)}"${!it.catOther && c === it.category ? " selected" : ""}>${esc(c)}</option>`).join("")}<option value="__other"${it.catOther ? " selected" : ""}>+ New category…</option></select>${it.catOther ? `<input id="sco${i}" data-i="${i}" data-k="category" value="${esc(it.category)}" placeholder="Type a category" aria-label="Your own category" class="mt6">` : ""}</div>`}
       </div>
       <div class="field"><label for="sn${i}">Note</label><input id="sn${i}" maxlength="160" data-i="${i}" data-k="note" value="${esc(it.note)}"></div>
       ${dup ? (it.ref && dup.ref === it.ref ? `<div class="dup">This transfer (${esc(it.ref)}) is already in Pocket Ledger, so it's unticked.</div>` : `<div class="dup">You already have ${esc(money(+dup.amount))} on this date${dup.note ? " (" + esc(dup.note) + ")" : ""}. Untick this if it's the same one.</div>`) : ""}
@@ -227,7 +227,8 @@ export const isStatementFile = f => /pdf|csv|comma-separated/i.test(f.type || ""
 export function handleFiles(files) {
   files = Array.from(files || []);
   const st = files.find(isStatementFile);
-  if (st) return importStatement(st);
+  if (st) { if (files.length > 1) toast("Reading the statement first. Scan the other files after."); return importStatement(st); }
+  if (files.length && !aiReady()) { go("settings", "ai"); toast("Set up Gemini first (Settings › Gemini) to read receipts."); return; }
   if (files.length > 4) toast("Reading the first 4 images");
   if (files.length) startScan(files.slice(0, 4));
 }

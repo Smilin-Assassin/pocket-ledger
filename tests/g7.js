@@ -70,7 +70,7 @@ const fs = require("fs");
   check((await T.rows()).some(r => /Eating out ~ Coffee/.test(r)) && /90\.00/.test(await T.text("#ledger")), "edited entry added", await T.rows());
   // shortcut from the home screen icon
   await p.goto("about:blank"); await p.goto(URL0 + "?action=scan"); await p.waitForTimeout(1500);
-  check(await T.visible("#quick") && /Scan a receipt/.test(await p.textContent("#quickTitle")), "scan shortcut asks first");
+  check(await T.visible("#quick") && /Scan file/.test(await p.textContent("#quickTitle")), "scan shortcut asks first");
   await p.click("#quickX");
   check((await T.denied()).length === 0, "no rule denials", await T.denied());
   await T.end();

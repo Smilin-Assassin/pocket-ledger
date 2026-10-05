@@ -27,7 +27,7 @@ const csv = [
   const T = await start({ seed, users: { "tom@x.com": "secret12" } }), { p, check } = T;
   console.log("g8: bank statement import");
   await T.login("tom@x.com", "#entries");
-  check(await T.visible("[data-statement]"), "import link on the Entries page");
+  check(/Scan file/.test(await p.textContent("#pg-entries .scanbig")) && /csv/.test(await p.getAttribute("#scanFile", "accept")), "one Scan file(s) box on the Entries page takes statements too");
   await p.setInputFiles("#stmtFile", { name: "20260901-20260930.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
   await p.waitForTimeout(1800);
   check((await p.textContent("#scanTitle")) === "Statement imported", "imported", await p.textContent("#scanTitle"));

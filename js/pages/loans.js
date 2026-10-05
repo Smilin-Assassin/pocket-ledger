@@ -2,7 +2,7 @@
 // "left to spend" unless you tick a loan to count it.
 import { $, esc, money, num, sum, r2, todayISO, fmtDate, toast } from "../util.js";
 import { state, ui, db, isAll, pname, pcolor, canEdit, loansFor, loanOutstanding, meId } from "../store.js";
-import { createLoan, recordRepayment } from "../actions.js";
+import { createLoan, recordRepayment, removeLoanWithUndo, removeWithUndo } from "../actions.js";
 
 ui.repayFor = null;
 
@@ -14,10 +14,11 @@ function card(l) {
     <div class="loan-top"><b>${lent ? "Lent to " : "Borrowed from "}${esc(l.counterparty)}</b><span class="num">${out <= 0.004 ? "Paid off ✓" : esc(money(out)) + " left"}</span></div>
     <div class="meter loan-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Paid back"><div style="width:${pct}%"></div></div>
     <div class="loan-meta">${isAll() ? `<i class="pdot" style="background:${pcolor(l.person)}"></i>${esc(pname(l.person))} · ` : ""}${esc(money(paid, { whole: true }))} of ${esc(money(+l.amount, { whole: true }))} paid back (${pct}%) · since ${esc(fmtDate(l.date))}${l.due ? ` · ${late ? "was due" : "due"} ${esc(fmtDate(l.due))}` : ""}</div>
-    ${hist.length ? `<details class="loan-hist"><summary>${hist.length} repayment${hist.length === 1 ? "" : "s"}</summary><ul>${hist.map(h => `<li><span>${esc(fmtDate(h.date))}</span><b class="num">${esc(money(+h.amount))}</b></li>`).join("")}</ul></details>` : ""}
+    ${hist.length ? `<details class="loan-hist"><summary>${hist.length} repayment${hist.length === 1 ? "" : "s"}</summary><ul>${hist.map(h => `<li><span>${esc(fmtDate(h.date))}</span><b class="num">${esc(money(+h.amount))}</b>${mine && canEdit(h) ? `<button class="icon-btn danger" type="button" data-rpdel="${h.id}" aria-label="Delete this repayment">Delete</button>` : ""}</li>`).join("")}</ul></details>` : ""}
     ${out > 0.004 && mine ? (ui.repayFor === l.id
       ? `<div class="loan-pay"><input id="repayAmt" type="number" inputmode="decimal" min="0" step="0.01" value="${out}" aria-label="Amount paid back"><input id="repayDate" type="date" value="${todayISO()}" aria-label="Date"><button class="primary" type="button" data-repay-ok="${l.id}">Save</button><button class="icon-btn" type="button" data-repay-x="1">Cancel</button></div>`
-      : `<div class="goal-acts"><button class="ghost" type="button" data-repay="${l.id}">${lent ? "They paid some back" : "I paid some back"}</button><button class="icon-btn" type="button" data-inmonth="${l.id}" title="Whether this loan counts in left to spend">${l.inMonth ? "Counted in monthly money" : "Kept separate"}</button></div>`) : ""}
+      : `<div class="goal-acts"><button class="ghost" type="button" data-repay="${l.id}">${lent ? "They paid some back" : "I paid some back"}</button><button class="icon-btn" type="button" data-inmonth="${l.id}" title="Whether this loan counts in left to spend">${l.inMonth ? "Counted in monthly money" : "Kept separate"}</button><button class="icon-btn danger" type="button" data-ldel="${l.id}" aria-label="Delete this loan">Delete</button></div>`)
+      : mine ? `<div class="goal-acts"><button class="icon-btn danger" type="button" data-ldel="${l.id}" aria-label="Delete this loan">Delete</button></div>` : ""}
   </div>`;
 }
 
@@ -28,6 +29,8 @@ export const page = {
     $("pg-loans").addEventListener("click", ev => {
       const b = ev.target.closest("button"); if (!b) return;
       const d = b.dataset, l = state.loans.find(x => x.id === (d.repay || d.repayOk || d.inmonth));
+      if (d.ldel) { ui.repayFor = null; removeLoanWithUndo(d.ldel); return; }
+      if (d.rpdel) { removeWithUndo("entries", d.rpdel, "Repayment deleted"); return; }
       if (d.repay) { ui.repayFor = d.repay; page.render(); setTimeout(() => $("repayAmt") && $("repayAmt").focus(), 30); }
       else if (d.repayX) { ui.repayFor = null; page.render(); }
       else if (d.repayOk && l) {
