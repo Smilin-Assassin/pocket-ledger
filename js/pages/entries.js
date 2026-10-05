@@ -1,7 +1,7 @@
 // Entries page: the add/edit form and every entry, searchable across months.
 import { $, esc, money, num, sum, todayISO, monthKey, monthName, shiftMonth, toast, saveFile, fillSelect, canHover } from "../util.js";
 import { state, ui, db, meId, isAll, isGroup, people, pname, pcolor, canEdit, addedBy, otherOf, inMonth, countsMoney,
-  visibleGoals, goalBalance, goalName, totalSavings, catOptions, guessCategory, changed, merchantKey, EAT, MEALS, mealName, mealAt, mealFromNote } from "../store.js";
+  visibleGoals, goalBalance, goalName, totalSavings, catOptions, guessCategory, changed, merchantKey, effMonth, EAT, MEALS, mealName, mealAt, mealFromNote } from "../store.js";
 import { createRecurring, budgetCheck, removeWithUndo } from "../actions.js";
 import { go } from "../shell.js";
 
@@ -24,7 +24,7 @@ export function rowHtml(e, opts) {
   const sub = [isAll() ? pname(e.person) : "", e.category === EAT ? mealName(e.meal) : "", e.note || (e.type === "expense" ? "Spent" : e.type === "income" ? "Income" : "")].filter(Boolean).join(", ");
   const editable = !opts.noActions && canEdit(e);
   const acts = !editable ? "" : (e.maybeDup ? `<button type="button" class="icon-btn" data-keepdup="${e.id}" aria-label="Keep it, it's a real separate payment">Keep</button>` : "") + `<button type="button" class="icon-btn" data-edit="${e.id}" aria-label="Edit entry">Edit</button><button type="button" class="icon-btn danger" data-del="${e.id}" aria-label="Delete entry">Delete</button>`;
-  return `<li class="tx${ui.openRow === e.id ? " open" : ""}" data-id="${e.id}"><span class="dot" style="background:${meta[0]}"></span>
+  return `<li class="tx${ui.openRow === e.id ? " open" : ""}" data-id="${e.id}"><span class="dot" style="background:${meta[0]}" data-i="${esc((title || "?").trim().charAt(0).toUpperCase())}"></span>
     <div class="what"><b>${esc(title || "Untitled")}${tags}</b><small>${isAll() ? `<i class="pdot" style="background:${pcolor(e.person)}"></i>` : ""}${esc(sub)}${by ? ` <span class="by-tag">added by ${esc(by)}</span>` : ""}${opts.showDate ? " · " + esc(new Date(e.date + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" })) : ""}</small></div>
     <span class="amt num ${meta[1]}">${meta[2]}${esc(money(+e.amount))}</span><span class="acts">${acts}</span></li>`;
 }
@@ -65,15 +65,17 @@ function searchEntries() {
     ((e.note || "") + " " + (e.category || "") + " " + mealName(e.meal) + " " + String(e.amount) + " " + (e.ref || "") + " " + goalName(e.goalId)).toLowerCase().includes(q));
 }
 // things worth tidying up: possible repeats, and spending or income still under "Other" (last 3 months)
-export function needsLook(who) {
+export function needsLook(who, k) {
   const from = shiftMonth(monthKey(new Date()), -2);
-  return state.entries.filter(e => (who === "all" || e.person === who) && canEdit(e) && (e.maybeDup ||
-    ((e.type === "expense" || e.type === "income") && (e.category || "Other") === "Other" && !e.loanId && (e.date || "").slice(0, 7) >= from)));
+  const other = e => (e.type === "expense" || e.type === "income") && (e.category || "Other") === "Other" && !e.loanId;
+  return state.entries.filter(e => (who === "all" || e.person === who) && canEdit(e) && (k
+    ? effMonth(e) === k && (e.maybeDup || other(e))                                   // one month: everything in it
+    : e.maybeDup || (other(e) && (e.date || "").slice(0, 7) >= from)));              // all months: repeats, plus Other in the last 3 months
 }
 function renderLedger() {
   const list = $("ledger");
   if (!state.ready) { list.innerHTML = `<li class="empty">Loading your entries…</li>`; return; }
-  let es = ui.filter === "review" ? needsLook(isAll() ? "all" : ui.view) : ui.search ? searchEntries() : inMonth(ui.month);
+  let es = ui.filter === "review" ? needsLook(isAll() ? "all" : ui.view, ui.searchAll ? "" : ui.month) : ui.search ? searchEntries() : inMonth(ui.month);
   if (ui.filter === "expense") es = es.filter(e => e.type === "expense");
   if (ui.filter === "income") es = es.filter(e => e.type === "income");
   if (ui.filter === "savings") es = es.filter(e => e.type === "save" || e.type === "withdraw");
@@ -86,19 +88,28 @@ function renderLedger() {
   sel.innerHTML = `<option value="">All categories</option>` + cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>` + (c === EAT ? mealOpts : "")).join("");
   sel.value = ui.cat + (ui.cat === EAT && ui.meal ? "|" + ui.meal : "");
   if (ui.cat) es = es.filter(e => (e.category || "Other") === ui.cat);
+  // Eating out: a row of meals with their totals; tap one to see just those
+  const mb = $("mealBar"), eatAll = ui.cat === EAT ? es : [];
+  if (eatAll.length && eatAll.some(e => e.meal)) {
+    const tot = f => money(sum(eatAll.filter(f), e => +e.amount), { whole: true });
+    const opts = [["", "All", () => true]].concat(MEALS.filter(([m]) => eatAll.some(e => e.meal === m)).map(([m, n]) => [m, n, e => e.meal === m]))
+      .concat(eatAll.some(e => !e.meal) ? [["none", "Not set", e => !e.meal]] : []);
+    mb.innerHTML = opts.map(([m, n, f]) => `<button type="button" data-meal-f="${m}" aria-pressed="${(ui.meal || "") === m}">${esc(n)}${m ? `<b class="num">${esc(tot(f))}</b>` : ""}</button>`).join("");
+    mb.hidden = false;
+  } else { mb.hidden = true; mb.innerHTML = ""; }
   if (ui.cat === EAT && ui.meal) es = es.filter(e => ui.meal === "none" ? !e.meal : e.meal === ui.meal);
   es.sort(byNewest);
   // the total of whatever is chosen
   const out = sum(es.filter(e => e.type === "expense"), e => +e.amount), inc = sum(es.filter(e => e.type === "income"), e => +e.amount);
   const sv = sum(es.filter(e => e.type === "save"), e => +e.amount) - sum(es.filter(e => e.type === "withdraw"), e => +e.amount);
   const what = [ui.cat && ui.cat === EAT && ui.meal ? EAT + ", " + (ui.meal === "none" ? "meal not set" : mealName(ui.meal)) : ui.cat, ui.filter === "expense" ? "Spent" : ui.filter === "income" ? "Income" : ui.filter === "savings" ? "Savings" : ui.filter === "moved" ? "Moved" : ui.filter === "review" ? "Needs a look" : "", ui.search ? "\u201c" + ui.search + "\u201d" : ""].filter(Boolean).join(" · ") || "Everything";
-  const allM = (ui.search && ui.searchAll) || ui.filter === "review";
-  const scope = ui.search && ui.filter !== "review" ? `<button type="button" class="linkish" data-search-all="${ui.searchAll ? "" : "1"}">${ui.searchAll ? "Just " + esc(monthName(ui.month)) : "Search all months"}</button>` : "";
+  const allM = (ui.search || ui.filter === "review") && ui.searchAll;
+  const scope = ui.search || ui.filter === "review" ? `<button type="button" class="linkish" data-search-all="${ui.searchAll ? "" : "1"}">${ui.searchAll ? "Just " + esc(monthName(ui.month)) : ui.filter === "review" ? "All months" : "Search all months"}</button>` : "";
   $("ledgerTotal").innerHTML = es.length ? `<span><b>${esc(what)}</b> ${allM ? "in all months" : "in " + esc(monthName(ui.month))}, ${es.length} entr${es.length === 1 ? "y" : "ies"}</span><span class="lt-sums">${out ? `<b class="num neg">${esc(money(out))}</b> spent` : ""}${out && (inc || sv) ? " · " : ""}${inc ? `<b class="num pos">${esc(money(inc))}</b> in` : ""}${inc && sv ? " · " : ""}${sv ? `<b class="num">${esc(money(sv))}</b> saved` : ""}</span>${ui.cat ? `<button type="button" class="linkish" data-cat-clear="1">Show all categories</button>` : ""}${scope}` : "";
   $("ledgerTotal").hidden = !es.length;
   if (!es.length) {
     if (ui.search || ui.cat) { list.innerHTML = `<li class="empty"><span>Nothing matches${ui.cat ? " in " + esc(ui.cat) : ""}${ui.search ? ' "' + esc(ui.search) + '"' : ""}${ui.search && ui.searchAll ? " in any month" : " in " + esc(monthName(ui.month))}.</span>${ui.search && !ui.searchAll ? `<button type="button" class="linkish" data-search-all="1">Search all months</button>` : ""}</li>`; return; }
-    list.innerHTML = `<li class="empty"><span>${ui.filter === "review" ? "Nothing needs a look. Possible repeats and entries still under Other show up here." : ui.filter === "moved" ? "No moves between your own accounts this month. They're added when you import a bank statement." : ui.filter === "all" ? "Nothing logged " + (isAll() || ui.view === meId() ? "" : "for " + esc(pname(ui.view)) + " ") + "in " + esc(monthName(ui.month)) + " yet." : "No entries of this kind this month."}</span>${state.readOnly ? "" : `<span class="hint">Use the form to add your income first, then each thing you spend.</span>`}</li>`;
+    list.innerHTML = `<li class="empty"><span>${ui.filter === "review" ? (ui.searchAll ? "Nothing needs a look. Possible repeats and entries still under Other show up here." : "Nothing in " + esc(monthName(ui.month)) + " needs a look.") + (ui.searchAll ? "" : `</span><button type="button" class="linkish" data-search-all="1">Check all months</button><span>`) : ui.filter === "moved" ? "No moves between your own accounts this month. They're added when you import a bank statement." : ui.filter === "all" ? "Nothing logged " + (isAll() || ui.view === meId() ? "" : "for " + esc(pname(ui.view)) + " ") + "in " + esc(monthName(ui.month)) + " yet." : "No entries of this kind this month."}</span>${state.readOnly ? "" : `<span class="hint">Use the form to add your income first, then each thing you spend.</span>`}</li>`;
     return;
   }
   let html = "", lastDay = "";
@@ -348,13 +359,14 @@ export const page = {
     });
     $("fGoal").addEventListener("change", () => { ui.goalSel = $("fGoal").value; $("purposeRow").hidden = $("fGoal").value !== "__other"; if ($("fGoal").value === "__other") $("fPurpose").focus(); });
     document.querySelectorAll("#ledgerPanel .chip").forEach(c => c.addEventListener("click", () => {
-      ui.filter = c.dataset.f; ui.cat = ""; ui.meal = "";
+      ui.filter = c.dataset.f; ui.cat = ""; ui.meal = ""; if (!ui.search) ui.searchAll = false;
       document.querySelectorAll("#ledgerPanel .chip").forEach(x => x.setAttribute("aria-pressed", String(x === c)));
       renderLedger();
     }));
     let st = null;
     $("catFilter").addEventListener("change", () => { const [c, m] = $("catFilter").value.split("|"); ui.cat = c; ui.meal = m || ""; renderLedger(); });
     $("ledgerTotal").addEventListener("click", ev => { if (ev.target.closest("[data-cat-clear]")) { ui.cat = ""; ui.meal = ""; renderLedger(); } });
+    $("mealBar").addEventListener("click", ev => { const b = ev.target.closest("[data-meal-f]"); if (b) { ui.meal = b.dataset.mealF; renderLedger(); } });
     $("ledgerPanel").addEventListener("click", ev => { const b = ev.target.closest("[data-search-all]"); if (b) { ui.searchAll = !!b.dataset.searchAll; renderLedger(); } });
     $("searchQ").addEventListener("input", () => { clearTimeout(st); st = setTimeout(() => { ui.search = $("searchQ").value.trim(); if (!ui.search) ui.searchAll = false; renderLedger(); }, 200); });
     wireRows($("ledger"), renderLedger);
@@ -395,7 +407,7 @@ export function showCategory(c, meal) {
 
 // Home › For you › Tidy up: the Needs a look list
 export function showReview() {
-  ui.filter = "review"; ui.cat = ""; ui.meal = ""; ui.search = ""; ui.searchAll = false;
+  ui.filter = "review"; ui.cat = ""; ui.meal = ""; ui.search = ""; ui.searchAll = false; // the month shown on Home
   const q = $("searchQ"); if (q) q.value = "";
   document.querySelectorAll(".filters [data-f]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.f === "review")));
   go("entries");

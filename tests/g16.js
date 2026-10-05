@@ -35,7 +35,7 @@ const csv = [
   check(yr.some(r => /^Eating out .*800/.test(r)) && /January to/.test(await T.text("#cmpBox")), "this year against the same months last year", yr);
 
   // needs a look: on Home, then the Entries list
-  check(/2 things could use a look/.test(await T.text("#smartBar")), "Home says 2 things could use a look", await T.text("#smartBar"));
+  check(/2 things in \w+ \d{4} could use a look/.test(await T.text("#smartBar")), "Home says 2 things could use a look", await T.text("#smartBar"));
   await p.click('#smartBar .smart-item:has-text("could use a look") [data-sgo]'); await p.waitForTimeout(600);
   const rows = await T.rows();
   check(/#entries/.test(p.url()) && rows.length === 2 && rows.some(r => /Mystery shop/.test(r)) && rows.some(r => /Possible repeat/.test(r)), "Tidy up opens Needs a look with both", rows);

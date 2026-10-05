@@ -11,9 +11,9 @@
   window.plApplyTheme = function () {
     // Glass (Apple's Liquid Glass look) is the default on iPhone, iPad and Mac; everyone can pick any theme
     var apple = /iPhone|iPad|iPod|Macintosh|Mac OS X/.test(navigator.userAgent || "");
-    // themes kept in v37: Glass (light and dark), Sunset, Monsoon; older choices move to Sunset
+    // themes: Glass (light and dark), Sunset, Monsoon, Palm (v41); older choices move to Sunset
     var mode = g("pl-mode") || "auto", preset = g("pl-preset") || (apple ? "glass" : "sunset");
-    if (preset !== "glass" && preset !== "sunset" && preset !== "monsoon") preset = "sunset";
+    if (preset !== "glass" && preset !== "sunset" && preset !== "monsoon" && preset !== "palm") preset = "sunset";
     var dark = mode === "dark" || (mode === "auto" && mq && mq.matches);
     d.toggleAttribute("data-apple", apple);
     if (preset === "glass" && !apple && !document.getElementById("plInter")) {
@@ -40,7 +40,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=40">
+<link rel="stylesheet" href="css/app.css?v=41">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -128,13 +128,16 @@
         <div class="tiles" id="tiles"></div>
       </section>
       <div class="grid2">
-        <section class="panel">
+        <section class="panel cats-panel">
           <div class="panel-head"><h2>Where the money went</h2><span class="muted" id="catNote"></span></div>
+          <div class="ring" id="catRing" aria-hidden="true"></div>
           <div class="cats" id="cats"></div>
+        </section>
+        <section class="panel buds-panel">
           <div class="panel-head sub-head"><h3>Budgets</h3><button class="ghost" type="button" id="budgetBtn">Set budgets</button></div>
           <div class="buds" id="budgetList"></div>
         </section>
-        <section class="panel">
+        <section class="panel recent-panel">
           <div class="panel-head"><h2>Latest entries</h2><a class="ghost" href="#entries">See all</a></div>
           <ul class="ledger" id="recentList"></ul>
         </section>
@@ -175,6 +178,7 @@
             </div>
           </div>
           <div class="lt-row"><select id="catFilter" aria-label="Category"></select></div>
+          <div class="meal-bar" id="mealBar" role="group" aria-label="Eating out by meal" hidden></div>
           <div class="ledger-total" id="ledgerTotal" role="status" hidden></div>
           <ul class="ledger" id="ledger"></ul>
         </section>
@@ -336,7 +340,7 @@
         <h2>Appearance on this device</h2>
         <div class="modeseg" id="modeSeg" role="group" aria-label="Light or dark"><button type="button" data-mode="auto">Automatic</button><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div>
         <p class="hint" id="glassNote" hidden>Glass follows Apple's own light and dark looks.</p>
-        <div class="themes" role="group" aria-label="Theme"><button class="theme-sw" type="button" data-preset="glass"><span class="chip"><i style="background:#F2F2F7"></i><i style="background:#0088FF"></i><i style="background:#000000"></i></span>Glass</button><button class="theme-sw" type="button" data-preset="sunset"><span class="chip"><i style="background:#F7F1F4"></i><i style="background:#7B3A6A"></i><i style="background:#181116"></i></span>Sunset</button><button class="theme-sw" type="button" data-preset="monsoon"><span class="chip"><i style="background:#EDEFF3"></i><i style="background:#3B4A6E"></i><i style="background:#111419"></i></span>Monsoon</button></div>
+        <div class="themes" role="group" aria-label="Theme"><button class="theme-sw" type="button" data-preset="glass"><span class="chip"><i style="background:#F2F2F7"></i><i style="background:#0088FF"></i><i style="background:#000000"></i></span>Glass</button><button class="theme-sw" type="button" data-preset="sunset"><span class="chip"><i style="background:#F7F1F4"></i><i style="background:#7B3A6A"></i><i style="background:#181116"></i></span>Sunset</button><button class="theme-sw" type="button" data-preset="monsoon"><span class="chip"><i style="background:#EDEFF3"></i><i style="background:#3B4A6E"></i><i style="background:#111419"></i></span>Monsoon</button><button class="theme-sw" type="button" data-preset="palm"><span class="chip"><i style="background:#EEF1EC"></i><i style="background:#B8E36A"></i><i style="background:#16301C"></i></span>Palm</button></div>
         <div class="field"><span class="flabel">Text size</span>
           <div class="modeseg four" id="fsSeg" role="group" aria-label="Text size"><button type="button" data-fs="s">Small</button><button type="button" data-fs="m">Normal</button><button type="button" data-fs="l">Large</button><button type="button" data-fs="xl">Extra large</button></div></div>
         <label class="check" id="amoledRow"><input type="checkbox" id="setAmoled"><span>Pure black in dark mode<small>Deeper blacks that save battery on AMOLED screens.</small></span></label>
@@ -615,6 +619,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=40"></script>
+<script type="module" src="app.js?v=41"></script>
 </body>
 </html>

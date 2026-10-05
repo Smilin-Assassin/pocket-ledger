@@ -2,7 +2,7 @@
 import { renderSmart } from "../smart.js";
 import { $, esc, money, num, sum, monthKey, monthName, shiftMonth, lsGet, lsSet, lsJson, toast } from "../util.js";
 import { state, ui, db, isAll, isGroup, isOwner, isMine, pname, pcolor, poss, groupName, meId, monthTotals, totalSavings, inMonth, effMonth, countsMoney,
-  visibleGoals, goalBalance, openBills, dueText, openLoans, loanOutstanding, owesPairs, budgetsFor, spentIn, EXP_CATS, LOAN_OUT, LOAN_BACK_OUT, changed, canEdit, EAT, MEALS } from "../store.js";
+  visibleGoals, goalBalance, openBills, dueText, openLoans, loanOutstanding, owesPairs, budgetsFor, spentIn, EXP_CATS, LOAN_OUT, LOAN_BACK_OUT, changed, canEdit } from "../store.js";
 import { settlePair } from "../actions.js";
 import { rowHtml, wireRows, byNewest } from "./entries.js";
 import { renderDue, wireDue } from "./bills.js";
@@ -92,14 +92,16 @@ function renderCats() {
   es.forEach(e => { const c = e.category || "Other"; by[c] = (by[c] || 0) + +e.amount; });
   const rows = Object.entries(by).sort((a, b) => b[1] - a[1]);
   $("catNote").textContent = total ? money(total) + " total" : "";
-  if (!rows.length) { $("cats").innerHTML = `<div class="empty small">Spending by category will show here.</div>`; return; }
+  if (!rows.length) { $("catRing").innerHTML = ""; $("cats").innerHTML = `<div class="empty small">Spending by category will show here.</div>`; return; }
   const max = rows[0][1];
-  // Eating out shows its meals under the bar (Breakfast, Lunch, Dinner, Snacks, and any not set yet)
-  const meals = () => { const eat = es.filter(e => e.category === EAT); if (!eat.some(e => e.meal)) return "";
-    const parts = MEALS.map(([m, n]) => [m, n, sum(eat.filter(e => e.meal === m), e => +e.amount)]).filter(x => x[2] > 0);
-    const none = sum(eat.filter(e => !e.meal), e => +e.amount); if (none > 0) parts.push(["none", "Not set", none]);
-    return `<div class="cat-meals" role="group" aria-label="Eating out by meal">${parts.map(([m, n, v]) => `<button type="button" data-cat-go="${EAT}" data-meal="${m}">${esc(n)} <b class="num">${esc(money(v, { whole: true }))}</b></button>`).join("")}</div>`; };
-  $("cats").innerHTML = rows.map(([c, v]) => `<button type="button" class="cat" data-cat-go="${esc(c)}" title="See every ${esc(c)} entry: ${esc(money(v))} (${Math.round(v / total * 100)}%)"><span class="n">${esc(c)}</span><div class="track"><div class="fill" style="width:${Math.max(v / max * 100, 1.5)}%"></div></div><span class="v num">${esc(money(v, { whole: true }))}<small>${Math.round(v / total * 100)}%</small></span></button>` + (c === EAT ? meals() : "")).join("");
+  // the ring (shown by the Palm theme): the four biggest categories and the rest, total in the middle
+  const segs = rows.slice(0, 4).concat(rows.length > 4 ? [["Everything else", sum(rows.slice(4), r => r[1])]] : []);
+  let a0 = 0; const R = 52, C = 2 * Math.PI * R, gap = segs.length > 1 ? 3 : 0;
+  $("catRing").innerHTML = `<svg viewBox="0 0 132 132" width="184" height="184"><circle cx="66" cy="66" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="14"/>` +
+    segs.map(([c, v], i) => { const len = Math.max(0, v / total * C - gap), off = -a0; a0 += v / total * C;
+      return `<circle cx="66" cy="66" r="${R}" fill="none" stroke="var(--ring-${i + 1}, var(--c-bar))" stroke-width="14" stroke-dasharray="${len.toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" transform="rotate(-90 66 66)"/>`; }).join("") +
+    `</svg><div class="ring-mid"><b class="num">${esc(money(total, { whole: true }))}</b><small>spent in ${esc(monthName(ui.month, true))}</small></div>`;
+  $("cats").innerHTML = rows.map(([c, v], i) => `<button type="button" class="cat c${Math.min(i + 1, 5)}" data-cat-go="${esc(c)}" title="See every ${esc(c)} entry: ${esc(money(v))} (${Math.round(v / total * 100)}%)"><span class="n">${esc(c)}</span><div class="track"><div class="fill" style="width:${Math.max(v / max * 100, 1.5)}%"></div></div><span class="v num">${esc(money(v, { whole: true }))}<small>${Math.round(v / total * 100)}%</small></span></button>`).join("");
 }
 
 function renderBudgets() {

@@ -53,7 +53,7 @@ const SHOTS = process.env.SHOTS;
   // Settings: three themes; Glass has Automatic / Light / Dark like the others
   await T.nav("settings/look"); await p.waitForTimeout(500);
   const themes = await p.$$eval(".theme-sw", b => b.map(x => x.dataset.preset));
-  check(JSON.stringify(themes) === JSON.stringify(["glass", "sunset", "monsoon"]), "themes: Glass, Sunset, Monsoon", themes);
+  check(JSON.stringify(themes) === JSON.stringify(["glass", "sunset", "monsoon", "palm"]), "themes: Glass, Sunset, Monsoon, Palm", themes);
   check(!(await p.$eval("#modeSeg button", b => b.disabled)), "light/dark can be chosen under Glass");
   await p.click('#modeSeg [data-mode="dark"]'); await p.waitForTimeout(300);
   check(await attr("data-theme") === "dark", "choosing Dark makes Glass dark");

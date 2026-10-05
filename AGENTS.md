@@ -10,7 +10,7 @@ A household money tracker PWA for a couple in the Maldives (MVR). Plain ES modul
 - **Every release:** bump `VERSION` in `sw.js` (`pl-vNN`) **and** `?v=NN` on `app.js` and `css/app.css` in `index.html`. Add new JS files to `SHELL` in `sw.js`. Skipping this gives phones a blank page (old and new files mixed).
 - **Run all tests before pushing** (`tests/g1.js` … in order; see Testing). Add a test for anything new.
 - **Phone bar: always 4 or 6 tabs, never 5.** A rounded bar with a curved dip; the current tab's icon rides in a round bubble above the dip, its name in bold below (`js/dock.js` draws the dip with `clip-path`). The + is its own circle to the right of the bar, in every theme.
-- **Themes: Glass, Sunset, Monsoon** (others were removed in v37; old choices move to Sunset). **Glass (`data-preset="glass"`)** is Apple's look, light and dark (follows Automatic / Light / Dark like the others; dark uses Apple's dark system colours). Glass goes only on things that float over content; content stays on cards. Its rules live in one block at the end of `css/app.css`; keep Apple's values there and change other themes elsewhere.
+- **Themes: Glass, Sunset, Monsoon, Palm** (others were removed in v37; old choices move to Sunset). **Palm** (v41) has its own block in `css/app.css` just before Glass: lime highlight card, dark green buttons, pill shapes, and on laptops Home as a grid of cards plus a spending ring (`#catRing`, hidden in other themes). **Glass (`data-preset="glass"`)** is Apple's look, light and dark (follows Automatic / Light / Dark like the others; dark uses Apple's dark system colours). Glass goes only on things that float over content; content stays on cards. Its rules live in one block at the end of `css/app.css`; keep Apple's values there and change other themes elsewhere.
 - **All look-and-feel settings live in Settings › Appearance** (theme, text size, motion, dock, vibrations).
 - **Text size zooms `body`.** Position things with `offsetLeft/Top/Width`, or divide screen distances by `zoom()` from `js/dock.js`. `getBoundingClientRect()` alone drifts at Small/Large text.
 - **Motion:** animate `transform`/`opacity` only; springs advance on real elapsed time (`Spring.run(dt)` in `js/motion.js`) so 60/90/120 Hz look the same; respect `prefers-reduced-motion`.
@@ -35,6 +35,6 @@ A household money tracker PWA for a couple in the Maldives (MVR). Plain ES modul
 ## Testing
 ```
 python3 -m http.server 8765        # in the repo root
-cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g17, in order
+cd tests && NODE_PATH=$(npm root -g) node g1.js   # then g2 … g18, in order
 ```
 Firebase is swapped for the mocks in `tests/mockfb/` (the Firestore mock models the security rules). Each test prints ok/FAIL and exits non-zero on failure.

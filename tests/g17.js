@@ -26,9 +26,12 @@ const pressed = (p, sel) => p.$$eval(sel + " [aria-pressed=true]", b => b.map(x 
   // 1. old "Breakfast" category folds into Eating out, with the meal; Home shows the breakdown
   const cats = await T.text("#cats");
   check(/Eating out/.test(cats) && !/^Breakfast/m.test(await p.$$eval("#cats .cat .n", n => n.map(x => x.textContent).join("\n"))), "old Breakfast entries count under Eating out on Home", cats);
-  const meals = await p.$$eval("#cats .cat-meals button", b => b.map(x => x.innerText.replace(/\s+/g, " ")));
-  check(meals.some(m => /Breakfast.*40/.test(m)) && meals.some(m => /Not set.*120/.test(m)), "Home shows Eating out by meal (Breakfast 40, Not set 120)", meals);
-  await p.click('#cats .cat-meals [data-meal="breakfast"]'); await p.waitForTimeout(700);
+  check(!(await p.$("#cats .cat-meals")) && !/Breakfast/.test(cats), "Home keeps one plain bar for Eating out (no meal chips)", cats);
+  await p.click('#cats [data-cat-go="Eating out"]'); await p.waitForTimeout(700);
+  const meals = await p.$$eval("#mealBar button", b => b.map(x => x.innerText.replace(/\s+/g, " ")));
+  check(/#entries/.test(p.url()) && meals[0] === "All" && meals.some(m => /Breakfast MVR\s?40/.test(m)) && meals.some(m => /Not set MVR\s?120/.test(m)), "tapping Eating out opens it with meals and their totals", meals);
+  check((await T.rows()).length === 2, "All shows both Eating out entries");
+  await p.click('#mealBar [data-meal-f="breakfast"]'); await p.waitForTimeout(400);
   let rows = await T.rows();
   check(/#entries/.test(p.url()) && rows.length === 1 && /Eating out ~ Breakfast, Hi Tea/.test(rows[0]) && /Hi Tea/.test(rows[0]), "tapping Breakfast lists just that", rows);
   check(/Eating out, Breakfast/.test(await T.text("#ledgerTotal")), "the total line names the meal", await T.text("#ledgerTotal"));

@@ -104,15 +104,18 @@ let lookFn = null; export function setLookFn(f) { lookFn = f; }
 let needsLook = () => []; export function setNeedsLook(f) { needsLook = f; }
 export function renderSmart() {
   const box = $("smartBar"); if (!box) return;
-  if (!smartOn() || isViewer() || isGroup() || !state.ready || ui.month !== monthKey(new Date())) { box.hidden = true; box.innerHTML = ""; return; }
-  const no = dismissed(), k = monthKey(new Date()), items = [];
+  if (!smartOn() || isViewer() || isGroup() || !state.ready) { box.hidden = true; box.innerHTML = ""; return; }
+  const no = dismissed(), k = monthKey(new Date()), items = [], cur = ui.month === k;
+  // other months show only "could use a look" for that month; the rest is about now
+  if (cur) {
   const near = nearby(); if (near && !no[near.key + ":" + todayISO()]) items.push({ id: near.key + ":" + todayISO(), text: `Near <b>${esc(near.name)}</b> again? Last time ${esc(money(near.amount))}, ${esc(near.category)}.`, act: "place", label: "Add it", data: near });
   regulars().filter(r => !no["reg:" + r.key]).slice(0, 2).forEach(r => items.push({ id: "reg:" + r.key,
     text: `<b>${esc(r.name)}</b>: about ${esc(money(r.amount, { whole: true }))} around the ${ordinal(r.day)}, ${r.months} months running.${r.late ? " Not logged this month yet." : ""} Make it a monthly bill so you're reminded?`, act: "bill", label: "Make it a bill", data: r }));
   const u = unusual()[0]; if (u && !no["hi:" + u.cat + ":" + k]) items.push({ id: "hi:" + u.cat + ":" + k, text: `<b>${esc(u.cat)}</b> is at ${esc(money(u.cur, { whole: true }))} this month, about ${u.pct}% more than your usual ${esc(money(u.usual, { whole: true }))}.`, act: "cat", label: "See them", data: u });
-  const look = needsLook(meId()).length;
-  if (look && !no["look:" + todayISO()]) items.unshift({ id: "look:" + todayISO(), text: `<b>${look} thing${look === 1 ? "" : "s"}</b> could use a look: possible repeats, or entries still under Other.`, act: "look", label: "Tidy up" });
-  const q = quietDays(); if (q >= 3 && !no["quiet:" + todayISO()]) items.push({ id: "quiet:" + todayISO(), text: `Nothing logged for ${q} days. Scan a slip or import a statement to catch up.`, act: "scan", label: "Scan" });
+  }
+  const look = needsLook(meId(), ui.month).length;
+  if (look && !no["look:" + ui.month + ":" + todayISO()]) items.unshift({ id: "look:" + ui.month + ":" + todayISO(), text: `<b>${look} thing${look === 1 ? "" : "s"}</b> in ${esc(monthName(ui.month))} could use a look: possible repeats, or entries still under Other.`, act: "look", label: "Tidy up" });
+  const q = cur ? quietDays() : 0; if (q >= 3 && !no["quiet:" + todayISO()]) items.push({ id: "quiet:" + todayISO(), text: `Nothing logged for ${q} days. Scan a slip or import a statement to catch up.`, act: "scan", label: "Scan" });
   const show = items.slice(0, 3);
   box.hidden = !show.length;
   box.innerHTML = show.length ? `<div class="smart-head"><b>For you</b><small>From your own entries</small></div>` + show.map((x, i) => `<div class="smart-item" data-si="${i}"><span class="smart-dot" aria-hidden="true"></span><p>${x.text}</p><span class="row-btns"><button class="ghost" type="button" data-sgo="${i}">${esc(x.label)}</button><button class="icon-btn" type="button" data-sno="${i}" aria-label="Not now">Not now</button></span></div>`).join("") : "";

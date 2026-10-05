@@ -331,10 +331,13 @@ button { cursor: pointer; }
 .cat .fill { height: 100%; background: var(--c-bar); border-radius: 0 4px 4px 0; }
 .cat .v { text-align: right; font-weight: 600; }
 .cat .v small { color: var(--ink-3); font-weight: 400; margin-left: 4px; }
-.cat-meals { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 2px; padding-left: calc(8.5em + 10px); font-size: .8rem; }
-.cat-meals button { border: 0; background: var(--sunk); color: var(--ink-2); border-radius: 999px; padding: 6px 12px; min-height: 40px; font: inherit; }
-.cat-meals button b { color: var(--ink); font-weight: 600; margin-left: 2px; }
-@media (max-width: 520px) { .cat-meals { padding-left: 0; } }
+/* Entries › Eating out: the meals, as filters with their totals (v41; no longer on Home) */
+.meal-bar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; }
+.meal-bar::-webkit-scrollbar { display: none; }
+.meal-bar button { flex: none; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); border-radius: 999px; padding: 6px 14px; min-height: 40px; font: inherit; font-size: .84rem; display: grid; align-content: center; text-align: left; line-height: 1.2; }
+.meal-bar button b { color: var(--ink); font-weight: 600; font-size: .9rem; }
+.meal-bar button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.meal-bar button[aria-pressed="true"] b { color: var(--bg); }
 
 /* Goals */
 .goals { display: grid; gap: 12px; }
@@ -454,7 +457,12 @@ details.box > div { display: grid; gap: 10px; margin-top: 12px; }
 /* grids */
 .cols { display: grid; gap: 16px; align-items: start; grid-template-columns: minmax(0, 1fr); }
 .grid2 { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); align-items: start; }
-@media (min-width: 760px) { .grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 760px) { .grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "cats recent" "buds recent"; }
+  .grid2 > .cats-panel { grid-area: cats; } .grid2 > .buds-panel { grid-area: buds; } .grid2 > .recent-panel { grid-area: recent; } }
+/* Budgets sit in their own section (so Palm can lay it out as a card) but read as part of "Where the money went" elsewhere */
+.cats-panel:has(+ .buds-panel) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 0; padding-bottom: 4px; }
+.buds-panel { border-top-left-radius: 0; border-top-right-radius: 0; border-top: 0; margin-top: -16px; padding-top: 0; }
+.ring { display: none; }
 @media (min-width: 1120px) { .cols { grid-template-columns: minmax(0, 1.5fr) minmax(330px, 1fr); } }
 @media (max-width: 1119px) { #pg-entries #formPanel { order: -1; } }
 @media (min-width: 1120px) { #formPanel, #loanForm, #billForm, #goalForm { position: sticky; top: 20px; } }
@@ -840,6 +848,121 @@ circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest
 .msg.ai:has(.rep) { width: 100%; max-width: 100%; }
 
 /* =====================================================================================
+   PALM (v41): soft grey-green page, white cards with big round corners, a lime highlight card,
+   dark green buttons, pill shapes. Light and dark. On laptops Home becomes a grid of cards
+   (left to spend beside this month's numbers; spending ring, budgets and latest entries in three columns).
+   ===================================================================================== */
+:root[data-preset="palm"] {
+  --bg: #EEF1EC; --surface: #FFFFFF; --sunk: #F0F3EE; --ink: #101A12; --ink-2: #4A574C; --ink-3: #5F6B61; --line: #E2E7DF;
+  --accent: #17331D; --accent-ink: #FFFFFF; --lime: #B8E36A; --lime-2: #A6D856; --lime-ink: #10230F;
+  --c-bar: #8FCB45; --c-left: #4F9A2A; --c-spent: #E0714F; --c-saved: #2F6B3B; --pos: #2E7A22; --neg: #B4432D;
+  --ring-1: #9BD253; --ring-2: #17331D; --ring-3: #5E9E48; --ring-4: #C9DDB6; --ring-5: #9AA59C;
+  --f-display: "Figtree", "Segoe UI", system-ui, sans-serif; --r-card: 22px; --dk-bar: #FFFFFF;
+}
+:root[data-preset="palm"][data-theme="dark"] {
+  --bg: #0D110E; --surface: #161C17; --sunk: #1E261F; --ink: #EAF1E6; --ink-2: #AEBBAA; --ink-3: #8C998A; --line: #263027;
+  --accent: #B8E36A; --accent-ink: #10230F; --lime: #A9D95E; --lime-2: #98CB4D; --lime-ink: #0F200E;
+  --c-bar: #9BD253; --c-left: #8FCB45; --c-spent: #EE8B6C; --c-saved: #7FC08B; --pos: #8FD46A; --neg: #F08A73;
+  --ring-1: #9BD253; --ring-2: #E6F2D8; --ring-3: #5E9E48; --ring-4: #3E5A3A; --ring-5: #6B766C; --dk-bar: #1B221C;
+}
+:root[data-preset="palm"] body { letter-spacing: -.005em; }
+:root[data-preset="palm"] :is(.panel, .summary, .bill, .stat-card, .xfer-card, .smart, .accts) { border: 0; border-radius: var(--r-card); box-shadow: 0 1px 2px rgba(16, 26, 18, .04), 0 6px 24px rgba(16, 26, 18, .05); }
+:root[data-preset="palm"][data-theme="dark"] :is(.panel, .summary, .bill, .stat-card, .xfer-card, .smart, .accts) { box-shadow: none; }
+:root[data-preset="palm"] .panel { padding: 20px 22px; }
+:root[data-preset="palm"] :is(.primary, .tile-cfg .primary) { border-radius: 999px; padding: 12px 20px; }
+:root[data-preset="palm"] .ghost { border-radius: 999px; }
+:root[data-preset="palm"] :is(input, select, textarea) { border-radius: 14px; }
+:root[data-preset="palm"] :is(.seg, .modeseg) { border-radius: 999px; }
+:root[data-preset="palm"] :is(.seg, .modeseg) button { border-radius: 999px; }
+:root[data-preset="palm"] :is(.seg, .modeseg) button[aria-pressed="true"] { background: var(--lime); color: var(--lime-ink); box-shadow: none; }
+:root[data-preset="palm"] .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+:root[data-preset="palm"] .monthnav { border-radius: 999px; }
+/* the lime card: left to spend */
+:root[data-preset="palm"] .summary .hero { background: linear-gradient(135deg, var(--lime) 0%, var(--lime-2) 100%); color: var(--lime-ink); border-radius: 20px; padding: 22px 22px 18px; position: relative; overflow: hidden; }
+:root[data-preset="palm"] .summary .hero::after { content: ""; position: absolute; right: -30px; top: -40px; width: 200px; height: 200px; pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 255, 255, .35), transparent 65%); }
+:root[data-preset="palm"] .summary .hero .label, :root[data-preset="palm"] .summary .hero .sub { color: var(--lime-ink); opacity: .8; }
+:root[data-preset="palm"] .summary .hero .big.neg { color: var(--lime-ink); }
+:root[data-preset="palm"] .summary .hero .ghost { background: rgba(255, 255, 255, .45); border: 0; color: var(--lime-ink); font-weight: 600; padding: 9px 16px; min-height: 40px; }
+:root[data-preset="palm"] .summary .hero .ghost[data-go-add] { background: var(--lime-ink); color: #fff; }
+:root[data-preset="palm"] .summary .hero .ghost:hover { filter: brightness(1.05); }
+:root[data-preset="palm"] .split { height: 10px; border-radius: 999px; }
+:root[data-preset="palm"] .split div { border-radius: 999px !important; }
+:root[data-preset="palm"] .stats { border-top: 0; padding-top: 0; }
+:root[data-preset="palm"] .stats .v { font-weight: 700; letter-spacing: -.01em; }
+/* tiles: a small dot for status instead of the side stripe */
+:root[data-preset="palm"] .tiles { border-top: 0; padding-top: 0; gap: 12px; }
+:root[data-preset="palm"] .tile { border: 0; background: var(--sunk); border-radius: 16px; padding: 12px 14px; }
+:root[data-preset="palm"] .tile .label::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--ink-3); }
+:root[data-preset="palm"] .tile.t-ok .label::before { background: var(--c-left); }
+:root[data-preset="palm"] .tile.t-amber .label::before { background: #D99A1E; }
+:root[data-preset="palm"] .tile.t-red .label::before { background: var(--neg); }
+/* spending: the ring, and bars in the ring's colours */
+:root[data-preset="palm"] #catNote { display: none; }
+:root[data-preset="palm"] .ring:not(:empty) { display: grid; place-items: center; position: relative; margin: 2px auto 6px; }
+:root[data-preset="palm"] .ring svg { display: block; }
+:root[data-preset="palm"] .ring-mid { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 2px; }
+:root[data-preset="palm"] .ring-mid b { font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em; }
+:root[data-preset="palm"] .ring-mid small { font-size: .78rem; color: var(--ink-3); }
+:root[data-preset="palm"] .cat { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "n v" "t t"; gap: 6px 10px; }
+:root[data-preset="palm"] .cat .n { grid-area: n; color: var(--ink); } :root[data-preset="palm"] .cat .v { grid-area: v; }
+:root[data-preset="palm"] .cat .track { grid-area: t; height: 8px; border-radius: 999px; }
+:root[data-preset="palm"] .meal-bar button[aria-pressed="true"] { background: var(--lime); border-color: var(--lime); color: var(--lime-ink); }
+:root[data-preset="palm"] .meal-bar button[aria-pressed="true"] b { color: var(--lime-ink); }
+:root[data-preset="palm"] .cat .fill { border-radius: 999px; }
+:root[data-preset="palm"] .cat.c1 .fill { background: var(--ring-1); } :root[data-preset="palm"] .cat.c2 .fill { background: var(--ring-2); }
+:root[data-preset="palm"] .cat.c3 .fill { background: var(--ring-3); } :root[data-preset="palm"] .cat.c4 .fill { background: var(--ring-4); }
+:root[data-preset="palm"] .cat.c5 .fill { background: var(--ring-5); }
+:root[data-preset="palm"] .meter, :root[data-preset="palm"] .bud .meter { border-radius: 999px; }
+:root[data-preset="palm"] .meter > div { border-radius: 999px; }
+:root[data-preset="palm"] .bud:not(.over):not(.near) .meter div { background: var(--c-bar); }
+/* budgets stand alone as a card in Palm */
+:root[data-preset="palm"] .cats-panel:has(+ .buds-panel) { border-radius: var(--r-card); padding-bottom: 20px; }
+:root[data-preset="palm"] .buds-panel { border-radius: var(--r-card); margin-top: 0; padding-top: 20px; }
+:root[data-preset="palm"] .buds-panel .sub-head { border-top: 0; margin-top: 0; padding-top: 0; }
+:root[data-preset="palm"] .buds-panel .sub-head h3 { font-size: 1.1rem; }
+/* rows: a round initial instead of the small square */
+:root[data-preset="palm"] .tx { grid-template-columns: 36px minmax(0, 1fr) auto auto; padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 16px; }
+:root[data-preset="palm"] .ledger .day { border: 0; }
+:root[data-preset="palm"] .tx .dot { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; }
+:root[data-preset="palm"][data-theme="dark"] .tx .dot::after { color: var(--bg); }
+:root[data-preset="palm"] .tx .dot::after { content: attr(data-i); color: #fff; font-size: .82rem; font-weight: 700; }
+:root[data-preset="palm"] .tx .amt.in { color: var(--pos); }
+/* side menu (laptop) and phone bar */
+:root[data-preset="palm"] .nav-blob { background: var(--lime); border-radius: 999px; }
+:root[data-preset="palm"] .nav a { border-radius: 999px; }
+:root[data-preset="palm"] .nav a[aria-current="page"] { color: var(--lime-ink); }
+:root[data-preset="palm"] .dk-bubble { background: var(--lime); color: var(--lime-ink); }
+:root[data-preset="palm"] .dk-plus { background: var(--accent); color: var(--accent-ink); }
+:root[data-preset="palm"] .fab { border-radius: 999px; }
+:root[data-preset="palm"] .theme-sw { border-radius: 18px; }
+/* laptop: Home as a grid of cards */
+@media (min-width: 900px) {
+  :root[data-preset="palm"] .summary { background: transparent; box-shadow: none; padding: 0; gap: 16px;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); grid-template-areas: "head head" "cfg cfg" "stats hero" "split hero" "tiles tiles"; }
+  :root[data-preset="palm"] .summary > .dash-head { grid-area: head; margin: -6px 0 -12px; }
+  :root[data-preset="palm"] .summary > .tile-cfg { grid-area: cfg; }
+  :root[data-preset="palm"] .summary > .hero { grid-area: hero; flex-direction: column; align-items: stretch; justify-content: space-between; border-radius: var(--r-card); padding: 26px; min-height: 230px; }
+  :root[data-preset="palm"] .summary .hero .big { font-size: 3.4rem; }
+  :root[data-preset="palm"] .summary .hero-acts { justify-content: flex-start; }
+  :root[data-preset="palm"] .summary > .stats { grid-area: stats; background: var(--surface); border-radius: var(--r-card) var(--r-card) 0 0; padding: 24px 24px 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 0; box-shadow: 0 -1px 2px rgba(16, 26, 18, .03); }
+  :root[data-preset="palm"] .summary > .stats > div:nth-child(odd) { padding-left: 0; border-left: 0; }
+  :root[data-preset="palm"] .summary > .stats .v { font-size: 1.6rem; }
+  :root[data-preset="palm"] .summary > [data-tile="split"] { grid-area: split; background: var(--surface); border-radius: 0 0 var(--r-card) var(--r-card); padding: 6px 24px 22px; margin-top: -16px; box-shadow: 0 6px 24px rgba(16, 26, 18, .05); }
+  :root[data-preset="palm"][data-theme="dark"] .summary > :is(.stats, [data-tile="split"]) { box-shadow: none; }
+  :root[data-preset="palm"] .summary > .tiles { grid-area: tiles; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  :root[data-preset="palm"] .summary .tile { background: var(--surface); border-radius: 20px; padding: 16px 18px; box-shadow: 0 1px 2px rgba(16, 26, 18, .04), 0 6px 24px rgba(16, 26, 18, .05); }
+  :root[data-preset="palm"] .grid2 { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: "cats buds recent"; align-items: stretch; }
+  :root[data-preset="palm"] .grid2 > .panel { align-content: start; }
+  /* three narrow columns: a row's Edit / Delete show when you point at it */
+  :root[data-preset="palm"] .recent-panel .tx .acts { display: none; }
+  :root[data-preset="palm"] .recent-panel .tx:is(:hover, :focus-within) .acts { display: flex; }
+  :root[data-preset="palm"] .recent-panel .tx { grid-template-columns: 36px minmax(0, 1fr) auto; }
+  :root[data-preset="palm"] .recent-panel .tx:is(:hover, :focus-within) { grid-template-columns: 36px minmax(0, 1fr) auto auto; }
+}
+
+/* =====================================================================================
    GLASS: Apple's Liquid Glass look (iOS 26 / iPadOS 26 / macOS 26). Light only.
    Default on iPhone, iPad and Mac; anyone can pick it in Settings › Appearance.
    Rules: glass only on the layer that floats over content (dock, + and chat buttons, side menu,
@@ -951,6 +1074,8 @@ circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest
 :root[data-preset="glass"] .panel, :root[data-preset="glass"] .gate-sec, :root[data-preset="glass"] .stat-card, :root[data-preset="glass"] .bill, :root[data-preset="glass"] .xfer-card {
   background: var(--surface); border: 0; border-radius: 26px; box-shadow: none; }
 :root[data-preset="glass"] .panel { padding: 20px; }
+:root[data-preset="glass"] .cats-panel:has(+ .buds-panel) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; padding-bottom: 4px; }
+:root[data-preset="glass"] .buds-panel { border-top-left-radius: 0; border-top-right-radius: 0; padding-top: 0; }
 :root[data-preset="glass"] .panel.setsec { border-top: 0; padding-top: 20px; }
 :root[data-preset="glass"] .bill, :root[data-preset="glass"] .xfer-card { border-radius: 22px; padding: 14px 16px; }
 :root[data-preset="glass"] .bill.amber, :root[data-preset="glass"] .bill.red { background: var(--surface); }
