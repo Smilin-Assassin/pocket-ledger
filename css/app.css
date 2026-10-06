@@ -386,6 +386,36 @@ details.box > div { display: grid; gap: 10px; margin-top: 12px; }
 .setsec { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
 .setsec h3 { font-size: .95rem; }
 .ok { font-size: .85rem; color: var(--pos); }
+/* Pocket Ledger's own dropdown (js/picker.js): a frosted list that grows out of the field, in the theme's colours */
+.pick-field { display: inline-grid; position: relative; max-width: 100%; min-width: 0; cursor: pointer; }
+.field .pick-field, .bud-edit .pick-field { display: grid; }
+.pick-field > select { pointer-events: none; }
+.pick-field.open > select { border-color: var(--accent); }
+.pick-wrap { position: fixed; inset: 0; z-index: 60; }
+.pick-catch { position: absolute; inset: 0; }
+.pick-pop { position: fixed; display: flex; flex-direction: column; overflow: hidden; border-radius: 16px;
+  --pk-glass: color-mix(in srgb, var(--surface) 86%, transparent);
+  background: var(--pk-glass); -webkit-backdrop-filter: blur(22px) saturate(1.7); backdrop-filter: blur(22px) saturate(1.7);
+  border: 1px solid color-mix(in srgb, var(--ink) 9%, transparent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .5) inset, 0 12px 32px color-mix(in srgb, var(--ink) 16%, transparent), 0 2px 6px color-mix(in srgb, var(--ink) 8%, transparent);
+  will-change: transform, opacity; }
+:root[data-theme="dark"] .pick-pop { --pk-glass: color-mix(in srgb, var(--surface) 84%, transparent); box-shadow: 0 1px 0 rgba(255, 255, 255, .07) inset, 0 14px 36px rgba(0, 0, 0, .5); border-color: rgba(255, 255, 255, .08); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .pick-pop { --pk-glass: var(--surface); } }
+.pick-list { overflow-y: auto; overscroll-behavior: contain; padding: 6px; display: grid; gap: 1px; }
+.pick-opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 42px; padding: 9px 12px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--ink); font: inherit; font-size: .95rem; text-align: left; cursor: pointer; }
+.pick-opt:hover, .pick-opt:focus-visible { background: color-mix(in srgb, var(--ink) 7%, transparent); outline: none; }
+.pick-opt[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--ink); font-weight: 600; }
+.pick-opt .pick-tick { flex: none; color: var(--accent); }
+.pick-opt.sub { padding-left: 26px; font-size: .9rem; color: var(--ink-2); }
+.pick-opt.new { color: var(--accent); font-weight: 600; }
+.pick-sep { height: 1px; margin: 4px 8px; background: color-mix(in srgb, var(--ink) 10%, transparent); }
+:root[data-preset="palm"] .pick-opt[aria-selected="true"] { background: color-mix(in srgb, var(--lime) 45%, transparent); }
+:root[data-preset="palm"] .pick-opt .pick-tick { color: var(--pos); }
+:root[data-preset="glass"] .pick-pop { --pk-glass: var(--g-fill-strong, var(--surface)); border-radius: 14px; }
+:root[data-preset="glass"] .pick-opt[aria-selected="true"] { background: transparent; }
+:root[data-preset="glass"] .pick-opt .pick-tick { color: var(--tint, var(--accent)); }
+
 /* folded insight cards on the Dashboard (js/fold.js) */
 :root .panel.fold.fold { padding-top: 2px; padding-bottom: 2px; gap: 0; }
 :root .panel.fold.fold.open { padding-bottom: 6px; }
