@@ -140,11 +140,11 @@ const pressed = (p, sel) => p.$$eval(sel + " [aria-pressed=true]", b => b.map(x 
   check(/Category,Meal,Goal/.test(out) && /Eating out,Lunch,/.test(out), "CSV export has a Meal column", out.slice(0, 160));
 
   // 10. phone: the meal picker fits, at Extra large text too
-  await T.nav("settings/look"); await p.click('#fsSeg [data-fs="xl"]'); await p.setViewportSize({ width: 340, height: 740 });
+  await T.nav("settings/look"); await p.evaluate(() => { const r = document.getElementById("fsRange"); r.value = 125; r.dispatchEvent(new Event("change", { bubbles: true })); }); await p.setViewportSize({ width: 340, height: 740 });
   await T.nav("entries"); await p.selectOption("#fCatSel", "Eating out"); await p.waitForTimeout(200);
   const fit = await p.evaluate(() => { const s = document.getElementById("mealSeg"), r = s.getBoundingClientRect(); return { over: document.documentElement.scrollWidth - document.documentElement.clientWidth, h: Math.min(...[...s.querySelectorAll("button")].map(b => b.getBoundingClientRect().height)) }; });
   check(fit.over <= 1 && fit.h >= 38, "meal buttons fit a 340px phone at Extra large text, tall enough to tap", fit);
-  await T.nav("settings/look"); await p.click('#fsSeg [data-fs="m"]');
+  await T.nav("settings/look"); await p.evaluate(() => { const r = document.getElementById("fsRange"); r.value = 100; r.dispatchEvent(new Event("change", { bubbles: true })); });
   // Recently deleted: the 3 newest, then Show all
   await p.setViewportSize({ width: 412, height: 900 });
   await T.nav("settings/trash"); await p.waitForTimeout(700);

@@ -102,6 +102,7 @@ export async function startScan(files) {
       bad_key: "Google didn't accept the Gemini key. Check it in Settings › Gemini.",
       offline: "Scanning needs an internet connection. You can add the entry by hand and it will sync later.",
       rate_limited: "Gemini's limit was reached for now. Wait a minute and try again, or add it by hand.",
+      server_down: "The scanning server had a problem. Try again in a moment, or add it by hand.",
       image_rejected: "That image couldn't be opened. Try a JPG or PNG photo or screenshot.",
       refused: "I couldn't read that image. Try a different photo, or add the entry by hand."
     }[code] || "Scanning didn't work this time. Try again, or add the entry by hand.";
@@ -524,7 +525,8 @@ async function importStatement(file) {
       offline: "Importing a statement needs an internet connection.",
       empty: "I couldn't find any transactions in that file. Check it's a statement from your bank's app or website.",
       too_big: "That file is too big. Download a shorter period (one month) and try again.",
-      rate_limited: "Gemini's limit was reached for now. Try again in a minute, or use the CSV export."
+      rate_limited: "Gemini's limit was reached for now. Try again in a minute, or use the CSV export.",
+      server_down: "The scanning server had a problem. Try again in a moment, or use the CSV export."
     }[code] || "Importing didn't work this time. Try again.";
     status(esc(msg) + (e && e.message && code === "http" ? '<br><small class="muted">Details: ' + esc(String(e.message).slice(0, 200)) + "</small>" : ""), false);
     $("scanFoot").hidden = false; $("scanAdd").hidden = true;

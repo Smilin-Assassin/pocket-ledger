@@ -23,7 +23,7 @@ async function serverGemini(payload, signal) {
   } catch (e) {
     if (e && e.code === "cancelled") throw e;
     const c = String((e && e.code) || "").replace("functions/", "");
-    throw { code: c === "resource-exhausted" ? "rate_limited" : c === "failed-precondition" ? "bad_key" : "http", message: (e && e.message) || c };
+    throw { code: (e && e.message) === "refused" ? "refused" : c === "resource-exhausted" ? "rate_limited" : c === "failed-precondition" ? "bad_key" : (c === "internal" || c === "unavailable" || c === "deadline-exceeded") ? "server_down" : "http", message: (e && e.message) || c };
   }
 }
 async function shrinkImage(file) {

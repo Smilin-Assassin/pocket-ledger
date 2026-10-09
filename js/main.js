@@ -12,6 +12,7 @@ import { page as admin } from "./pages/admin.js";
 import { initScan, openScanPicker, handleFiles, initStatements } from "./scan.js";
 import { initCategories } from "./categories.js";
 import { initPicker } from "./picker.js";
+import { initSwipe } from "./swipe.js";
 import { initChat, openChat, startRec } from "./chat.js";
 import { initLock } from "./lock.js";
 import { refreshPush } from "./notify.js";
@@ -52,7 +53,7 @@ function handleShortcut() {
 
 export function boot(fb) {
   [["home", home], ["entries", entries], ["loans", loans], ["bills", bills], ["goals", goals], ["settings", settings], ["admin", admin], ["more", { init() {}, render() { dockBadges(); } }]].forEach(([id, p]) => { registerPage(id, p); p.init(); });
-  initShell(); initDock(); initGlass(); initQuick(); initScan(); initStatements(); initCategories(); initPicker(); initTransfers(); initChat(); initLock(); initNag();
+  initShell(); initDock(); initGlass(); initQuick(); initScan(); initStatements(); initCategories(); initPicker(); initSwipe(); initTransfers(); initChat(); initLock(); initNag();
   setAddFn(pre => focusAdd("expense", null, pre)); setLookFn(showReview); setNeedsLook(needsLook); initSmart(showCategory);
   $("quickX").addEventListener("click", () => { $("quick").hidden = true; });
   document.addEventListener("click", ev => { const b = ev.target.closest("[data-go-add]"); if (b) focusAdd("expense"); const c = ev.target.closest("[data-cat-go]"); if (c) showCategory(c.dataset.catGo, c.dataset.meal); });

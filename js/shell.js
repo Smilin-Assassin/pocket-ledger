@@ -42,7 +42,10 @@ window.addEventListener("hashchange", route);
 
 // ---------- header ----------
 function renderHeader() {
-  $("monthNav").hidden = !MONTH_PAGES.has(current);
+  const mn = $("monthNav"), wantMonth = MONTH_PAGES.has(current);
+  // every page's title row is as tall as the month switcher, so the title sits in the same place on every page
+  if (mn.hidden) { mn.hidden = false; const h = mn.offsetHeight; mn.hidden = !wantMonth; if (h) document.documentElement.style.setProperty("--ph-h", h + "px"); }
+  else { mn.hidden = !wantMonth; const h = mn.offsetHeight; if (h) document.documentElement.style.setProperty("--ph-h", h + "px"); }
   $("monthLabel").textContent = monthName(ui.month);
   // spaces: Me / groups / dashboards shared with me
   const list = ctx.spaces || [], bar = $("spaceBar");

@@ -12,6 +12,7 @@ A household money tracker PWA for a couple in the Maldives (MVR). Plain ES modul
 - **Phone bar: always 4 or 6 tabs, never 5.** A rounded bar with a curved dip; the current tab's icon rides in a round bubble above the dip, its name in bold below (`js/dock.js` draws the dip with `clip-path`). The + is its own circle to the right of the bar, in every theme.
 - **Themes: Glass, Sunset, Monsoon, Palm** (others were removed in v37; old choices move to Sunset). **Palm** (v41) has its own block in `css/app.css` just before Glass: lime highlight card, dark green buttons, pill shapes, and on laptops Home as a grid of cards plus a spending ring (`#catRing`, hidden in other themes). **Glass (`data-preset="glass"`)** is Apple's look, light and dark (follows Automatic / Light / Dark like the others; dark uses Apple's dark system colours). Glass goes only on things that float over content; content stays on cards. Its rules live in one block at the end of `css/app.css`; keep Apple's values there and change other themes elsewhere.
 - **All look-and-feel settings live in Settings › Appearance** (theme, text size, motion, dock, vibrations).
+- **Text size is a slider that zooms `body`** (`--fs-zoom`, `data-fs="custom"`). It applies on release; during the drag only the sample line changes, because the slider itself is inside the zoomed page.
 - **Text size zooms `body`.** Position things with `offsetLeft/Top/Width`, or divide screen distances by `zoom()` from `js/dock.js`. `getBoundingClientRect()` alone drifts at Small/Large text.
 - **Motion:** animate `transform`/`opacity` only; springs advance on real elapsed time (`Spring.run(dt)` in `js/motion.js`) so 60/90/120 Hz look the same; respect `prefers-reduced-motion`.
 - **Deleting is instant with Undo** (`removeWithUndo`), not "Are you sure?".
@@ -26,6 +27,9 @@ A household money tracker PWA for a couple in the Maldives (MVR). Plain ES modul
 - Maldivian dates are DD/MM/YYYY.
 - **Home is called Dashboard** on screen (the route and code still say `home`). Extra views open in place as folded cards (`js/fold.js`), not new pages: the dock is 4 or 6 tabs.
 - **Dropdowns open the app's own frosted dropdown** (`js/picker.js`, v43), never the phone's built-in list: every `<select>` is wrapped (`.pick-field`) and stays the source of truth (value, `change`, keyboard). Add `data-native` to a select to opt out. In tests, tap the wrapper (`.pick-field:has(#id)`) or use `selectOption`.
+- **Security** (`js/lock.js`, v45) is PIN, pattern or password plus optional face/fingerprint, on this device only. A privacy screen, not encryption of the data.
+- **Every page title sits in the same place:** the title row is as tall as the month switcher on all pages (`--ph-h`), so don't add per-page header spacing.
+- **Erase** goes through `db.removeEntries` (Recently deleted, one Undo) and never touches loan entries.
 - **Categories:** pick from the list; a new one is a deliberate "+ New category…" with a hint. Settings › Categories merges strays (entries and remembered shop choices move together, with Undo).
 - **Design rules (Impeccable + taste-skill):** labels in sentence case (no small all-caps eyebrows); no boxes inside boxes; status as a small dot or tint, never a thick coloured side stripe; show each number once; use the middle dot (·) at most once per line, commas in sentences; keep text at WCAG AA contrast and phone tap targets at 40-44px.
 

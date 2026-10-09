@@ -25,7 +25,7 @@ const ICON = {
 export const icon = (p, size) => `<svg width="${size || 22}" height="${size || 22}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[p]}</svg>`;
 
 const phoneMQ = window.matchMedia("(max-width: 899.98px)");
-const isPhone = () => phoneMQ.matches;
+export const isPhone = () => phoneMQ.matches;
 export const isGlass = () => document.documentElement.getAttribute("data-preset") === "glass";
 // Settings › Text size zooms the page; screen measurements must be divided by it
 export const zoom = () => { const z = parseFloat(getComputedStyle(document.body).zoom); return z > 0 ? z : 1; };
@@ -215,6 +215,11 @@ export function initDock() {
   dock = $("dock");
   const nav = $("nav");
   navBlob = document.createElement("i"); navBlob.className = "nav-blob"; navBlob.setAttribute("aria-hidden", "true"); nav.prepend(navBlob);
+  // the menu can shift after the highlight was placed ("Synced" appearing under the name, fonts loading):
+  // move the highlight with it, or it sits off-centre until the next page change
+  const reNav = () => kickNav(true);
+  if (window.ResizeObserver) { const ro = new ResizeObserver(reNav); ro.observe(nav); nav.querySelectorAll(".nav-brand, a").forEach(el => ro.observe(el)); }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(reNav);
   buildDock(); wireDock();
   // badges are set elsewhere (requests, bills): mirror them on the dock
   const mo = new MutationObserver(() => dockBadges());

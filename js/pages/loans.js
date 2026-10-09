@@ -11,7 +11,7 @@ function card(l) {
   const late = out > 0.004 && l.due && l.due < todayISO(), lent = l.direction === "lent", mine = canEdit(l);
   const hist = state.entries.filter(e => e.loanId === l.id && e.loanRole === "repay").sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   return `<div class="loan${late ? " late" : ""}${out <= 0.004 ? " paid" : ""}">
-    <div class="loan-top"><b>${lent ? "Lent to " : "Borrowed from "}${esc(l.counterparty)}</b><span class="num">${out <= 0.004 ? "Paid off ✓" : esc(money(out)) + " left"}</span></div>
+    <div class="loan-top"><b><i class="ldot ${lent ? "in" : "out"}" aria-hidden="true"></i>${lent ? "Lent to " : "Borrowed from "}${esc(l.counterparty)}</b><span class="num">${out <= 0.004 ? "Paid off ✓" : esc(money(out)) + " left"}</span></div>
     <div class="meter loan-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Paid back"><div style="width:${pct}%"></div></div>
     <div class="loan-meta">${isAll() ? `<i class="pdot" style="background:${pcolor(l.person)}"></i>${esc(pname(l.person))} · ` : ""}${esc(money(paid, { whole: true }))} of ${esc(money(+l.amount, { whole: true }))} paid back (${pct}%) · since ${esc(fmtDate(l.date))}${l.due ? ` · ${late ? "was due" : "due"} ${esc(fmtDate(l.due))}` : ""}</div>
     ${hist.length ? `<details class="loan-hist"><summary>${hist.length} repayment${hist.length === 1 ? "" : "s"}</summary><ul>${hist.map(h => `<li><span>${esc(fmtDate(h.date))}</span><b class="num">${esc(money(+h.amount))}</b>${mine && canEdit(h) ? `<button class="icon-btn danger" type="button" data-rpdel="${h.id}" aria-label="Delete this repayment">Delete</button>` : ""}</li>`).join("")}</ul></details>` : ""}

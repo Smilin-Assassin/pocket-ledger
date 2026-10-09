@@ -179,6 +179,27 @@ export const db = {
     }
     return Promise.resolve(ids);
   },
+  // erase many entries at once: each keeps a copy in Recently deleted, and restoreEntries (the Undo) puts them all back
+  removeEntries(ids) {
+    const F = ctx.F, by = new Map((raw.entries || []).map(o => [o.id, o]));
+    for (let i = 0; i < ids.length; i += 200) {
+      const b = F.writeBatch(ctx.db);
+      ids.slice(i, i + 200).forEach(id => {
+        const x = by.get(id);
+        if (x) b.set(F.doc(col("trash"), "entries__" + id), { col: "entries", docId: id, data: cleanS(x), deletedAt: Date.now(), author: meId() });
+        b.delete(F.doc(col("entries"), id));
+      });
+      fire(b.commit());
+    }
+  },
+  restoreEntries(items) {
+    const F = ctx.F;
+    for (let i = 0; i < items.length; i += 200) {
+      const b = F.writeBatch(ctx.db);
+      items.slice(i, i + 200).forEach(([id, data]) => { b.set(F.doc(col("entries"), id), clean(Object.assign({}, data, { author: data.author || meId() }))); b.delete(F.doc(col("trash"), "entries__" + id)); });
+      fire(b.commit());
+    }
+  },
   // undoing an import: removed for good (not kept in Recently deleted)
   removeMany(ids) {
     const F = ctx.F;

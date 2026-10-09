@@ -436,7 +436,8 @@ async function askChat(voiceWav) {
         no_key: "Set up Gemini in Settings first. Using your secure server lets everyone chat and scan.",
         bad_key: "Google didn't accept the Gemini key. Check it in Settings › Gemini.",
         offline: "Chat needs an internet connection.",
-        rate_limited: "Gemini's limit was reached for now. Try again in a minute."
+        rate_limited: "Gemini's limit was reached for now. Try again in a minute.",
+        server_down: "The server had a problem. Try again in a moment."
       }[code] || "Something went wrong. Try again.";
       if (code === "no_key" || code === "bad_key") reply.action = "settings";
       if (e && e.message && code === "http") reply.note = "Details: " + String(e.message).slice(0, 200);

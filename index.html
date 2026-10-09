@@ -23,7 +23,10 @@
     d.setAttribute("data-theme", dark ? "dark" : "light");
     if (preset && preset !== "lagoon") d.setAttribute("data-preset", preset); else d.removeAttribute("data-preset");
     if (g("pl-amoled") === "1") d.setAttribute("data-amoled", ""); else d.removeAttribute("data-amoled");
-    d.setAttribute("data-fs", g("pl-fs") || "m");
+    // text size: a smooth slider (v45) stores a number like 1.07; the older Small/Large/Extra large letters still work
+    var fs = g("pl-fs") || "m", FSN = { s: .92, m: 1, l: 1.12, xl: 1.25 }, fz = FSN[fs] || parseFloat(fs);
+    if (!(fz >= .8 && fz <= 1.4)) { fz = 1; fs = "m"; }
+    d.setAttribute("data-fs", FSN[fs] ? fs : "custom"); d.style.setProperty("--fs-zoom", String(fz)); d.setAttribute("data-fs-z", String(fz));
     var m = document.querySelector('meta[name="theme-color"]');
     if (m && document.body) m.setAttribute("content", getComputedStyle(document.body).backgroundColor);
   };
@@ -40,7 +43,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=43">
+<link rel="stylesheet" href="css/app.css?v=45">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -52,7 +55,7 @@
     <symbol id="i-goal" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></symbol>
     <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
     <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6z"/><path d="m9 12 2 2 4-4"/></symbol>
-    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 12.5a7.5 7.5 0 0 1-11.2 6.5L4 20l1.1-4.3A7.5 7.5 0 1 1 20 12.5z"/><path d="M9 11h6M9 14h4"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 12.5a7.5 7.5 0 0 1-11.2 6.5L4 20l1.1-4.3A7.5 7.5 0 1 1 20 12.5z"/><path d="M12 8.4l.85 2.25 2.25.85-2.25.85L12 14.6l-.85-2.25L8.9 11.5l2.25-.85z"/></symbol>
     <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 1 2-2h1.5l1.5-2h6l1.5 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.5"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-install" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M12 7v7"/><path d="m9 11 3 3 3-3"/><path d="M10.5 18.5h3"/></symbol>
@@ -349,7 +352,9 @@
         <p class="hint" id="glassNote" hidden>Glass follows Apple's own light and dark looks.</p>
         <div class="themes" role="group" aria-label="Theme"><button class="theme-sw" type="button" data-preset="glass"><span class="chip"><i style="background:#F2F2F7"></i><i style="background:#0088FF"></i><i style="background:#000000"></i></span>Glass</button><button class="theme-sw" type="button" data-preset="sunset"><span class="chip"><i style="background:#F7F1F4"></i><i style="background:#7B3A6A"></i><i style="background:#181116"></i></span>Sunset</button><button class="theme-sw" type="button" data-preset="monsoon"><span class="chip"><i style="background:#EDEFF3"></i><i style="background:#3B4A6E"></i><i style="background:#111419"></i></span>Monsoon</button><button class="theme-sw" type="button" data-preset="palm"><span class="chip"><i style="background:#EEF1EC"></i><i style="background:#B8E36A"></i><i style="background:#16301C"></i></span>Palm</button></div>
         <div class="field"><span class="flabel">Text size</span>
-          <div class="modeseg four" id="fsSeg" role="group" aria-label="Text size"><button type="button" data-fs="s">Small</button><button type="button" data-fs="m">Normal</button><button type="button" data-fs="l">Large</button><button type="button" data-fs="xl">Extra large</button></div></div>
+          <div class="fs-row"><span class="fs-a sm" aria-hidden="true">A</span><input type="range" id="fsRange" min="85" max="135" step="1" aria-label="Text size"><span class="fs-a lg" aria-hidden="true">A</span></div>
+          <div class="fs-prev" id="fsPrev" aria-hidden="true">Groceries, MVR 1,234.50</div>
+          <div class="fs-foot"><small class="hint" id="fsVal"></small><button class="icon-btn" type="button" id="fsReset">Reset</button></div></div>
         <label class="check" id="amoledRow"><input type="checkbox" id="setAmoled"><span>Pure black in dark mode<small>Deeper blacks that save battery on AMOLED screens.</small></span></label>
         <div class="field"><span class="flabel">Motion</span>
           <div class="modeseg" id="motionSeg" role="group" aria-label="Motion"><button type="button" data-motion="calm">Calm</button><button type="button" data-motion="lively">Lively</button><button type="button" data-motion="jelly">Jelly</button></div>
@@ -363,14 +368,28 @@
       </section>
 
       <section class="panel setsec" id="set-lock">
-        <h2>App lock on this device</h2>
+        <h2>Security</h2>
         <p class="hint" id="lockState"></p>
-        <div class="row-btns"><button class="ghost" type="button" id="lockOn">Turn on</button><button class="ghost" type="button" id="lockBioAdd" hidden>Also use fingerprint</button><button class="ghost" type="button" id="lockOff" hidden>Turn off</button></div>
-        <div id="lockSetup" hidden class="row2">
-          <div class="field"><label for="lockPin1">New PIN (4-8 digits)</label><input id="lockPin1" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password"></div>
-          <div class="field"><label for="lockPin2">PIN again</label><input id="lockPin2" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password"></div>
-          <div><button class="primary" type="button" id="lockSave">Save PIN</button></div>
+        <div class="row-btns"><button class="ghost" type="button" id="lockOn">Turn on</button><button class="ghost" type="button" id="lockChange" hidden>Change</button><button class="ghost" type="button" id="lockOff" hidden>Turn off</button></div>
+        <div id="lockSetup" hidden>
+          <div class="modeseg" id="lockMethod" role="group" aria-label="Lock type"><button type="button" data-m="pin">PIN</button><button type="button" data-m="pattern">Pattern</button><button type="button" data-m="password">Password</button></div>
+          <div id="lsPin" class="row2">
+            <div class="field"><label for="lockPin1">New PIN (4-8 digits)</label><input id="lockPin1" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password"></div>
+            <div class="field"><label for="lockPin2">PIN again</label><input id="lockPin2" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password"></div>
+          </div>
+          <div id="lsPattern" hidden><p class="hint" id="lsPatHint"></p><div id="lsPatPad"></div></div>
+          <div id="lsPw" class="row2" hidden>
+            <div class="field"><label for="lockPw1">New password (6 or more)</label><input id="lockPw1" type="password" maxlength="64" autocomplete="new-password"></div>
+            <div class="field"><label for="lockPw2">Password again</label><input id="lockPw2" type="password" maxlength="64" autocomplete="new-password"></div>
+          </div>
+          <div class="row-btns"><button class="primary" type="button" id="lockSave">Save</button><button class="ghost" type="button" id="lockCancel">Cancel</button></div>
         </div>
+        <div class="field" id="lockBioRow" hidden>
+          <span class="flabel">Face or fingerprint</span>
+          <p class="hint" id="lockBioState"></p>
+          <div class="row-btns"><button class="ghost" type="button" id="lockBioAdd">Use face or fingerprint</button><button class="ghost" type="button" id="lockBioOff" hidden>Stop using it</button></div>
+        </div>
+        <p class="hint">This is a privacy screen for this phone only. If you forget it, sign out and back in to clear it.</p>
       </section>
 
       <section class="panel setsec" id="set-ai">
@@ -453,6 +472,18 @@
         <div id="importList" class="grp-list"></div>
         <div class="banner" id="restoreBanner" hidden><span id="restoreMsg"></span><span class="row-btns"><button type="button" id="restoreYes">Replace my data</button><button type="button" id="restoreNo">Cancel</button></span></div>
         <input type="file" id="restoreFile" accept=".json,application/json" hidden>
+      </section>
+
+      <section class="panel setsec" id="set-erase">
+        <h2>Erase entries</h2>
+        <p class="hint" id="erState"></p>
+        <div class="field"><label for="erCat">Category</label><select id="erCat"></select></div>
+        <div class="row-btns"><button class="ghost danger" type="button" id="erCatBtn">Erase this category…</button><button class="ghost danger" type="button" id="erAllBtn">Erase everything…</button></div>
+        <div id="erConfirm" class="er-confirm" hidden>
+          <p id="erMsg"></p>
+          <div class="field"><label for="erWord">Type ERASE to confirm</label><input id="erWord" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+          <div class="row-btns"><button class="primary danger" type="button" id="erGo" disabled>Erase</button><button class="ghost" type="button" id="erX">Cancel</button></div>
+        </div>
       </section>
 
       <section class="panel setsec" id="set-account">
@@ -550,6 +581,7 @@
       <button class="qa-x" type="button" id="qaX" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
     <div class="qa-amt num qa-f" id="qaAmt" aria-live="polite"><small id="qaCur">MVR</small><span id="qaVal">0</span><span class="qa-caret" aria-hidden="true"></span></div>
     <div class="qa-chips qa-f" id="qaChips" role="group" aria-label="Category"></div>
+    <small class="qa-hint qa-f" id="qaHint" hidden></small>
     <div class="qa-meals qa-f" id="qaMeals" role="group" aria-label="Meal" hidden></div>
     <div class="qa-row qa-f"><button type="button" class="qa-pill" id="qaDate"></button><input type="date" id="qaDateIn" class="qa-datein" hidden aria-label="Date"><button type="button" class="qa-pill" id="qaNoteBtn">+ Add a note</button>
       <div class="qa-note" id="qaNoteRow" hidden><input id="qaNote" maxlength="160" placeholder="Note, e.g. Lunch at Seagull" aria-label="Note"></div></div>
@@ -577,8 +609,11 @@
       <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
       <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
       <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
-      <button type="button" data-k="bio" id="lockBio" aria-label="Use fingerprint" hidden>☝</button><button type="button" data-k="0">0</button><button type="button" data-k="del" aria-label="Delete">⌫</button>
+      <button type="button" class="blank" tabindex="-1" aria-hidden="true"></button><button type="button" data-k="0">0</button><button type="button" data-k="del" aria-label="Delete">⌫</button>
     </div>
+    <div id="lockPatWrap" hidden><div id="lockPatPad"></div></div>
+    <div id="lockPwWrap" class="lock-pw" hidden><input id="lockPw" type="password" maxlength="64" autocomplete="current-password" aria-label="Password" placeholder="Password"><button class="primary" type="button" id="lockPwGo">Unlock</button></div>
+    <button class="ghost" type="button" id="lockBioBtn" hidden>Use face or fingerprint</button>
   </div>
 </div>
 
@@ -631,6 +666,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=43"></script>
+<script type="module" src="app.js?v=45"></script>
 </body>
 </html>

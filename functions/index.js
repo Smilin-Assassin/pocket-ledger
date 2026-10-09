@@ -224,7 +224,17 @@ exports.admin = onCall(async req => {
 });
 
 // ---------- Gemini, with the key kept on the server ----------
+// Anything unexpected is logged and turned into a plain "unavailable" instead of a bare "internal",
+// so the app can say what happened and the log says why.
 exports.gemini = onCall({ secrets: [GEMINI_KEY], timeoutSeconds: 120, memory: "512MiB" }, async req => {
+  try { return await geminiHandler(req); }
+  catch (e) {
+    if (e instanceof HttpsError) throw e;
+    logger.error("gemini crashed", { message: String(e && e.message), stack: String(e && e.stack).slice(0, 600) });
+    throw new HttpsError("unavailable", "The scanning server had a problem. Try again in a moment.");
+  }
+});
+async function geminiHandler(req) {
   if (!req.auth) throw new HttpsError("unauthenticated", "Sign in first.");
   const uid = req.auth.uid;
   const acc = await db.doc("access/" + uid).get();
@@ -250,7 +260,9 @@ exports.gemini = onCall({ secrets: [GEMINI_KEY], timeoutSeconds: 120, memory: "5
   for (const m of chain) {
     for (let attempt = 0; attempt < 2; attempt++) {
       const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(m) + ":generateContent", {
-        method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_KEY.value() }, body });
+        method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_KEY.value() }, body })
+        .catch(e => { logger.warn("gemini fetch failed", String(e && e.message)); return null; });
+      if (!r) { status = 0; msg = "network"; if (attempt === 0) { await new Promise(res => setTimeout(res, 1500)); continue; } break; }
       if (r.ok) {
         const j = await r.json(); const cand = (j.candidates || [])[0];
         const text = cand && cand.content ? (cand.content.parts || []).filter(p => !p.thought).map(p => p.text || "").join("") : "";
@@ -267,8 +279,8 @@ exports.gemini = onCall({ secrets: [GEMINI_KEY], timeoutSeconds: 120, memory: "5
   logger.warn("gemini failed", { status, msg });
   if (status === 429) throw new HttpsError("resource-exhausted", msg || "Gemini is busy. Try again in a minute.");
   if (status === 400 && /api.?key/i.test(msg)) throw new HttpsError("failed-precondition", "The server's Gemini key isn't valid.");
-  throw new HttpsError("unavailable", "HTTP " + status + ": " + msg);
-});
+  throw new HttpsError("unavailable", status ? "HTTP " + status + ": " + msg : "Couldn't reach Gemini. Try again in a moment.");
+}
 
 // Someone recorded money sent to another person in a group they share: let the receiver know.
 exports.notifyTransfer = onCall(async req => {

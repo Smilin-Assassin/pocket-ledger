@@ -89,6 +89,6 @@ export function initGlass() {
   all(); setTimeout(all, 1200);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(all);
   let t = 0; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(all, 200); });
-  new MutationObserver(all).observe(d, { attributes: true, attributeFilter: ["data-preset", "data-fs"] });
+  new MutationObserver(all).observe(d, { attributes: true, attributeFilter: ["data-preset", "data-fs", "data-fs-z"] });
   addEventListener("hashchange", () => setTimeout(all, 50));
 }

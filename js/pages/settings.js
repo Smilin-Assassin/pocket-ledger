@@ -8,6 +8,7 @@ import * as backup from "../backup.js";
 import { exportCsv } from "./entries.js";
 import { renderXferRules } from "../transfers.js";
 import { renderCategories, initCategories } from "../categories.js";
+import { renderErase, initErase } from "../erase.js";
 import { smartOn, placesOn, setPlaces } from "../smart.js";
 import { M, PAGES, PRESETS, saveMotion, refreshHz, measureHz, reduced } from "../motion.js";
 import { NAMES, fitsSix, motionChanged } from "../dock.js";
@@ -87,7 +88,7 @@ function syncAppearance() {
   $("glassNote").hidden = !glass; $("amoledRow").hidden = glass;
   document.querySelectorAll("#set-look [data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
   document.querySelectorAll("#set-look .theme-sw").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.preset === preset)));
-  document.querySelectorAll("#fsSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.fs === fs)));
+  fsSync();
   $("setAmoled").checked = lsGet("pl-amoled") === "1";
   // motion, dock and vibrations
   document.querySelectorAll("#motionSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.motion === M.preset)));
@@ -96,14 +97,30 @@ function syncAppearance() {
   document.querySelectorAll("#dockSizeSeg button").forEach(b => { b.setAttribute("aria-pressed", String(+b.dataset.tabs === tabs)); b.disabled = b.dataset.tabs === "6" && !six; });
   const picks = $("dockPicks"); picks.hidden = tabs === 6;
   picks.innerHTML = PAGES.map(p => `<label class="dp"><input type="checkbox" data-dpick="${p}" ${dockDraft.includes(p) ? "checked" : ""} ${!dockDraft.includes(p) && dockDraft.length >= 3 ? "disabled" : ""}><span>${NAMES[p]}</span></label>`).join("");
-  const side = n => glass ? "" : ", " + n + " on each side of the +";
-  $("dockFit").textContent = tabs === 6 ? "All six pages are in your dock" + side("three") + "."
+  $("dockFit").textContent = tabs === 6 ? "All six pages are in your dock. The + sits in its own circle beside it."
     : dockDraft.length < 3 ? "Pick " + (3 - dockDraft.length) + " more. The 4th tab is More, which holds the rest."
-    : "Three pages plus More" + side("two") + "." + (six ? "" : " Your screen is too narrow for 6 tabs, so it stays at 4. The dock only uses 4 or 6 so it stays balanced.");
+    : "Three pages plus More. The + sits in its own circle beside the dock." + (six ? "" : " Your screen is too narrow for 6 tabs, so it stays at 4. The dock only uses 4 or 6 so it stays balanced.");
   const hz = refreshHz(), hzText = n => "Your screen runs at up to " + n + " Hz while things move. Animations follow it automatically.";
   $("hzNote").textContent = hz ? hzText(hz) : "Animations follow your screen's refresh rate automatically (60, 90, 120 Hz or more).";
   if (!hz) measureHz(() => { const n = $("hzNote"); if (n) n.textContent = hzText(refreshHz()); });
   $("setBuzz").checked = !!M.buzz;
+}
+// ---------- text size slider ----------
+const FSN = { s: .92, m: 1, l: 1.12, xl: 1.25 };
+const fsNow = () => { const v = lsGet("pl-fs") || "m", z = FSN[v] || parseFloat(v); return z >= .8 && z <= 1.4 ? z : 1; };
+const fsText = z => Math.round(z * 100) === 100 ? "Normal" : Math.round(z * 100) + "%";
+function fsPreview(z) {
+  // the sample line grows as you drag; the rest of the page only follows when you let go (so the slider doesn't move under your finger)
+  const cur = parseFloat(getComputedStyle(document.body).zoom) || 1;
+  $("fsPrev").style.fontSize = (1.05 * z / cur).toFixed(3) + "rem"; $("fsVal").textContent = fsText(z);
+}
+function fsSync() { const z = fsNow(); $("fsRange").value = Math.round(z * 100); fsPreview(z); $("fsReset").hidden = Math.round(z * 100) === 100; }
+function fsInit() {
+  const r = $("fsRange");
+  r.addEventListener("input", () => fsPreview(+r.value / 100));
+  const apply = () => { const z = +r.value / 100; lsSet("pl-fs", Math.round(z * 100) === 100 ? "" : String(z)); window.plApplyTheme(); syncAppearance(); changed(); };
+  r.addEventListener("change", apply);
+  $("fsReset").addEventListener("click", () => { r.value = 100; apply(); });
 }
 let dockDraft = M.dock.slice();
 function motionSaved() { saveMotion(); motionChanged(); syncAppearance(); }
@@ -206,7 +223,6 @@ async function onClick(ev) {
     else if (d.preset) { lsSet("pl-preset", d.preset); window.plApplyTheme(); motionChanged(); syncAppearance(); }
     else if (d.motion) { M.preset = PRESETS[d.motion] ? d.motion : "lively"; motionSaved(); }
     else if (d.tabs) { M.tabs = d.tabs === "6" ? 6 : 4; motionSaved(); }
-    else if (d.fs) { lsSet("pl-fs", d.fs === "m" ? "" : d.fs); window.plApplyTheme(); syncAppearance(); changed(); }
     else if (d.renameok) {
       const name = (document.querySelector(`[data-rename="${CSS.escape(d.renameok)}"]`).value || "").trim().slice(0, 30);
       if (!name) return toast("Type a name for the group.");
@@ -282,6 +298,7 @@ export const page = {
     $("pg-settings").addEventListener("click", onClick);
     $("setAmoled").addEventListener("change", () => { lsSet("pl-amoled", $("setAmoled").checked ? "1" : ""); window.plApplyTheme(); });
     $("setBuzz").addEventListener("change", () => { M.buzz = $("setBuzz").checked; saveMotion(); });
+    fsInit(); initErase();
     $("dockPicks").addEventListener("change", e => {
       const i = e.target.closest("input[data-dpick]"); if (!i) return;
       dockDraft = i.checked ? dockDraft.concat(i.dataset.dpick) : dockDraft.filter(p => p !== i.dataset.dpick);
@@ -299,8 +316,8 @@ export const page = {
     lock.renderSettings(); notify.renderSettings(); gem.renderSettings(); backup.renderSettings();
     $("acctInfo").textContent = "Signed in as " + ((ctx.user && ctx.user.email) || "you") + ".";
     $("adminLink").hidden = !ctx.admin; $("adminIdx").hidden = !ctx.admin;
-    $("set-you").hidden = isViewer(); $("set-ai").hidden = isViewer();
-    renderGroups(); renderInvites(); renderTrash(); renderXferRules(); renderCategories();
+    $("set-you").hidden = isViewer(); $("set-ai").hidden = isViewer(); $("set-erase").hidden = isViewer();
+    renderGroups(); renderInvites(); renderTrash(); renderXferRules(); renderCategories(); renderErase();
     $("smartOn").checked = smartOn(); $("placesOn").checked = placesOn();
   },
   render() {

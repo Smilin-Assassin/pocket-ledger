@@ -51,6 +51,10 @@ E(prev, 12, 40, "Transport", "Taxi", { maybeDup: "e4" });              // possib
   check(clr[0] !== clr[1], "bars take the ring's colours", clr);
   check(await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), "no sideways scrolling on a laptop");
   // phone: one column, nothing sideways, at every text size
+  // the side menu highlight follows its tab when the menu shifts after load ("Synced" appearing)
+  const hl = () => p.evaluate(() => { const b = document.querySelector(".nav-blob"), a = document.querySelector('#nav a[aria-current="page"]'); return Math.round(b.getBoundingClientRect().top - a.getBoundingClientRect().top); });
+  await p.evaluate(() => { document.getElementById("syncNote").textContent = "Synced, with a long note that wraps onto a second line"; }); await p.waitForTimeout(800);
+  check(Math.abs(await hl()) <= 1, "the side menu highlight stays on its tab when the menu shifts", await hl());
   await p.setViewportSize({ width: 360, height: 780 }); await p.waitForTimeout(400);
   for (const fs of ["s", "m", "l", "xl"]) {
     await p.evaluate(f => { localStorage.setItem("pl-fs", f); window.plApplyTheme(); }, fs); await p.waitForTimeout(250);

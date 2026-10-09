@@ -99,6 +99,16 @@ export function initPicker() {
     if (!current || (ev.target && ev.target.closest && ev.target.closest("#pickPop"))) return;
     const r = field.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) close(); else place();
   }, { capture: true, passive: true });
-  addEventListener("resize", () => { if (current) close(); });
+  // the phone's keyboard closing (it does when you tap a dropdown) only changes the height: stay open and
+  // re-place the list once the page has settled. A real width change (rotation) still closes it.
+  let lastW = innerWidth;
+  const settle = () => { if (current) { place(); setTimeout(() => current && place(), 180); setTimeout(() => current && place(), 420); } };
+  addEventListener("resize", () => { if (!current) { lastW = innerWidth; return; } if (innerWidth !== lastW) { lastW = innerWidth; close(); } else settle(); });
+  if (window.visualViewport) visualViewport.addEventListener("resize", settle);
+  // start putting the keyboard away as soon as the finger lands, so the layout has moved by the time the list opens
+  document.addEventListener("pointerdown", ev => {
+    const f = ev.target.closest(".pick-field"); const a = document.activeElement;
+    if (f && a && a !== document.body && /^(INPUT|TEXTAREA)$/.test(a.tagName)) a.blur();
+  }, { passive: true });
   addEventListener("hashchange", () => { if (current) close(); });
 }

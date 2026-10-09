@@ -1,6 +1,6 @@
 // Quick add: the + in the dock grows into a sheet with a number pad. Hold the + for Scan / Type it / Voice.
 import { $, esc, money, todayISO, dShort, getCurrency, toast } from "./util.js";
-import { state, db, meId, catOptions, EAT, MEALS, mealAt, mealFromNote, mealName } from "./store.js";
+import { state, db, meId, catOptions, guessCategory, EAT, MEALS, mealAt, mealFromNote, mealName } from "./store.js";
 import { budgetCheck } from "./actions.js";
 import { Spring, clock, params, reduced, buzz, ease } from "./motion.js";
 import { focusAdd, likelyRepeat, MAX_AMOUNT } from "./pages/entries.js";
@@ -8,7 +8,7 @@ import { openScanPicker } from "./scan.js";
 import { openChat, startRec } from "./chat.js";
 import { zoom } from "./dock.js";
 
-let q = { type: "expense", val: "", cat: "", date: "", note: "", meal: "", mealPicked: false };
+let q = { type: "expense", val: "", cat: "", date: "", note: "", meal: "", mealPicked: false, catPicked: false, guessed: false };
 const P = new Spring(0);
 let from = null, isOpen = false;
 
@@ -25,7 +25,11 @@ function render() {
   $("qaType").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === q.type)));
   $("qaCur").textContent = getCurrency();
   $("qaVal").textContent = shown(q.val);
-  const list = chips(q.type); if (!list.includes(q.cat)) q.cat = list[0] || (q.type === "income" ? "Salary" : "Other");
+  const list = chips(q.type);
+  // a category guessed from the note may not be one of the ten most used: show it first
+  if (q.guessed && q.cat && !list.includes(q.cat) && catOptions(q.type).includes(q.cat)) list.unshift(q.cat);
+  if (!list.includes(q.cat)) { q.cat = list[0] || (q.type === "income" ? "Salary" : "Other"); q.guessed = false; }
+  $("qaHint").hidden = !q.guessed; $("qaHint").textContent = "Category from your past entries";
   $("qaChips").innerHTML = list.map(c => `<button type="button" class="qa-chip" data-cat="${esc(c)}" aria-pressed="${c === q.cat}">${esc(c)}</button>`).join("");
   // Eating out: the meal, guessed from the note or the clock (today only); tap to change or clear
   const eat = q.type === "expense" && q.cat === EAT;
@@ -39,7 +43,7 @@ function render() {
   $("qaSave").textContent = q.type === "expense" ? "Add expense" : "Add income";
 }
 function reset() {
-  q = { type: "expense", val: "", cat: "", date: todayISO(), note: "", meal: "", mealPicked: false };
+  q = { type: "expense", val: "", cat: "", date: todayISO(), note: "", meal: "", mealPicked: false, catPicked: false, guessed: false };
   $("qaNote").value = ""; $("qaNoteRow").hidden = true; $("qaNoteBtn").hidden = false;
   render();
 }
@@ -138,8 +142,8 @@ export function initQuick() {
   const plus = $("dkPlus"); if (!plus) return;
   $("qaPad").innerHTML = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "del"].map(k => `<button type="button" data-k="${k}" aria-label="${k === "del" ? "Delete digit" : k}">${k === "del" ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7z"/><path d="m12 9.5 5 5M17 9.5l-5 5"/></svg>' : k}</button>`).join("");
   $("qaPad").addEventListener("click", e => { const b = e.target.closest("button[data-k]"); if (b) press(b.dataset.k); });
-  $("qaType").addEventListener("click", e => { const b = e.target.closest("button[data-v]"); if (!b || b.dataset.v === q.type) return; q.type = b.dataset.v; q.cat = ""; buzz(6); render(); });
-  $("qaChips").addEventListener("click", e => { const b = e.target.closest("[data-cat]"); if (!b) return; q.cat = b.dataset.cat; buzz(4); render(); });
+  $("qaType").addEventListener("click", e => { const b = e.target.closest("button[data-v]"); if (!b || b.dataset.v === q.type) return; q.type = b.dataset.v; q.cat = ""; q.catPicked = false; q.guessed = false; buzz(6); render(); });
+  $("qaChips").addEventListener("click", e => { const b = e.target.closest("[data-cat]"); if (!b) return; q.cat = b.dataset.cat; q.catPicked = true; q.guessed = false; buzz(4); render(); });
   $("qaMeals").addEventListener("click", e => { const b = e.target.closest("[data-meal]"); if (!b) return; q.meal = q.meal === b.dataset.meal ? "" : b.dataset.meal; q.mealPicked = true; buzz(4); render(); });
   $("qaDate").addEventListener("click", () => { const d = $("qaDateIn"); d.value = q.date; d.max = todayISO(); try { d.showPicker(); } catch { d.hidden = false; d.focus(); } });
   $("qaDateIn").addEventListener("change", () => { if ($("qaDateIn").value) { q.date = $("qaDateIn").value; render(); } $("qaDateIn").hidden = true; });
@@ -149,7 +153,11 @@ export function initQuick() {
     const e = entry(); closeQuick();
     focusAdd(e.type, "", { amount: e.amount > 0 ? e.amount : "", category: e.category, date: e.date, note: e.note, meal: e.meal });
   });
-  $("qaNote").addEventListener("input", () => { if (q.cat === EAT && !q.mealPicked) render(); });
+  $("qaNote").addEventListener("input", () => {
+    // the category follows what you type, from your past entries, until you pick one yourself
+    if (!q.catPicked) { const g = guessCategory($("qaNote").value, q.type); if (g) { q.cat = g; q.guessed = true; } else if (q.guessed) { q.cat = ""; q.guessed = false; } render(); }
+    else if (q.cat === EAT && !q.mealPicked) render();
+  });
   $("qaScrim").addEventListener("click", closeQuick);
   $("qaX").addEventListener("click", closeQuick);
   document.addEventListener("keydown", e => {
