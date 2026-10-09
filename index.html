@@ -43,7 +43,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=45">
+<link rel="stylesheet" href="css/app.css?v=46">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -515,10 +515,10 @@
   </div>
 </div>
 
-<button class="fab" id="chatFab" type="button" aria-label="Ask about your money" hidden><svg class="ico lg"><use href="#i-chat"/></svg></button>
+<button class="fab" id="chatFab" type="button" aria-label="Ask about your money" hidden><img class="gem" src="icons/gemini.webp" alt="" width="28" height="28"></button>
 
 <section class="chat" id="chatPanel" hidden aria-label="Ask about your money">
-  <div class="chat-head"><h2>Ask about your money</h2><span class="row-btns"><button class="icon-btn spk" id="chatSpeak" type="button" title="Read voice answers aloud" aria-label="Read voice answers aloud"><svg class="ico sm"><use href="#i-speak"/></svg></button><button class="icon-btn" id="chatClear" type="button">New chat</button><button class="icon-btn" id="chatClose" type="button">Close</button></span></div>
+  <div class="chat-head"><h2><img class="gem sm" src="icons/gemini.webp" alt="" width="22" height="22">Ask about your money</h2><span class="row-btns"><button class="icon-btn spk" id="chatSpeak" type="button" title="Read voice answers aloud" aria-label="Read voice answers aloud"><svg class="ico sm"><use href="#i-speak"/></svg></button><button class="icon-btn" id="chatClear" type="button">New chat</button><button class="icon-btn" id="chatClose" type="button">Close</button></span></div>
   <div class="chat-msgs" id="chatMsgs" aria-live="polite"></div>
   <div class="rec-bar" id="chatRecBar" hidden><span class="rec-dot"></span><span>Listening… <b id="chatRecTime">0:00</b></span><span>Tap the mic again to send</span><button class="icon-btn" type="button" id="chatRecCancel">Cancel</button></div>
   <form class="chat-form" id="chatForm"><button class="mic" id="chatMic" type="button" aria-label="Speak"><svg class="ico"><use href="#i-mic"/></svg></button><textarea id="chatInput" rows="1" placeholder="Ask, or tap the mic" aria-label="Your message"></textarea><button class="primary" id="chatSend" type="submit">Ask</button><button class="ghost" id="chatStop" type="button" hidden>Stop</button></form>
@@ -666,6 +666,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=45"></script>
+<script type="module" src="app.js?v=46"></script>
 </body>
 </html>

@@ -1426,3 +1426,9 @@ circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest
 
 :root[data-preset="palm"] .pat-dot.on i { background: var(--accent); }
 :root[data-preset="glass"] .loan { border-color: color-mix(in srgb, var(--ink) 20%, transparent); }
+
+/* Gemini star as the chat icon */
+.gem { display: block; width: 28px; height: 28px; object-fit: contain; pointer-events: none; }
+.gem.sm { display: inline-block; width: 22px; height: 22px; vertical-align: -4px; margin-right: 8px; }
+.fab:has(.gem) { background: #fff; border: 1px solid rgba(0,0,0,.08); }
+:root[data-theme="dark"] .fab:has(.gem) { background: #26272b; border-color: rgba(255,255,255,.12); }
