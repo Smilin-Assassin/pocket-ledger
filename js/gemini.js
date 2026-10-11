@@ -57,7 +57,7 @@ export async function geminiText(prompt, files, opts) {
   if (signal && signal.aborted) throw { code: "cancelled" };
   const gen = { temperature: opts.temperature ?? 0.1 };
   if (opts.json) gen.response_mime_type = "application/json";
-  if (opts.fast) gen.thinkingConfig = { thinkingBudget: 0 }; // receipts don't need the model to reason first
+  if (opts.fast && lsGet("pl-nothink") !== "1") gen.thinkingConfig = { thinkingBudget: 0 }; // receipts don't need the model to reason first
   if (server) return serverGemini(Object.assign({ contents: [{ role: "user", parts }], generationConfig: gen, model: lsGet(MODEL_LS).trim() || null }, opts.search ? { search: true } : {}, opts.fast ? { fast: true } : {}), signal);
   let body = JSON.stringify(Object.assign({ contents: [{ role: "user", parts }], generationConfig: gen }, opts.search ? { tools: [{ google_search: {} }] } : {}));
   const call = async model => {
@@ -77,8 +77,8 @@ export async function geminiText(prompt, files, opts) {
       status = r.status; msg = "";
       try { msg = ((await r.clone().json()).error || {}).message || ""; } catch {}
       if ((status === 503 || status === 500) && attempt === 0) { await wait(1500); continue; }
-      // a model that doesn't accept the thinking setting: send the same request without it
-      if (status === 400 && /thinking/i.test(msg) && gen.thinkingConfig) { delete gen.thinkingConfig; body = JSON.stringify(Object.assign({ contents: [{ role: "user", parts }], generationConfig: gen }, opts.search ? { tools: [{ google_search: {} }] } : {})); attempt = -1; continue; }
+      // Google answers "invalid argument" when a model doesn't take the thinking setting: send the same request without it, and stop sending it
+      if (status === 400 && gen.thinkingConfig && !/api.?key/i.test(msg)) { delete gen.thinkingConfig; lsSet("pl-nothink", "1"); body = JSON.stringify(Object.assign({ contents: [{ role: "user", parts }], generationConfig: gen }, opts.search ? { tools: [{ google_search: {} }] } : {})); attempt = -1; continue; }
       break;
     }
     if (r.ok) break;

@@ -271,7 +271,7 @@ async function geminiHandler(req) {
       }
       status = r.status; msg = ""; try { msg = ((await r.json()).error || {}).message || ""; } catch (e) {}
       if ((status === 503 || status === 500) && attempt === 0) { await new Promise(res => setTimeout(res, 1500)); continue; }
-      if (status === 400 && /thinking/i.test(msg) && generationConfig && generationConfig.thinkingConfig) { delete generationConfig.thinkingConfig; body = JSON.stringify(Object.assign({ contents, generationConfig }, search ? { tools: [{ google_search: {} }] } : {})); attempt = -1; continue; }
+      if (status === 400 && !/api.?key/i.test(msg) && generationConfig && generationConfig.thinkingConfig) { delete generationConfig.thinkingConfig; body = JSON.stringify(Object.assign({ contents, generationConfig }, search ? { tools: [{ google_search: {} }] } : {})); attempt = -1; continue; }
       break;
     }
     const noQuota = status === 429 && /limit:\s*0\b|free_tier/i.test(msg);

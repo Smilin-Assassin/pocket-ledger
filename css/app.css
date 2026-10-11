@@ -1426,3 +1426,7 @@ circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest
 
 :root[data-preset="palm"] .pat-dot.on i { background: var(--accent); }
 :root[data-preset="glass"] .loan { border-color: color-mix(in srgb, var(--ink) 20%, transparent); }
+
+/* the chat robot: a mask so it takes the button's text colour in every theme */
+.bot { display: block; width: 30px; height: 30px; background: currentColor; -webkit-mask: url("../icons/chat-bot.png") center / contain no-repeat; mask: url("../icons/chat-bot.png") center / contain no-repeat; pointer-events: none; }
+.bot.sm { display: inline-block; width: 24px; height: 24px; vertical-align: -6px; margin-right: 8px; color: var(--accent); }
