@@ -29,7 +29,7 @@ async function serverGemini(payload, signal) {
 async function shrinkImage(file) {
   let bmp;
   try { bmp = await createImageBitmap(file); } catch { throw { code: "image_rejected", message: (file.type || "unknown type") + ", " + Math.round((file.size || 0) / 1024) + " KB" }; }
-  const max = 1600, sc = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const max = 1280, sc = Math.min(1, max / Math.max(bmp.width, bmp.height));
   const c = document.createElement("canvas");
   c.width = Math.max(1, Math.round(bmp.width * sc)); c.height = Math.max(1, Math.round(bmp.height * sc));
   const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(bmp, 0, 0, c.width, c.height);
@@ -57,15 +57,18 @@ export async function geminiText(prompt, files, opts) {
   if (signal && signal.aborted) throw { code: "cancelled" };
   const gen = { temperature: opts.temperature ?? 0.1 };
   if (opts.json) gen.response_mime_type = "application/json";
-  if (server) return serverGemini(Object.assign({ contents: [{ role: "user", parts }], generationConfig: gen, model: lsGet(MODEL_LS).trim() || null }, opts.search ? { search: true } : {}), signal);
-  const body = JSON.stringify(Object.assign({ contents: [{ role: "user", parts }], generationConfig: gen }, opts.search ? { tools: [{ google_search: {} }] } : {}));
+  if (opts.fast) gen.thinkingConfig = { thinkingBudget: 0 }; // receipts don't need the model to reason first
+  if (server) return serverGemini(Object.assign({ contents: [{ role: "user", parts }], generationConfig: gen, model: lsGet(MODEL_LS).trim() || null }, opts.search ? { search: true } : {}, opts.fast ? { fast: true } : {}), signal);
+  let body = JSON.stringify(Object.assign({ contents: [{ role: "user", parts }], generationConfig: gen }, opts.search ? { tools: [{ google_search: {} }] } : {}));
   const call = async model => {
     try { return await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body, signal }); }
     catch (e) { throw { code: e && e.name === "AbortError" ? "cancelled" : "offline" }; }
   };
   const wait = ms => new Promise(res => setTimeout(res, ms));
   // try the chosen model, then other current Flash models if one isn't available, is busy, or has no free quota
-  const own = lsGet(MODEL_LS).trim(), chain = own ? [own] : MODEL_CHAIN;
+  const own = lsGet(MODEL_LS).trim();
+  // quick jobs (a receipt photo) start with the lightest model; the bigger ones are still there as backup
+  const chain = own ? [own] : opts.fast ? [MODEL_CHAIN[MODEL_CHAIN.length - 1]].concat(MODEL_CHAIN.slice(0, -1)) : MODEL_CHAIN;
   let r = null, msg = "", status = 0;
   for (const model of chain) {
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -74,6 +77,8 @@ export async function geminiText(prompt, files, opts) {
       status = r.status; msg = "";
       try { msg = ((await r.clone().json()).error || {}).message || ""; } catch {}
       if ((status === 503 || status === 500) && attempt === 0) { await wait(1500); continue; }
+      // a model that doesn't accept the thinking setting: send the same request without it
+      if (status === 400 && /thinking/i.test(msg) && gen.thinkingConfig) { delete gen.thinkingConfig; body = JSON.stringify(Object.assign({ contents: [{ role: "user", parts }], generationConfig: gen }, opts.search ? { tools: [{ google_search: {} }] } : {})); attempt = -1; continue; }
       break;
     }
     if (r.ok) break;
@@ -93,7 +98,7 @@ export function parseJsonText(text) {
   if (m) { try { return JSON.parse(m[0]); } catch {} }
   throw { code: "http", message: "Couldn't understand the answer: " + t.slice(0, 120) };
 }
-export const geminiJson = async (prompt, files, signal) => parseJsonText(await geminiText(prompt, files, { json: true, signal }));
+export const geminiJson = async (prompt, files, signal, extra) => parseJsonText(await geminiText(prompt, files, Object.assign({ json: true, signal }, extra || {})));
 
 // ---------- Settings › Gemini ----------
 export function renderSettings() {
@@ -111,7 +116,7 @@ export function initSettings() {
       await ctx.F.updateDoc(hRef(), { ai: { server: true }, gemini: { key: "" } });
       state.household.ai = { server: true }; state.household.gemini = { key: "" }; lsSet(KEY_LS, "");
       toast("Gemini now runs on your server"); renderSettings();
-    } catch (e) { toast(serverMissing(e) ? "The Gemini server isn't set up yet. Run the setup steps first." : e && e.code === "permission-denied" ? "Only the group's creator can change this." : (e && e.message) || "Couldn't reach the server."); }
+    } catch (e) { toast(serverMissing(e) ? "The Gemini server can't be reached right now. Keep using your own key for now." : e && e.code === "permission-denied" ? "Only the group's creator can change this." : (e && e.message) || "Couldn't reach the server."); }
     $("srvOn").disabled = false;
   });
   $("srvOff").addEventListener("click", async () => {

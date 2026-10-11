@@ -251,11 +251,11 @@ async function geminiHandler(req) {
   const limit = (await appConfig()).aiLimit || DAILY_AI_LIMIT;
   if (used > limit) throw new HttpsError("resource-exhausted", "Daily Gemini limit reached. It resets tomorrow.");
 
-  const { contents, generationConfig, model, search } = req.data || {};
+  const { contents, generationConfig, model, search, fast } = req.data || {};
   if (!Array.isArray(contents) || !contents.length) throw new HttpsError("invalid-argument", "Nothing to send.");
   // search: let Gemini look things up with Google Search (used to tell what kind of place an unknown shop is)
-  const body = JSON.stringify(Object.assign({ contents, generationConfig: generationConfig || {} }, search ? { tools: [{ google_search: {} }] } : {}));
-  const chain = model ? [String(model)] : MODEL_CHAIN;
+  let body = JSON.stringify(Object.assign({ contents, generationConfig: generationConfig || {} }, search ? { tools: [{ google_search: {} }] } : {}));
+  const chain = model ? [String(model)] : fast ? [MODEL_CHAIN[MODEL_CHAIN.length - 1]].concat(MODEL_CHAIN.slice(0, -1)) : MODEL_CHAIN;
   let status = 0, msg = "";
   for (const m of chain) {
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -271,6 +271,7 @@ async function geminiHandler(req) {
       }
       status = r.status; msg = ""; try { msg = ((await r.json()).error || {}).message || ""; } catch (e) {}
       if ((status === 503 || status === 500) && attempt === 0) { await new Promise(res => setTimeout(res, 1500)); continue; }
+      if (status === 400 && /thinking/i.test(msg) && generationConfig && generationConfig.thinkingConfig) { delete generationConfig.thinkingConfig; body = JSON.stringify(Object.assign({ contents, generationConfig }, search ? { tools: [{ google_search: {} }] } : {})); attempt = -1; continue; }
       break;
     }
     const noQuota = status === 429 && /limit:\s*0\b|free_tier/i.test(msg);

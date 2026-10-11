@@ -71,7 +71,7 @@ export async function startScan(files) {
   $("scanList").innerHTML = ""; $("scanFoot").hidden = true; $("scanErr").hidden = true;
   status("Looking for amounts, dates and shop names. This takes a few seconds.", true);
   try {
-    const res = await geminiJson(scanPrompt(files.length), files, ctl.signal);
+    const res = await geminiJson(scanPrompt(files.length), files, ctl.signal, { fast: true });
     if (scanAbort !== ctl) return;
     scanAbort = null;
     const cur0 = state.settings.currency || "MVR";
