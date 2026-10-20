@@ -3,26 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0B5F57">
+<meta name="theme-color" content="#FBF7F3">
 <script>
 (function () {
   var d = document.documentElement, g = function (k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } };
-  var mq = window.matchMedia ? matchMedia("(prefers-color-scheme: dark)") : null;
   window.plApplyTheme = function () {
-    // Glass (Apple's Liquid Glass look) is the default on iPhone, iPad and Mac; everyone can pick any theme
-    var apple = /iPhone|iPad|iPod|Macintosh|Mac OS X/.test(navigator.userAgent || "");
-    // themes: Glass (light and dark), Sunset, Monsoon, Palm (v41); older choices move to Sunset
-    var mode = g("pl-mode") || "auto", preset = g("pl-preset") || (apple ? "glass" : "sunset");
-    if (preset !== "glass" && preset !== "sunset" && preset !== "monsoon" && preset !== "palm") preset = "sunset";
-    var dark = mode === "dark" || (mode === "auto" && mq && mq.matches);
-    d.toggleAttribute("data-apple", apple);
-    if (preset === "glass" && !apple && !document.getElementById("plInter")) {
-      var l = document.createElement("link"); l.id = "plInter"; l.rel = "stylesheet";
-      l.href = "https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap"; document.head.appendChild(l);
-    }
-    d.setAttribute("data-theme", dark ? "dark" : "light");
-    if (preset && preset !== "lagoon") d.setAttribute("data-preset", preset); else d.removeAttribute("data-preset");
-    if (g("pl-amoled") === "1") d.setAttribute("data-amoled", ""); else d.removeAttribute("data-amoled");
+    // one look, Coral Dusk (v50), in light or dark, chosen by hand in Settings › Appearance (default light;
+    // the old "Automatic" and every older theme choice simply land on light)
+    d.setAttribute("data-theme", g("pl-mode") === "dark" ? "dark" : "light");
+    d.setAttribute("data-preset", "coral");
     // text size: a smooth slider (v45) stores a number like 1.07; the older Small/Large/Extra large letters still work
     var fs = g("pl-fs") || "m", FSN = { s: .92, m: 1, l: 1.12, xl: 1.25 }, fz = FSN[fs] || parseFloat(fs);
     if (!(fz >= .8 && fz <= 1.4)) { fz = 1; fs = "m"; }
@@ -31,7 +20,6 @@
     if (m && document.body) m.setAttribute("content", getComputedStyle(document.body).backgroundColor);
   };
   window.plApplyTheme();
-  if (mq && mq.addEventListener) mq.addEventListener("change", window.plApplyTheme);
   document.addEventListener("DOMContentLoaded", window.plApplyTheme);
 })();
 </script>
@@ -43,7 +31,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=49">
+<link rel="stylesheet" href="css/app.css?v=50">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -348,14 +336,11 @@
 
       <section class="panel setsec" id="set-look">
         <h2>Appearance on this device</h2>
-        <div class="modeseg" id="modeSeg" role="group" aria-label="Light or dark"><button type="button" data-mode="auto">Automatic</button><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div>
-        <p class="hint" id="glassNote" hidden>Glass follows Apple's own light and dark looks.</p>
-        <div class="themes" role="group" aria-label="Theme"><button class="theme-sw" type="button" data-preset="glass"><span class="chip"><i style="background:#F2F2F7"></i><i style="background:#0088FF"></i><i style="background:#000000"></i></span>Glass</button><button class="theme-sw" type="button" data-preset="sunset"><span class="chip"><i style="background:#F7F1F4"></i><i style="background:#7B3A6A"></i><i style="background:#181116"></i></span>Sunset</button><button class="theme-sw" type="button" data-preset="monsoon"><span class="chip"><i style="background:#EDEFF3"></i><i style="background:#3B4A6E"></i><i style="background:#111419"></i></span>Monsoon</button><button class="theme-sw" type="button" data-preset="palm"><span class="chip"><i style="background:#EEF1EC"></i><i style="background:#B8E36A"></i><i style="background:#16301C"></i></span>Palm</button></div>
+        <div class="modeseg two" id="modeSeg" role="group" aria-label="Light or dark"><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div>
         <div class="field"><span class="flabel">Text size</span>
           <div class="fs-row"><span class="fs-a sm" aria-hidden="true">A</span><input type="range" id="fsRange" min="85" max="135" step="1" aria-label="Text size"><span class="fs-a lg" aria-hidden="true">A</span></div>
           <div class="fs-prev" id="fsPrev" aria-hidden="true">Groceries, MVR 1,234.50</div>
           <div class="fs-foot"><small class="hint" id="fsVal"></small><button class="icon-btn" type="button" id="fsReset">Reset</button></div></div>
-        <label class="check" id="amoledRow"><input type="checkbox" id="setAmoled"><span>Pure black in dark mode<small>Deeper blacks that save battery on AMOLED screens.</small></span></label>
         <div class="field"><span class="flabel">Motion</span>
           <div class="modeseg" id="motionSeg" role="group" aria-label="Motion"><button type="button" data-motion="calm">Calm</button><button type="button" data-motion="lively">Lively</button><button type="button" data-motion="jelly">Jelly</button></div>
           <small class="hint" id="motionHint"></small></div>
@@ -666,6 +651,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=49"></script>
+<script type="module" src="app.js?v=50"></script>
 </body>
 </html>

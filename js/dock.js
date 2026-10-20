@@ -7,7 +7,6 @@
 import { $, esc } from "./util.js";
 import { ctx, state, ui, openBills } from "./store.js";
 import { go, currentPage, onRoute } from "./shell.js";
-import { refreshLens } from "./glass.js";
 import { M, PAGES, Spring, clock, params, reduced, buzz, ease, applyEase, measureHz } from "./motion.js";
 
 export const NAMES = { home: "Dashboard", entries: "Entries", loans: "Loans", bills: "Bills", goals: "Goals", settings: "Settings", more: "More", admin: "Admin" };
@@ -26,7 +25,6 @@ export const icon = (p, size) => `<svg width="${size || 22}" height="${size || 2
 
 const phoneMQ = window.matchMedia("(max-width: 899.98px)");
 export const isPhone = () => phoneMQ.matches;
-export const isGlass = () => document.documentElement.getAttribute("data-preset") === "glass";
 // Settings › Text size zooms the page; screen measurements must be divided by it
 export const zoom = () => { const z = parseFloat(getComputedStyle(document.body).zoom); return z > 0 ? z : 1; };
 const layoutWidth = () => Math.min(window.innerWidth / zoom(), 560);
@@ -46,7 +44,7 @@ export function buildDock() {
   dock.dataset.n = list.length;
   bar = $("dkBar"); line = dock.querySelector(".dk-line path"); bubble = $("dkBubble"); bubIc = bubble.firstChild; tabs = [...dock.querySelectorAll(".dk-tab")]; shown = "";
   renderMore(); dockBadges();
-  requestAnimationFrame(() => { aim(); X.snap(); V.snap(); swapIcon(true); paint(); refreshLens("dock"); });
+  requestAnimationFrame(() => { aim(); X.snap(); V.snap(); swapIcon(true); paint(); });
 }
 export function dockBadges() {
   if (!dock) return;

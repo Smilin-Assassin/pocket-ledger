@@ -83,13 +83,9 @@ async function saveMyDetails() {
 
 // ---------- appearance (this device) ----------
 function syncAppearance() {
-  const mode = lsGet("pl-mode") || "auto", preset = document.documentElement.getAttribute("data-preset") || "sunset", fs = lsGet("pl-fs") || "m";
-  const glass = preset === "glass";
-  $("glassNote").hidden = !glass; $("amoledRow").hidden = glass;
+  const mode = lsGet("pl-mode") === "dark" ? "dark" : "light", fs = lsGet("pl-fs") || "m";
   document.querySelectorAll("#set-look [data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
-  document.querySelectorAll("#set-look .theme-sw").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.preset === preset)));
   fsSync();
-  $("setAmoled").checked = lsGet("pl-amoled") === "1";
   // motion, dock and vibrations
   document.querySelectorAll("#motionSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.motion === M.preset)));
   $("motionHint").textContent = reduced() ? "Your phone is set to reduce motion, so animations are kept short." : ({ calm: "Smooth and quick, hardly any bounce.", lively: "A little stretch and bounce.", jelly: "Stretchy and wobbly. The fun one." })[M.preset];
@@ -219,8 +215,7 @@ async function onClick(ev) {
   if (d.acctdel !== undefined) { readAccts(); acctRows.splice(+d.acctdel, 1); if (!acctRows.length) acctRows.push({ bank: "", name: "", last4: "" }); renderAccts(); return; }
   try {
     if (b.id === "saveSettings") return saveMyDetails();
-    if (d.mode) { lsSet("pl-mode", d.mode === "auto" ? "" : d.mode); window.plApplyTheme(); syncAppearance(); }
-    else if (d.preset) { lsSet("pl-preset", d.preset); window.plApplyTheme(); motionChanged(); syncAppearance(); }
+    if (d.mode) { lsSet("pl-mode", d.mode === "dark" ? "dark" : ""); window.plApplyTheme(); syncAppearance(); }
     else if (d.motion) { M.preset = PRESETS[d.motion] ? d.motion : "lively"; motionSaved(); }
     else if (d.tabs) { M.tabs = d.tabs === "6" ? 6 : 4; motionSaved(); }
     else if (d.renameok) {
@@ -296,7 +291,6 @@ async function onClick(ev) {
 export const page = {
   init() {
     $("pg-settings").addEventListener("click", onClick);
-    $("setAmoled").addEventListener("change", () => { lsSet("pl-amoled", $("setAmoled").checked ? "1" : ""); window.plApplyTheme(); });
     $("setBuzz").addEventListener("change", () => { M.buzz = $("setBuzz").checked; saveMotion(); });
     fsInit(); initErase();
     $("dockPicks").addEventListener("change", e => {

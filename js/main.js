@@ -21,7 +21,6 @@ import { aiReady } from "./gemini.js";
 import { initTransfers, checkTransfers } from "./transfers.js";
 import { initDock, dockBadges, buildDock } from "./dock.js";
 import { initQuick, openQuick } from "./quick.js";
-import { initGlass } from "./glass.js";
 import { initSmart, setAddFn, setLookFn, setNeedsLook } from "./smart.js";
 
 // a screenshot shared into the app from another app (Android share sheet)
@@ -53,7 +52,7 @@ function handleShortcut() {
 
 export function boot(fb) {
   [["home", home], ["entries", entries], ["loans", loans], ["bills", bills], ["goals", goals], ["settings", settings], ["admin", admin], ["more", { init() {}, render() { dockBadges(); } }]].forEach(([id, p]) => { registerPage(id, p); p.init(); });
-  initShell(); initDock(); initGlass(); initQuick(); initScan(); initStatements(); initCategories(); initPicker(); initSwipe(); initTransfers(); initChat(); initLock(); initNag();
+  initShell(); initDock(); initQuick(); initScan(); initStatements(); initCategories(); initPicker(); initSwipe(); initTransfers(); initChat(); initLock(); initNag();
   setAddFn(pre => focusAdd("expense", null, pre)); setLookFn(showReview); setNeedsLook(needsLook); initSmart(showCategory);
   $("quickX").addEventListener("click", () => { $("quick").hidden = true; });
   document.addEventListener("click", ev => { const b = ev.target.closest("[data-go-add]"); if (b) focusAdd("expense"); const c = ev.target.closest("[data-cat-go]"); if (c) showCategory(c.dataset.catGo, c.dataset.meal); });

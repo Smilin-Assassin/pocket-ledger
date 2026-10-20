@@ -28,7 +28,7 @@ Skills loaded for this project session.
 
 | Job | Use | Notes for this repo |
 |---|---|---|
-| New screen or a visual change | `impeccable` (`shape`, then `craft`) with `taste-skill` rules | Keep the theme tokens in `css/app.css` (Lagoon, Atoll, Sandbank, Monsoon, Sunset, dark, AMOLED). Settings belong in Settings › Appearance. |
+| New screen or a visual change | `impeccable` (`shape`, then `craft`) with `taste-skill` rules | Keep the Coral Dusk tokens at the top of `css/app.css` (light and dark). Settings belong in Settings › Appearance. |
 | Before pushing a visible change | `impeccable audit` / `critique`, then `polish` | Check phone portrait and landscape, laptop, every text size (Small zooms the page), light and dark. |
 | Animation work | `impeccable animate` | Transform/opacity only; springs from `js/motion.js` (time-based, 60–120 Hz); respect reduced motion. Dock stays 4 or 6 tabs. |
 | Words on screen and docs | `humanizer` | Plain English, short, no jargon. The owner reads on a phone. |

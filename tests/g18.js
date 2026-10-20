@@ -1,4 +1,4 @@
-// g18 (v41): the Palm theme (colours, laptop card grid, spending ring) and Needs a look by month. Made-up data.
+// g18 (v41, Coral Dusk since v50): the Dashboard card grid on laptops, the spending ring, and Needs a look by month. Made-up data.
 const { start } = require("./lib");
 const U = "uid_tomxcom", H = "households/P1";
 const now = new Date(), pad = n => String(n).padStart(2, "0"), K = now.getFullYear() + "-" + pad(now.getMonth() + 1);
@@ -17,7 +17,7 @@ E(prev, 12, 40, "Transport", "Taxi", { maybeDup: "e4" });              // possib
 
 (async () => {
   const T = await start({ seed, users: { "tom@x.com": "secret12" }, context: { viewport: { width: 1280, height: 900 } } }), { p, check } = T;
-  console.log("g18: Palm theme, Needs a look by month");
+  console.log("g18: Dashboard layout and ring, Needs a look by month");
   await T.login("tom@x.com", "#home"); await p.waitForTimeout(800);
 
   // Needs a look follows the month shown
@@ -35,15 +35,12 @@ E(prev, 12, 40, "Transport", "Taxi", { maybeDup: "e4" });              // possib
   await p.click('#ledgerTotal [data-search-all=""]'); await p.waitForTimeout(300);
   check((await T.rows()).length === 1, "Just this month again");
 
-  // Palm theme
-  await T.nav("settings/look"); await p.click('.theme-sw[data-preset="palm"]'); await p.waitForTimeout(400);
-  check(await p.evaluate(() => document.documentElement.getAttribute("data-preset")) === "palm" && await p.evaluate(() => localStorage.getItem("pl-preset")) === "palm", "Palm can be picked and is saved");
-  await p.goto("about:blank"); await p.goto(require("./lib").URL0 + "#home"); await p.waitForTimeout(1300);
-  check(await p.evaluate(() => document.documentElement.getAttribute("data-preset")) === "palm", "and stays after reopening");
+  // the Dashboard in Coral Dusk
+  await T.nav("home"); await p.waitForTimeout(400);
   const lay = await p.evaluate(() => { const r = s => document.querySelector(s).getBoundingClientRect(), bg = s => getComputedStyle(document.querySelector(s)).backgroundImage + getComputedStyle(document.querySelector(s)).backgroundColor;
     return { hero: r(".summary .hero"), stats: r(".summary .stats"), cats: r(".cats-panel"), buds: r(".buds-panel"), recent: r(".recent-panel"), heroBg: bg(".summary .hero"), ring: !!document.querySelector("#catRing svg") && getComputedStyle(document.getElementById("catRing")).display !== "none" }; });
-  check(lay.hero.left > lay.stats.right - 1 && Math.abs(lay.hero.top - lay.stats.top) < 2, "laptop: this month's numbers beside the lime Left to spend card", lay);
-  check(/gradient/.test(lay.heroBg), "the Left to spend card is the lime gradient", lay.heroBg);
+  check(lay.hero.left > lay.stats.right - 1 && Math.abs(lay.hero.top - lay.stats.top) < 2, "laptop: this month's numbers beside the Left to spend card", lay);
+  check(/none/.test(lay.heroBg) && /rgb\(255, 255, 255\)/.test(lay.heroBg), "the Left to spend card is calm white", lay.heroBg);
   check(Math.abs(lay.cats.top - lay.buds.top) < 2 && Math.abs(lay.buds.top - lay.recent.top) < 2 && lay.cats.right < lay.buds.left && lay.buds.right < lay.recent.left, "spending, budgets and latest entries in three columns", [lay.cats, lay.buds, lay.recent]);
   check(lay.ring && /MVR\s?745/.test(await T.text("#catRing")), "the spending ring shows with the month's total", await T.text("#catRing"));
   check((await p.$$("#catRing circle")).length === 6, "ring: the four biggest plus everything else (5 parts) on its track");
@@ -66,9 +63,9 @@ E(prev, 12, 40, "Transport", "Taxi", { maybeDup: "e4" });              // possib
   await T.nav("home");
   const one = await p.evaluate(() => { const a = document.querySelector(".cats-panel").getBoundingClientRect(), b = document.querySelector(".recent-panel").getBoundingClientRect(); return b.top >= a.bottom - 1; });
   check(one, "phone: cards stack in one column");
-  // dark Palm
+  // dark
   await p.evaluate(() => { localStorage.setItem("pl-mode", "dark"); window.plApplyTheme(); }); await p.waitForTimeout(200);
-  check(await p.evaluate(() => document.documentElement.getAttribute("data-theme")) === "dark" && await p.evaluate(() => getComputedStyle(document.body).backgroundColor) === "rgb(13, 17, 14)", "Palm has a dark look");
+  check(await p.evaluate(() => document.documentElement.getAttribute("data-theme")) === "dark" && await p.evaluate(() => getComputedStyle(document.body).backgroundColor) === "rgb(22, 17, 28)", "Coral Dusk has a dark look");
   check((await T.denied()).length === 0, "no rule denials", await T.denied());
   await T.end();
 })();

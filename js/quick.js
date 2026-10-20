@@ -110,7 +110,7 @@ function save() {
 
 // ---------- hold the + : Scan / Type it / Voice ----------
 const SAT_FAN = [[-86, -40], [0, -94], [86, -40]];
-// Glass: the + sits at the right edge, so the shortcuts fan up and to the left
+// the + sits at the right edge beside the bar, so the shortcuts fan up and to the left
 const SAT_CORNER = [[-104, -2], [-78, -78], [0, -104]];
 let SAT_POS = SAT_FAN;
 const satS = [0, 1, 2].map(() => new Spring(0));
