@@ -49,12 +49,18 @@ export function rollNumber(big) {
   rolled = true;
   if (reduced()) return;
   const text = big.textContent, host = big.parentElement;
+  big.classList.add("odo-hide");                      // hidden from the start, so it doesn't flash before rolling
+  const show = () => big.classList.remove("odo-hide");
+  setTimeout(show, splashEnd() - performance.now() + 2500); // never stays hidden, whatever happens
   afterSplash(() => {
-    if (big.textContent !== text || !big.offsetParent) return;   // changed meanwhile: just show it
+    if (big.textContent !== text || !big.offsetParent) return show();   // changed meanwhile: just show it
     host.classList.add("odo-host");                   // positions the overlay over the amount
-    const cs = getComputedStyle(big), lh = parseFloat(cs.fontSize) * 1.15;
+    const cs = getComputedStyle(big), lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.15;
     const o = el("div", "odo"); o.setAttribute("aria-hidden", "true");
-    Object.assign(o.style, { left: big.offsetLeft + "px", top: big.offsetTop + "px", height: big.offsetHeight + "px", font: cs.font, letterSpacing: cs.letterSpacing, color: cs.color });
+    // copy the font piece by piece: the "font" shorthand comes back empty when digits are tabular, which made the
+    // rolling copy fall back to the small body font (v52 fix)
+    Object.assign(o.style, { left: big.offsetLeft + "px", top: big.offsetTop + "px", height: big.offsetHeight + "px", letterSpacing: cs.letterSpacing, color: cs.color });
+    ["fontFamily", "fontSize", "fontWeight", "fontStyle", "fontStretch", "fontVariationSettings", "fontFeatureSettings", "fontOpticalSizing"].forEach(k => { if (cs[k]) o.style[k] = cs[k]; });
     o.style.setProperty("--lh", lh + "px");
     let n = 0;
     for (const ch of text) {
@@ -64,8 +70,8 @@ export function rollNumber(big) {
         const w = el("span", "odo-win"); w.appendChild(col); o.appendChild(w);
       } else o.appendChild(el("span", "odo-ch", ch === " " ? "&nbsp;" : ch.replace(/[<>&]/g, "")));
     }
-    big.classList.add("odo-hide"); host.appendChild(o);
-    setTimeout(() => { o.remove(); big.classList.remove("odo-hide"); }, 1150 + n * 45);
+    host.appendChild(o);
+    setTimeout(() => { o.remove(); show(); }, 1150 + n * 45);
   });
 }
 

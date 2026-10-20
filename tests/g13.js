@@ -18,6 +18,9 @@ const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebK
   check(await bg() === "rgb(251, 247, 243)", "warm off-white page", await bg());
   check(await p.evaluate(() => document.querySelector('meta[name="theme-color"]').content) === "rgb(251, 247, 243)", "the phone's status bar takes the page colour");
 
+  // v52: Nunito everywhere, loaded from Google Fonts
+  const fonts = await p.evaluate(() => ({ body: getComputedStyle(document.body).fontFamily, h: getComputedStyle(document.querySelector("h1, h2")).fontFamily, link: [...document.querySelectorAll('link[rel="stylesheet"]')].map(l => l.href).find(h => /fonts\.googleapis/.test(h)) || "" }));
+  check(/^"?Nunito/.test(fonts.body) && /^"?Nunito/.test(fonts.h) && /family=Nunito/.test(fonts.link) && !/Bricolage|Figtree/.test(fonts.link), "Nunito for headings and text, the old fonts no longer loaded", fonts);
   // older choices (Glass, Palm, Sunset, Automatic, pure black) all land on light Coral Dusk
   await p.evaluate(() => { localStorage.setItem("pl-preset", "glass"); localStorage.setItem("pl-mode", "auto"); localStorage.setItem("pl-amoled", "1"); window.plApplyTheme(); });
   check(await attr("data-preset") === "coral" && await attr("data-theme") === "light" && !(await p.evaluate(() => document.documentElement.hasAttribute("data-amoled"))), "an old Glass / Automatic / pure black choice becomes Coral Dusk light");

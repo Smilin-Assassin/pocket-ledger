@@ -24,8 +24,9 @@
   --pos: #1B7A55;
   --warn-bg: #FFF1D6;
   --warn-ink: #7A4E00;
-  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --f-body: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* Nunito (v52): one rounded font for everything; headings and big numbers in its heavier weights */
+  --f-display: "Nunito", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
   --r: 10px;
   --r-card: 22px;
   color-scheme: light;
@@ -1114,3 +1115,7 @@ circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest
 @media (prefers-reduced-motion: reduce) {
   .sp-seg, .sp-dot, .sp-name, .ring svg.draw .seg { animation: none; }
 }
+
+/* ===== v52: Nunito. Headings and big numbers in its heavier weights, like the preview ===== */
+h1, h2, h3, .hero .big, .fold-t b, .goal-top .pct, .loan-top .num { font-weight: 800; }
+.stats .v, .tile .v, .stat-card b { font-weight: 700; }

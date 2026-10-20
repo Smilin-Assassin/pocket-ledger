@@ -28,6 +28,8 @@ E(1, 150, "Savings", { type: "save", goalId: "gA" }); E(1, 900, "Savings", { typ
   // C: the amount rolls up after the opening (the real number stays in place for screen readers)
   await p.waitForSelector(".odo", { timeout: 4000 }).catch(() => {});
   check(await has(".odo .odo-col") && await p.$eval("#leftBig", b => b.classList.contains("odo-hide")), "C: Left to spend rolls up like an odometer");
+  const same = await p.evaluate(() => { const a = getComputedStyle(document.getElementById("leftBig")), b = getComputedStyle(document.querySelector(".odo")); return { size: [a.fontSize, b.fontSize], fam: [a.fontFamily, b.fontFamily], weight: [a.fontWeight, b.fontWeight] }; });
+  check(same.size[0] === same.size[1] && same.fam[0] === same.fam[1] && same.weight[0] === same.weight[1], "C: rolling in the same font, size and weight as the amount (v52 fix)", same);
   check(/^MVR\s?4,680\.00$/.test(await p.textContent("#leftBig")) && await p.$eval(".odo", o => o.getAttribute("aria-hidden")) === "true", "C: the real amount is there all along", await p.textContent("#leftBig"));
   check(!(await has("#splash")), "A: the opening has gone by then");
   await p.waitForTimeout(1700);
