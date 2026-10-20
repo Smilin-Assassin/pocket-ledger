@@ -22,6 +22,8 @@ import { initTransfers, checkTransfers } from "./transfers.js";
 import { initDock, dockBadges, buildDock } from "./dock.js";
 import { initQuick, openQuick } from "./quick.js";
 import { initSmart, setAddFn, setLookFn, setNeedsLook } from "./smart.js";
+import { liftRing, checkGoals } from "./delight.js";
+import { visibleGoals, goalBalance } from "./store.js";
 
 // a screenshot shared into the app from another app (Android share sheet)
 async function takeSharedFiles() {
@@ -55,12 +57,14 @@ export function boot(fb) {
   initShell(); initDock(); initQuick(); initScan(); initStatements(); initCategories(); initPicker(); initSwipe(); initTransfers(); initChat(); initLock(); initNag();
   setAddFn(pre => focusAdd("expense", null, pre)); setLookFn(showReview); setNeedsLook(needsLook); initSmart(showCategory);
   $("quickX").addEventListener("click", () => { $("quick").hidden = true; });
-  document.addEventListener("click", ev => { const b = ev.target.closest("[data-go-add]"); if (b) focusAdd("expense"); const c = ev.target.closest("[data-cat-go]"); if (c) showCategory(c.dataset.catGo, c.dataset.meal); });
+  document.addEventListener("click", ev => { const b = ev.target.closest("[data-go-add]"); if (b) focusAdd("expense"); const c = ev.target.closest("[data-cat-go]"); if (c) { const go = () => showCategory(c.dataset.catGo, c.dataset.meal); if (c.dataset.ring !== undefined && c.closest("#pg-home")) liftRing(c.dataset.ring, go); else go(); } });
   // a notification was tapped while the app was open: go to its page
   if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", ev => { const h = ev.data && ev.data.go; if (h && /^[a-z/]+$/.test(h)) location.hash = h; });
   connect(fb);
   $("app").hidden = false;
   let wasAdmin = null;
+  // G: a savings goal reached for the first time gets confetti
+  onChange(() => { if (state.ready) checkGoals(visibleGoals("all").filter(g => +g.target > 0).map(g => ({ id: g.id, name: g.name, reached: goalBalance(g.id) >= +g.target })), toast); });
   onChange(() => { renderShell(); renderNag(); if (wasAdmin !== !!ctx.admin) { wasAdmin = !!ctx.admin; buildDock(); } dockBadges(); });
   route();
   try { const m = sessionStorage.getItem("pl-join-msg"); if (m) { sessionStorage.removeItem("pl-join-msg"); setTimeout(() => toast(m), 800); } } catch {}

@@ -31,9 +31,21 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/app.css?v=50">
+<link rel="stylesheet" href="css/app.css?v=51">
 </head>
 <body>
+<!-- A (v51): the logo opening, once per app opening; it never takes taps and leaves on its own -->
+<div class="splash" id="splash" aria-hidden="true"><svg viewBox="0 0 168 168" width="132" height="132"><circle class="sp-seg" cx="84" cy="84" r="40" pathLength="100" stroke="#FF7A45" stroke-dasharray="35.0 200" transform="rotate(-90.0 84 84)" style="--len:35.0;animation-delay:0ms"/><circle class="sp-seg" cx="84" cy="84" r="40" pathLength="100" stroke="#FF4D8D" stroke-dasharray="24.0 200" transform="rotate(36.0 84 84)" style="--len:24.0;animation-delay:110ms"/><circle class="sp-seg" cx="84" cy="84" r="40" pathLength="100" stroke="#FFD166" stroke-dasharray="17.5 200" transform="rotate(122.4 84 84)" style="--len:17.5;animation-delay:220ms"/><circle class="sp-seg" cx="84" cy="84" r="40" pathLength="100" stroke="#9C8BC4" stroke-dasharray="23.5 200" transform="rotate(185.4 84 84)" style="--len:23.5;animation-delay:330ms"/><circle class="sp-dot" cx="84" cy="84" r="8" fill="#FFFFFF"/></svg><div class="sp-name">Pocket Ledger</div></div>
+<script>
+(function () {
+  var s = document.getElementById("splash"), seen = false;
+  try { seen = sessionStorage.getItem("pl-splashed") === "1"; sessionStorage.setItem("pl-splashed", "1"); } catch (e) {}
+  if (seen) { s.remove(); window.plSplashUntil = 0; return; }
+  var calm = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches, stay = calm ? 450 : 1350;
+  window.plSplashUntil = performance.now() + stay + 300;
+  setTimeout(function () { s.classList.add("bye"); setTimeout(function () { s.remove(); }, 320); }, stay);
+})();
+</script>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 10.5 12 4l8.5 6.5V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/></symbol>
@@ -651,6 +663,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=50"></script>
+<script type="module" src="app.js?v=51"></script>
 </body>
 </html>

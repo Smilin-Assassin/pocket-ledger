@@ -1043,3 +1043,74 @@ circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest
 /* the chat robot: a mask so it takes the button's text colour in every theme */
 .bot { display: block; width: 30px; height: 30px; background: currentColor; -webkit-mask: url("../icons/chat-bot.png") center / contain no-repeat; mask: url("../icons/chat-bot.png") center / contain no-repeat; pointer-events: none; }
 .bot.sm { display: inline-block; width: 24px; height: 24px; vertical-align: -6px; margin-right: 8px; color: var(--accent); }
+
+/* ===== v51: little moments of delight (js/delight.js). transform / opacity only, never in the way of a tap ===== */
+/* A: the logo opening */
+.splash { position: fixed; inset: 0; z-index: 80; background: #2B1B3D; display: grid; place-content: center; justify-items: center; gap: 18px; pointer-events: none; transition: opacity .3s ease; }
+.splash.bye { opacity: 0; }
+.sp-seg { fill: none; stroke-width: 22; animation: spDraw .55s cubic-bezier(.3, .7, .3, 1) both; }
+@keyframes spDraw { from { stroke-dasharray: 0 200; } }
+.sp-dot { transform-box: fill-box; transform-origin: center; animation: spPop .45s cubic-bezier(.3, 1.8, .5, 1) .62s both; }
+@keyframes spPop { from { transform: scale(0); } }
+.sp-name { color: #FFFFFF; font-family: var(--f-display); font-size: 1.45rem; font-weight: 700; letter-spacing: -.01em; animation: spUp .45s ease-out .72s both; }
+@keyframes spUp { from { opacity: 0; transform: translateY(10px); } }
+/* B: the spending ring draws itself; a tapped category lifts out */
+.ring svg.wait .seg { stroke-dasharray: 0 var(--C); }
+.ring svg.draw .seg { animation: ringDraw .8s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i) * 90ms); }
+@keyframes ringDraw { from { stroke-dasharray: 0 var(--C); } }
+.ring svg.lifting .seg { opacity: .3; transition: opacity .2s ease; }
+.ring svg.lifting .seg.lift { opacity: 1; stroke-width: 20; transition: stroke-width .24s cubic-bezier(.3, 1.6, .5, 1); }
+/* C: the rolling number */
+#leftBig { font-variant-numeric: tabular-nums; }
+.odo-host { position: relative; }
+.odo { position: absolute; display: flex; align-items: center; white-space: pre; pointer-events: none; font-variant-numeric: tabular-nums; }
+.odo-ch, .odo-col span { display: block; height: var(--lh); line-height: var(--lh); }
+.odo-win { display: inline-block; height: var(--lh); overflow: hidden; }
+.odo-col { display: flex; flex-direction: column; animation: odoRoll 1s cubic-bezier(.2, .75, .25, 1) both; }
+@keyframes odoRoll { from { transform: translateY(0); } to { transform: translateY(var(--to)); } }
+.odo-hide { color: transparent !important; }
+/* D: a coin drops into the ring by the + */
+.coin-pop { position: fixed; z-index: 45; right: 20px; bottom: calc(214px + env(safe-area-inset-bottom, 0px)); width: 56px; height: 56px; border-radius: 50%; background: #2B1B3D; box-shadow: 0 8px 24px rgba(43, 27, 61, .3); pointer-events: none; animation: coinBox 1.5s ease both; }
+@media (min-width: 900px) { .coin-pop { bottom: 32px; right: 32px; } }
+.coin-ring { display: block; animation: coinPulse 1.5s ease both; }
+.coin { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: #FFD166; box-shadow: inset 0 0 0 3px #E0A93B; animation: coinFall 1.5s both; }
+@keyframes coinBox { 0% { opacity: 0; transform: scale(.6); } 14% { opacity: 1; transform: scale(1); } 76% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.9); } }
+@keyframes coinFall { 0%, 12% { opacity: 0; transform: translateY(-84px); animation-timing-function: cubic-bezier(.55, 0, .85, .45); } 20% { opacity: 1; } 44% { opacity: 1; transform: translateY(0) scale(1); } 52%, 100% { opacity: 0; transform: translateY(0) scale(0); } }
+@keyframes coinPulse { 0%, 44% { transform: scale(1); } 52% { transform: scale(1.18); } 64%, 100% { transform: scale(1); } }
+.coin-pop.still, .coin-pop.still .coin-ring { animation: coinFade .9s ease both; }
+.coin-pop.still .coin { display: none; }
+@keyframes coinFade { 0%, 100% { opacity: 0; } 25%, 70% { opacity: 1; } }
+/* E: sunset / sunrise */
+.sky { position: fixed; inset: 0; z-index: 75; pointer-events: none; overflow: hidden; animation: skyFade 1.25s ease both; }
+.sky.to-dark { background: linear-gradient(180deg, #2B1B3D 0%, #5A2D55 48%, #FF7A45 100%); }
+.sky.to-light { background: linear-gradient(180deg, #FFE0CF 0%, #FFB38A 55%, #FF7A45 100%); }
+.sky-sun { position: absolute; left: 50%; top: 34%; width: 110px; height: 110px; margin-left: -55px; border-radius: 50%; background: #FFD166; box-shadow: 0 0 60px 18px rgba(255, 209, 102, .45); }
+.to-dark .sky-sun { animation: sunSet 1.25s cubic-bezier(.45, 0, .55, 1) both; }
+.to-light .sky-sun { animation: sunRise 1.25s cubic-bezier(.45, 0, .55, 1) both; }
+.sky-sea { position: absolute; left: 0; right: 0; bottom: 0; height: 34%; }
+.to-dark .sky-sea { background: #16111C; }
+.to-light .sky-sea { background: #FBF7F3; }
+.sky-star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #FFFFFF; opacity: 0; }
+.to-dark .sky-star { animation: starOn 1.25s ease both; }
+@keyframes skyFade { 0% { opacity: 0; } 30%, 60% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes sunSet { 0%, 10% { transform: translateY(0); } 62%, 100% { transform: translateY(42vh); } }
+@keyframes sunRise { 0%, 10% { transform: translateY(42vh); } 62%, 100% { transform: translateY(0); } }
+@keyframes starOn { 0%, 30% { opacity: 0; } 50%, 70% { opacity: 1; } 100% { opacity: 0; } }
+/* G: goal confetti */
+.confetti { position: fixed; inset: 0; z-index: 75; pointer-events: none; overflow: hidden; }
+.confetti i { position: absolute; left: 50%; top: 42%; width: 9px; height: 14px; margin-left: -4px; border-radius: 2px; opacity: 0; animation: burst 2.1s cubic-bezier(.15, .7, .3, 1) both; }
+@keyframes burst { 0% { opacity: 1; transform: translate(0, 0) rotate(0); } 70% { opacity: 1; transform: translate(var(--x), var(--y)) rotate(var(--r)); } 100% { opacity: 0; transform: translate(var(--x), calc(var(--y) + 130px)) rotate(var(--r)); } }
+/* H: the scan beam */
+.scanviz { display: flex; justify-content: center; padding: 4px 0 14px; }
+.scanviz-doc { position: relative; width: 150px; height: 184px; border-radius: 12px; background: #FFFFFF; box-shadow: 0 8px 24px rgba(43, 27, 61, .14); overflow: hidden; padding: 18px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 9px; }
+.scanviz-doc i { display: block; height: 6px; border-radius: 3px; background: #EFE7E0; }
+.scanviz-doc img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.scanviz-tint { position: absolute; inset: 0; background: rgba(255, 122, 69, .12); transform-origin: top; animation: scanTint 1.8s ease-in-out infinite alternate; }
+.scanviz-beam { position: absolute; left: -8px; right: -8px; top: 0; height: 4px; border-radius: 2px; background: #FF7A45; box-shadow: 0 0 14px 4px rgba(255, 122, 69, .55); animation: scanBeam 1.8s ease-in-out infinite alternate; }
+@keyframes scanBeam { from { transform: translateY(0); } to { transform: translateY(180px); } }
+@keyframes scanTint { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.scanviz.still .scanviz-beam, .scanviz.still .scanviz-tint { display: none; }
+/* reduce motion (phone setting): no sweeping, popping or rolling, just the end state */
+@media (prefers-reduced-motion: reduce) {
+  .sp-seg, .sp-dot, .sp-name, .ring svg.draw .seg { animation: none; }
+}

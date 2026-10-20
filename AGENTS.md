@@ -15,6 +15,7 @@ A household money tracker PWA for a couple in the Maldives (MVR). Plain ES modul
 - **Text size is a slider that zooms `body`** (`--fs-zoom`, `data-fs="custom"`). It applies on release; during the drag only the sample line changes, because the slider itself is inside the zoomed page.
 - **Text size zooms `body`.** Position things with `offsetLeft/Top/Width`, or divide screen distances by `zoom()` from `js/dock.js`. `getBoundingClientRect()` alone drifts at Small/Large text.
 - **Motion:** animate `transform`/`opacity` only; springs advance on real elapsed time (`Spring.run(dt)` in `js/motion.js`) so 60/90/120 Hz look the same; respect `prefers-reduced-motion`.
+- **Animations (v51, `js/delight.js`)** play only at their own moment, never block a tap (`pointer-events: none`), and each happens once where it says so (opening and rolling number once per app opening, ring once per opening, confetti once per goal). Keep them short; with reduce motion they play down to the end state.
 - **Deleting is instant with Undo** (`removeWithUndo`), not "Are you sure?".
 - **Only the author edits a doc** (Firestore rules check `author`). Everyone has a private space; groups are shared.
 - **Only the same bank reference is skipped as a duplicate.** Look-alikes (same amount, close date) are added and offered as Possible repeats for the person to keep or remove (`importStatement` in `js/scan.js`). Real repeats (two taxi rides of 30 the same day) must stay.

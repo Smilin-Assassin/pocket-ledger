@@ -12,6 +12,7 @@ import { renderErase, initErase } from "../erase.js";
 import { smartOn, placesOn, setPlaces } from "../smart.js";
 import { M, PAGES, PRESETS, saveMotion, refreshHz, measureHz, reduced } from "../motion.js";
 import { NAMES, fitsSix, motionChanged } from "../dock.js";
+import { sunSwitch } from "../delight.js";
 
 const last4 = v => String(v || "").split(/[,\s]+/).map(x => x.replace(/\D/g, "").slice(-4)).filter(x => x.length === 4).join(", ");
 const inviteUrl = id => location.origin + location.pathname + "?join=" + id;
@@ -215,7 +216,7 @@ async function onClick(ev) {
   if (d.acctdel !== undefined) { readAccts(); acctRows.splice(+d.acctdel, 1); if (!acctRows.length) acctRows.push({ bank: "", name: "", last4: "" }); renderAccts(); return; }
   try {
     if (b.id === "saveSettings") return saveMyDetails();
-    if (d.mode) { lsSet("pl-mode", d.mode === "dark" ? "dark" : ""); window.plApplyTheme(); syncAppearance(); }
+    if (d.mode) { const dark = d.mode === "dark"; lsSet("pl-mode", dark ? "dark" : ""); syncAppearance(); sunSwitch(dark, () => window.plApplyTheme()); } // E: sunset / sunrise
     else if (d.motion) { M.preset = PRESETS[d.motion] ? d.motion : "lively"; motionSaved(); }
     else if (d.tabs) { M.tabs = d.tabs === "6" ? 6 : 4; motionSaved(); }
     else if (d.renameok) {

@@ -4,12 +4,16 @@ import { state, ui, meId, isGroup, people, pname, visibleGoals, catOptions, gues
 import { budgetCheck } from "./actions.js";
 import { aiReady, geminiJson, geminiText, parseJsonText } from "./gemini.js";
 import { go } from "./shell.js";
+import { scanViz } from "./delight.js";
 
 let scanAbort = null, items = [];
 const TYPES = Object.entries(TYPE_LABEL);
 const open = () => { $("scanWrap").hidden = false; document.body.classList.add("sheet-open"); };
 export function closeScan() { if (scanAbort) scanAbort.abort(); scanAbort = null; items = []; $("scanWrap").hidden = true; document.body.classList.remove("sheet-open"); }
-const status = (html, busy) => { $("scanStatus").innerHTML = (busy ? '<span class="spin" aria-hidden="true"></span>' : "") + html; };
+// H: while reading, the picture (or a sketch of a statement) shows with a coral beam sweeping over it
+let thumb = "";
+const setThumb = f => { if (thumb) URL.revokeObjectURL(thumb); thumb = f && /^image\//.test(f.type || "") && URL.createObjectURL ? URL.createObjectURL(f) : ""; };
+const status = (html, busy) => { $("scanStatus").innerHTML = (busy ? scanViz(thumb) + '<span class="spin" aria-hidden="true"></span>' : "") + html; if (!busy) setThumb(null); };
 
 // one picker for everything: photos and screenshots of receipts, and bank statements (CSV or PDF)
 export function openScanPicker() {
@@ -67,7 +71,7 @@ function scanPrompt(n) {
 export async function startScan(files) {
   if (scanAbort) scanAbort.abort();
   const ctl = new AbortController(); scanAbort = ctl; items = [];
-  open(); $("scanTitle").textContent = "Reading your image…";
+  setThumb(files[0]); open(); $("scanTitle").textContent = "Reading your image…";
   $("scanList").innerHTML = ""; $("scanFoot").hidden = true; $("scanErr").hidden = true;
   status("Looking for amounts, dates and shop names. This takes a few seconds.", true);
   try {
@@ -410,7 +414,7 @@ let lastImport = null;
 async function importStatement(file) {
   const why = statementBlocked(); if (why) return toast(why);
   if (scanAbort) scanAbort.abort();
-  items = []; open();
+  items = []; setThumb(null); open();
   $("scanTitle").textContent = "Reading your statement…";
   $("scanList").innerHTML = ""; $("scanFoot").hidden = true; $("scanErr").hidden = true;
   status("Going through every transaction. A long statement takes up to a minute.", true);

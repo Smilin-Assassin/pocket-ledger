@@ -24,7 +24,8 @@ const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebK
   await p.evaluate(() => { localStorage.setItem("pl-preset", "palm"); localStorage.setItem("pl-mode", ""); window.plApplyTheme(); });
   check(await attr("data-preset") === "coral", "an old Palm choice becomes Coral Dusk");
 
-  // the calm card and the coral +
+  // the calm card and the coral + (after the opening and the rolling number have finished)
+  await p.waitForFunction(() => !document.querySelector(".odo, #splash"), null, { timeout: 5000 });
   const look = await p.evaluate(() => { const cs = s => getComputedStyle(document.querySelector(s));
     return { hero: cs(".summary .hero").backgroundColor + " " + cs(".summary .hero").backgroundImage, big: cs("#leftBig").color, add: cs('.summary .hero [data-go-add]').backgroundColor, plus: cs("#dkPlus").backgroundColor, bubble: cs(".dk-bubble").backgroundColor }; });
   check(look.hero === "rgb(255, 255, 255) none", "Left to spend sits on a calm white card", look.hero);
@@ -45,7 +46,7 @@ const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebK
   check(JSON.stringify(opts) === '["Light","Dark"]', "Appearance offers Light and Dark only", opts);
   check(!(await p.$(".theme-sw")) && !(await p.$("#setAmoled")) && !(await p.$("#glassNote")), "no theme list, no pure black option, no Glass note");
   check(await p.$eval('#modeSeg [data-mode="light"]', b => b.getAttribute("aria-pressed")) === "true", "Light is marked as chosen");
-  await p.click('#modeSeg [data-mode="dark"]'); await p.waitForTimeout(300);
+  await p.click('#modeSeg [data-mode="dark"]'); await p.waitForTimeout(800);
   check(await attr("data-theme") === "dark" && await bg() === "rgb(22, 17, 28)" && await p.evaluate(() => localStorage.getItem("pl-mode")) === "dark", "Dark: deep plum page, saved on this device", await bg());
   check(await p.$eval('#modeSeg [data-mode="dark"]', b => b.getAttribute("aria-pressed")) === "true", "Dark is marked as chosen");
   await p.emulateMedia({ colorScheme: "light" }); await p.waitForTimeout(200);
@@ -54,7 +55,7 @@ const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebK
   check(await attr("data-theme") === "dark", "Dark stays after reopening");
   const dark = await p.evaluate(() => { const cs = s => getComputedStyle(document.querySelector(s)); return { card: cs("#pg-home .panel").backgroundColor, plus: cs("#dkPlus").backgroundColor }; });
   check(dark.card === "rgb(34, 26, 43)" && dark.plus === "rgb(255, 122, 69)", "dark cards in plum, the + in bright coral", dark);
-  await T.nav("settings/look"); await p.click('#modeSeg [data-mode="light"]'); await p.waitForTimeout(300);
+  await T.nav("settings/look"); await p.click('#modeSeg [data-mode="light"]'); await p.waitForTimeout(800);
   check(await attr("data-theme") === "light" && !(await p.evaluate(() => localStorage.getItem("pl-mode"))), "back to Light");
 
   // the icon set and the manifest

@@ -4,6 +4,7 @@ import { state, ui, db, meId, isAll, isGroup, people, pname, pcolor, canEdit, ad
   visibleGoals, goalBalance, goalName, totalSavings, catOptions, guessCategory, changed, merchantKey, effMonth, EAT, MEALS, mealName, mealAt, mealFromNote } from "../store.js";
 import { createRecurring, budgetCheck, removeWithUndo } from "../actions.js";
 import { go } from "../shell.js";
+import { coinDrop } from "../delight.js";
 
 Object.assign(ui, { type: "expense", editId: null, filter: "all", search: "", cat: "", meal: "", searchAll: false, fMeal: "", mealPicked: false, confirm: null, openRow: null, catOther: false, goalSel: "" });
 
@@ -286,7 +287,7 @@ async function submit(ev) {
     const n = old ? offerChangeAll(old, e) : 0;
     if (!n) toast("Entry updated");
   } else {
-    db.add(e); toast("Added");
+    db.add(e); toast("Added"); if (e.type === "expense") coinDrop(); // D
     if ($("fRepeat").checked) {
       createRecurring({ type: e.type, amount: e.amount, category: e.category, note: e.note || e.category, person: e.person, day: +date.slice(8, 10), startMonth: shiftMonth(date.slice(0, 7), 1), goalId: e.goalId, split: e.split });
       toast("Added. You'll be reminded on day " + (+date.slice(8, 10)) + " each month.");

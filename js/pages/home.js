@@ -7,6 +7,7 @@ import { settlePair } from "../actions.js";
 import { rowHtml, wireRows, byNewest } from "./entries.js";
 import { renderDue, wireDue } from "./bills.js";
 import { initFolds } from "../fold.js";
+import { ringShouldWait, watchRing, rollNumber, rollPending } from "../delight.js";
 
 Object.assign(ui, { tileCfg: false, editBudgets: false, settling: null, trendSel: null });
 const TILES = [["income", "Income"], ["spent", "Spent"], ["saved", "Saved this month"], ["total", "Total savings"], ["split", "Income split bar"], ["bills", "Bills due"], ["budgets", "Budget alerts"], ["loans", "Loans"], ["goals", "Goals"]];
@@ -23,6 +24,8 @@ function renderHero() {
   const t = monthTotals(ui.month), prev = monthTotals(shiftMonth(ui.month, -1)), hasIncome = t.income > 0;
   $("heroLabel").textContent = isAll() ? "Left to spend this month: " + groupName() : isMine(ui.view) ? "Left to spend this month" : "Left to spend this month: " + pname(ui.view);
   const big = $("leftBig"); big.textContent = money(t.left); big.classList.toggle("neg", t.left < 0);
+  // C: the first time the Dashboard shows real numbers after opening the app, the amount rolls up
+  if (rollPending() && state.ready && (t.income || t.spent) && document.getElementById("pg-home").offsetParent) rollNumber(big);
   let sub;
   if (!hasIncome && t.spent === 0 && t.netSaved === 0) sub = "Add " + (isAll() ? "income" : poss(ui.view) + " income") + " for " + monthName(ui.month, true) + " to see what's left.";
   else if (!hasIncome) sub = "No income logged for this month yet.";
@@ -98,11 +101,14 @@ function renderCats() {
   // the ring (shown by the Palm theme): the four biggest categories and the rest, total in the middle
   const segs = rows.slice(0, 4).concat(rows.length > 4 ? [["Everything else", sum(rows.slice(4), r => r[1])]] : []);
   let a0 = 0; const R = 52, C = 2 * Math.PI * R, gap = segs.length > 1 ? 3 : 0;
-  $("catRing").innerHTML = `<svg viewBox="0 0 132 132" width="184" height="184"><circle cx="66" cy="66" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="14"/>` +
+  // B: the first time it's seen after opening the app, the ring starts empty and draws itself (delight.js)
+  const wait = ringShouldWait() && state.ready;
+  $("catRing").innerHTML = `<svg viewBox="0 0 132 132" width="184" height="184"${wait ? ' class="wait"' : ""} style="--C:${C.toFixed(2)}"><circle cx="66" cy="66" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="14"/>` +
     segs.map(([c, v], i) => { const len = Math.max(0, v / total * C - gap), off = -a0; a0 += v / total * C;
-      return `<circle cx="66" cy="66" r="${R}" fill="none" stroke="var(--ring-${i + 1}, var(--c-bar))" stroke-width="14" stroke-dasharray="${len.toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" transform="rotate(-90 66 66)"/>`; }).join("") +
+      return `<circle class="seg" data-i="${i}" style="--i:${i}" cx="66" cy="66" r="${R}" fill="none" stroke="var(--ring-${i + 1}, var(--c-bar))" stroke-width="14" stroke-dasharray="${len.toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" transform="rotate(-90 66 66)"/>`; }).join("") +
     `</svg><div class="ring-mid"><b class="num">${esc(money(total, { whole: true }))}</b><small>spent in ${esc(monthName(ui.month, true))}</small></div>`;
-  $("cats").innerHTML = rows.map(([c, v], i) => `<button type="button" class="cat c${Math.min(i + 1, 5)}" data-cat-go="${esc(c)}" title="See every ${esc(c)} entry: ${esc(money(v))} (${Math.round(v / total * 100)}%)"><span class="n">${esc(c)}</span><div class="track"><div class="fill" style="width:${Math.max(v / max * 100, 1.5)}%"></div></div><span class="v num">${esc(money(v, { whole: true }))}<small>${Math.round(v / total * 100)}%</small></span></button>`).join("");
+  if (wait) watchRing($("catRing"));
+  $("cats").innerHTML = rows.map(([c, v], i) => `<button type="button" class="cat c${Math.min(i + 1, 5)}" data-cat-go="${esc(c)}" data-ring="${i < 4 ? i : 4}" title="See every ${esc(c)} entry: ${esc(money(v))} (${Math.round(v / total * 100)}%)"><span class="n">${esc(c)}</span><div class="track"><div class="fill" style="width:${Math.max(v / max * 100, 1.5)}%"></div></div><span class="v num">${esc(money(v, { whole: true }))}<small>${Math.round(v / total * 100)}%</small></span></button>`).join("");
 }
 
 function renderBudgets() {

@@ -84,7 +84,7 @@ const { start, URL0 } = require("./lib");
   const u = d["users/uid_newycom"], st = d["households/" + u.personal].settings;
   check(st.people[0].name === "Adam A" && st.people[0].acct === "4821" && st.openingBy.uid_newycom === 2500, "details saved (last 4 digits only)", st);
   check(/secure server/.test(await p.textContent("#srvState")) && /this device|Blocked/.test(await p.textContent("#ntState")), "Gemini and notification sections", [await p.textContent("#srvState"), await p.textContent("#ntState")]);
-  await p.click("#set-look [data-mode=dark]"); await p.waitForTimeout(100);
+  await p.click("#set-look [data-mode=dark]"); await p.waitForTimeout(800); // the sunset swaps the theme half way
   check((await p.evaluate(() => document.documentElement.dataset.theme)) === "dark", "dark mode applies");
   // new group
   await p.evaluate(() => document.getElementById("grpNewBox").open = true);
