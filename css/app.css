@@ -1066,10 +1066,10 @@ circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest
 .odo-host { position: relative; }
 .odo { position: absolute; display: flex; align-items: center; white-space: pre; pointer-events: none; font-variant-numeric: tabular-nums; }
 .odo-ch, .odo-col span { display: block; height: var(--lh); line-height: var(--lh); }
-.odo-win { display: inline-block; height: var(--lh); overflow: hidden; }
+.odo-win { display: inline-block; height: var(--lh); overflow: hidden; -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); }
 .odo-col { display: flex; flex-direction: column; animation: odoRoll 1s cubic-bezier(.2, .75, .25, 1) both; }
 @keyframes odoRoll { from { transform: translateY(0); } to { transform: translateY(var(--to)); } }
-.odo-hide { color: transparent !important; }
+.odo-hide { -webkit-text-fill-color: transparent !important; } /* not color: the rolling copy reads the amount's colour (v53 fix) */
 /* D: a coin drops into the ring by the + */
 .coin-pop { position: fixed; z-index: 45; right: 20px; bottom: calc(214px + env(safe-area-inset-bottom, 0px)); width: 56px; height: 56px; border-radius: 50%; background: #2B1B3D; box-shadow: 0 8px 24px rgba(43, 27, 61, .3); pointer-events: none; animation: coinBox 1.5s ease both; }
 @media (min-width: 900px) { .coin-pop { bottom: 32px; right: 32px; } }
@@ -1081,22 +1081,6 @@ circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest
 .coin-pop.still, .coin-pop.still .coin-ring { animation: coinFade .9s ease both; }
 .coin-pop.still .coin { display: none; }
 @keyframes coinFade { 0%, 100% { opacity: 0; } 25%, 70% { opacity: 1; } }
-/* E: sunset / sunrise */
-.sky { position: fixed; inset: 0; z-index: 75; pointer-events: none; overflow: hidden; animation: skyFade 1.25s ease both; }
-.sky.to-dark { background: linear-gradient(180deg, #2B1B3D 0%, #5A2D55 48%, #FF7A45 100%); }
-.sky.to-light { background: linear-gradient(180deg, #FFE0CF 0%, #FFB38A 55%, #FF7A45 100%); }
-.sky-sun { position: absolute; left: 50%; top: 34%; width: 110px; height: 110px; margin-left: -55px; border-radius: 50%; background: #FFD166; box-shadow: 0 0 60px 18px rgba(255, 209, 102, .45); }
-.to-dark .sky-sun { animation: sunSet 1.25s cubic-bezier(.45, 0, .55, 1) both; }
-.to-light .sky-sun { animation: sunRise 1.25s cubic-bezier(.45, 0, .55, 1) both; }
-.sky-sea { position: absolute; left: 0; right: 0; bottom: 0; height: 34%; }
-.to-dark .sky-sea { background: #16111C; }
-.to-light .sky-sea { background: #FBF7F3; }
-.sky-star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #FFFFFF; opacity: 0; }
-.to-dark .sky-star { animation: starOn 1.25s ease both; }
-@keyframes skyFade { 0% { opacity: 0; } 30%, 60% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes sunSet { 0%, 10% { transform: translateY(0); } 62%, 100% { transform: translateY(42vh); } }
-@keyframes sunRise { 0%, 10% { transform: translateY(42vh); } 62%, 100% { transform: translateY(0); } }
-@keyframes starOn { 0%, 30% { opacity: 0; } 50%, 70% { opacity: 1; } 100% { opacity: 0; } }
 /* G: goal confetti */
 .confetti { position: fixed; inset: 0; z-index: 75; pointer-events: none; overflow: hidden; }
 .confetti i { position: absolute; left: 50%; top: 42%; width: 9px; height: 14px; margin-left: -4px; border-radius: 2px; opacity: 0; animation: burst 2.1s cubic-bezier(.15, .7, .3, 1) both; }

@@ -1,5 +1,5 @@
 // g23 (v51): the little animations (js/delight.js). A logo opening once per app opening, B the ring draws when
-// seen and a tapped category lifts out, C the rolling number, D a coin after adding spending, E sunset / sunrise,
+// seen and a tapped category lifts out, C the rolling number, D a coin after adding spending (E sunset removed in v53),
 // G confetti when a goal is reached (once), H the scan beam. Reduce motion: no sweeping or rolling. Made-up data.
 const { start, URL0 } = require("./lib");
 const U = "uid_tomxcom", H = "households/P1";
@@ -28,7 +28,8 @@ E(1, 150, "Savings", { type: "save", goalId: "gA" }); E(1, 900, "Savings", { typ
   // C: the amount rolls up after the opening (the real number stays in place for screen readers)
   await p.waitForSelector(".odo", { timeout: 4000 }).catch(() => {});
   check(await has(".odo .odo-col") && await p.$eval("#leftBig", b => b.classList.contains("odo-hide")), "C: Left to spend rolls up like an odometer");
-  const same = await p.evaluate(() => { const a = getComputedStyle(document.getElementById("leftBig")), b = getComputedStyle(document.querySelector(".odo")); return { size: [a.fontSize, b.fontSize], fam: [a.fontFamily, b.fontFamily], weight: [a.fontWeight, b.fontWeight] }; });
+  const same = await p.evaluate(() => { const a = getComputedStyle(document.getElementById("leftBig")), b = getComputedStyle(document.querySelector(".odo")); return { size: [a.fontSize, b.fontSize], fam: [a.fontFamily, b.fontFamily], weight: [a.fontWeight, b.fontWeight], color: [a.color, b.color, getComputedStyle(document.querySelector(".odo-col span")).color] }; });
+  check(same.color[0] === same.color[1] && same.color[2] === same.color[0] && !/rgba\(0, 0, 0, 0\)/.test(same.color[1]), "C: the rolling digits are visible, in the amount's own colour (v53 fix)", same.color);
   check(same.size[0] === same.size[1] && same.fam[0] === same.fam[1] && same.weight[0] === same.weight[1], "C: rolling in the same font, size and weight as the amount (v52 fix)", same);
   check(/^MVR\s?4,680\.00$/.test(await p.textContent("#leftBig")) && await p.$eval(".odo", o => o.getAttribute("aria-hidden")) === "true", "C: the real amount is there all along", await p.textContent("#leftBig"));
   check(!(await has("#splash")), "A: the opening has gone by then");
@@ -78,18 +79,12 @@ E(1, 150, "Savings", { type: "save", goalId: "gA" }); E(1, 900, "Savings", { typ
   check(!(await has("#scanStatus .scanviz")), "H: gone when reading is done");
   await p.evaluate(() => { window.__slowMs = 0; }); await p.click("#scanClose").catch(() => {});
 
-  // E: sunset into Dark, sunrise back to Light
+  // E was removed in v53: Dark and Light switch straight away, no sky over the page
   await T.nav("settings/look");
-  await p.click('#modeSeg [data-mode="dark"]'); await p.waitForTimeout(150);
-  check(await has(".sky.to-dark .sky-sun") && await p.evaluate(() => document.documentElement.dataset.theme) === "light", "E: the sun sets before the page turns dark");
-  await p.waitForTimeout(600);
-  check(await p.evaluate(() => document.documentElement.dataset.theme) === "dark", "E: dark under the dusk");
-  await p.waitForTimeout(800);
-  check(!(await has(".sky")), "E: the sky clears");
-  await p.click('#modeSeg [data-mode="light"]'); await p.waitForTimeout(150);
-  check(await has(".sky.to-light"), "E: and the sun rises going back to Light");
-  await p.waitForTimeout(1400);
-  check(await p.evaluate(() => document.documentElement.dataset.theme) === "light", "E: light again");
+  await p.click('#modeSeg [data-mode="dark"]'); await p.waitForTimeout(80);
+  check(await p.evaluate(() => document.documentElement.dataset.theme) === "dark" && !(await has(".sky")), "Dark switches straight away, no sunset");
+  await p.click('#modeSeg [data-mode="light"]'); await p.waitForTimeout(80);
+  check(await p.evaluate(() => document.documentElement.dataset.theme) === "light" && !(await has(".sky")), "Light switches straight away, no sunrise");
   check((await T.denied()).length === 0, "no rule denials", await T.denied());
   await T.end();
 

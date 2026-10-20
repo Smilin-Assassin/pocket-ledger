@@ -4,7 +4,6 @@
 //   B  the spending ring draws itself the first time it comes into view; tapping a category lifts its part out
 //   C  "Left to spend" rolls up like an odometer, once per app opening
 //   D  a coin drops into a little ring by the + after you add spending
-//   E  sunset / sunrise when you switch Dark / Light
 //   G  confetti when a savings goal is reached (once per goal, on this device)
 //   H  a coral beam sweeps the receipt or statement while it's being read
 import { reduced } from "./motion.js";
@@ -55,7 +54,7 @@ export function rollNumber(big) {
   afterSplash(() => {
     if (big.textContent !== text || !big.offsetParent) return show();   // changed meanwhile: just show it
     host.classList.add("odo-host");                   // positions the overlay over the amount
-    const cs = getComputedStyle(big), lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.15;
+    const cs = getComputedStyle(big), lh = Math.round(parseFloat(cs.fontSize) * 1.3); // rows with headroom: the next digit never peeks in (centred, so it lines up with the real amount)
     const o = el("div", "odo"); o.setAttribute("aria-hidden", "true");
     // copy the font piece by piece: the "font" shorthand comes back empty when digits are tabular, which made the
     // rolling copy fall back to the small body font (v52 fix)
@@ -82,16 +81,6 @@ export function coinDrop() {
   const box = el("div", "coin-pop" + (reduced() ? " still" : ""), `<svg class="coin-ring" viewBox="0 0 56 56" width="56" height="56" aria-hidden="true">${miniRing(19, 9)}</svg><span class="coin" aria-hidden="true"></span>`);
   d.body.appendChild(box);
   setTimeout(() => box.remove(), reduced() ? 900 : 1500);
-}
-
-// ---------- E: sunset / sunrise ----------
-export function sunSwitch(toDark, apply) {
-  if (reduced() || !!(de.getAttribute("data-theme") === "dark") === toDark) return apply();
-  const sky = el("div", "sky " + (toDark ? "to-dark" : "to-light"), `<div class="sky-sun"></div><div class="sky-sea"></div>` + Array.from({ length: 7 }, (_, i) => `<i class="sky-star" style="left:${8 + i * 13}%;top:${10 + (i * 37) % 38}%;animation-delay:${(i % 3) * 80}ms"></i>`).join(""));
-  sky.setAttribute("aria-hidden", "true");
-  d.body.appendChild(sky);
-  setTimeout(apply, 520);                               // the page changes while the sky covers it
-  setTimeout(() => sky.remove(), 1250);
 }
 
 // ---------- G: goal confetti ----------
