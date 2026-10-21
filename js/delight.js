@@ -47,12 +47,15 @@ export function rollNumber(big) {
   if (rolled || !big || !big.offsetParent) return;
   rolled = true;
   if (reduced()) return;
-  const text = big.textContent, host = big.parentElement;
+  const host = big.parentElement;
   big.classList.add("odo-hide");                      // hidden from the start, so it doesn't flash before rolling
   const show = () => big.classList.remove("odo-hide");
-  setTimeout(show, splashEnd() - performance.now() + 2500); // never stays hidden, whatever happens
+  // never stays hidden, whatever happens: 2.5s after the roll starts. The wait is never below zero (v54 fix: once the
+  // opening logo had long gone, this fired at once and the plain amount showed under the rolling one)
+  setTimeout(show, Math.max(0, splashEnd() - performance.now()) + 2500);
   afterSplash(() => {
-    if (big.textContent !== text || !big.offsetParent) return show();   // changed meanwhile: just show it
+    if (!big.offsetParent) return show();             // left the Dashboard meanwhile: just show it
+    const text = big.textContent;                     // roll to the amount as it is now (v54: data that synced during the opening used to skip the roll)
     host.classList.add("odo-host");                   // positions the overlay over the amount
     const cs = getComputedStyle(big), lh = Math.round(parseFloat(cs.fontSize) * 1.3); // rows with headroom: the next digit never peeks in (centred, so it lines up with the real amount)
     const o = el("div", "odo"); o.setAttribute("aria-hidden", "true");

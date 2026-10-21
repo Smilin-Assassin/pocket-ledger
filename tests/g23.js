@@ -37,6 +37,16 @@ E(1, 150, "Savings", { type: "save", goalId: "gA" }); E(1, 900, "Savings", { typ
   check(!(await has(".odo")) && !(await p.$eval("#leftBig", b => b.classList.contains("odo-hide"))), "C: rolls once, then plain text");
   await p.click("#nextM"); await p.waitForTimeout(300); await p.click("#prevM"); await p.waitForTimeout(400);
   check(!(await has(".odo")), "C: not again when changing months");
+  // C (v54): a roll that starts long after the opening logo has gone (slow data, or a reload in the same session)
+  // must keep the plain amount hidden the whole time the rolling copy is up
+  const late = await p.evaluate(async () => {
+    const m = await import("./js/delight.js?late=" + Date.now()), big = document.getElementById("leftBig");
+    window.plSplashUntil = 0; m.rollNumber(big);
+    let both = 0, rolled = 0;
+    for (let t = 0; t < 1700; t += 50) { await new Promise(r => setTimeout(r, 50)); if (document.querySelector(".odo")) { rolled++; if (!big.classList.contains("odo-hide")) both++; } }
+    return { both, rolled, hiddenAfter: big.classList.contains("odo-hide"), odoAfter: !!document.querySelector(".odo") };
+  });
+  check(late.rolled > 0 && late.both === 0 && !late.hiddenAfter && !late.odoAfter, "C: a late roll never shows the plain amount and the rolling one together (v54 fix)", late);
   // B: the ring waits off-screen, draws when scrolled to, and only once
   check(await has("#catRing svg.wait") && !(await has("#catRing svg.draw")), "B: the ring waits until it's seen");
   await p.evaluate(() => document.getElementById("catRing").scrollIntoView({ block: "center" })); await p.waitForTimeout(400);
