@@ -1,5 +1,5 @@
 // Things you can do to your money, shared by the forms, scanning and the chat.
-import { db, state, ui, meId, pname, rawDoc, groupName, loanOutstanding, openLoans, budgetsFor, spentIn, owesPairs, LOAN_OUT, LOAN_IN, LOAN_BACK_IN, LOAN_BACK_OUT, recEntryId } from "./store.js";
+import { db, state, ui, meId, pname, rawDoc, groupName, loanOutstanding, openLoans, budgetsFor, spentIn, carriedIn, owesPairs, LOAN_OUT, LOAN_IN, LOAN_BACK_IN, LOAN_BACK_OUT, recEntryId } from "./store.js";
 import { r2, todayISO, isoOk, monthKey, money, toast } from "./util.js";
 
 // the person new things belong to: always you, except when adding "for" someone isn't possible anyway
@@ -70,7 +70,8 @@ export function budgetCheck(e) {
   if (e.type !== "expense") return;
   const k = (e.date || "").slice(0, 7), cat = e.category || "Other";
   [e.person, "all"].forEach(who => {
-    const lim = +budgetsFor(who)[cat]; if (!(lim > 0)) return;
+    const base = +budgetsFor(who)[cat]; if (!(base > 0)) return;
+    const lim = base + carriedIn(k, who, cat);
     const sp = spentIn(k, who, cat) + (state.entries.some(x => x.created === e.created) ? 0 : +e.amount);
     const before = sp - (+e.amount);
     const label = who === "all" ? groupName() : pname(who);

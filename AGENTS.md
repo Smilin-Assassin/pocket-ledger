@@ -24,6 +24,7 @@ A household money tracker PWA for a couple in the Maldives (MVR). Plain ES modul
 - **Moves between your own accounts are kept, not dropped:** `type: "move"`, never counted as income or spending, stored once even when both statements show them.
 - **Writes never wait on the server** (no "Saving…" spinners): show the change at once and sync in the background (`fire()` in `store.js`).
 - **Account digits are last-4 only**, and only ever compared with account numbers, never amounts.
+- **Every month starts at zero.** Nothing carries over by itself and there is no bank balance on screen (the Your accounts card was removed in v55; there is no bank connection). Money kept from an earlier month is a **Carryover** entry (`type: "carryover"`, with the spending category it belongs to): it adds to Left to spend and to that category's budget, and is never counted as income or spending. The person decides what to carry over; a month-end screen only suggests.
 - Bills/reminders are never auto-added. Loans stay out of "left to spend" unless ticked.
 - Maldivian dates are DD/MM/YYYY.
 - **Home is called Dashboard** on screen (the route and code still say `home`). Extra views open in place as folded cards (`js/fold.js`), not new pages: the dock is 4 or 6 tabs.

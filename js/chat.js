@@ -2,7 +2,7 @@
 // numbers come from the app; changes are prepared for one-tap confirmation.
 import { $, esc, money, sum, r2, monthKey, monthName, shiftMonth, monthsBetween, todayISO, fmtDate, isoOk, MONTH, lsGet, lsSet, toast, canHover, saveFile } from "./util.js";
 import { state, ui, meId, isGroup, people, pname, groupName, effMonth, countsMoney, visibleGoals, goalBalance, goalName, totalSavings, loanOutstanding, openLoans,
-  budgetsFor, spentIn, owesPairs, EXP_CATS, INC_CATS, TYPE_LABEL, merchantKey, EAT, mealName } from "./store.js";
+  budgetsFor, spentIn, carriedIn, owesPairs, EXP_CATS, INC_CATS, TYPE_LABEL, merchantKey, EAT, mealName } from "./store.js";
 import { createLoan, findLoan, recordRepayment, createRecurring, settlePair, setBudget, addEntries } from "./actions.js";
 import { geminiText, parseJsonText } from "./gemini.js";
 import { showProposals } from "./scan.js";
@@ -90,12 +90,12 @@ const TOOLS = {
   },
   month_summary(a) {
     const k = MONTH.test(String(a.month || "")) ? a.month : monthKey(new Date()), who = resolvePerson(a.person);
-    const t = { income: 0, spent: 0, save: 0, withdraw: 0 }, cats = {};
+    const t = { income: 0, spent: 0, save: 0, withdraw: 0, carry: 0 }, cats = {};
     state.entries.filter(e => effMonth(e) === k && countsMoney(e) && (who === "all" || e.person === who)).forEach(e => {
       const v = +e.amount || 0;
-      if (e.type === "income") t.income += v; else if (e.type === "expense") { t.spent += v; cats[e.category || "Other"] = (cats[e.category || "Other"] || 0) + v; } else if (e.type === "save") t.save += v; else if (e.type === "withdraw") t.withdraw += v;
+      if (e.type === "income") t.income += v; else if (e.type === "expense") { t.spent += v; cats[e.category || "Other"] = (cats[e.category || "Other"] || 0) + v; } else if (e.type === "save") t.save += v; else if (e.type === "withdraw") t.withdraw += v; else if (e.type === "carryover") t.carry += v;
     });
-    return { month: k, person: whoLabel(who), income: r2(t.income), spent: r2(t.spent), moved_to_savings: r2(t.save - t.withdraw), left_to_spend: r2(t.income - t.spent - (t.save - t.withdraw)),
+    return { month: k, person: whoLabel(who), income: r2(t.income), spent: r2(t.spent), moved_to_savings: r2(t.save - t.withdraw), carried_over_from_earlier_months: r2(t.carry), left_to_spend: r2(t.income + t.carry - t.spent - (t.save - t.withdraw)),
       top_spending: Object.entries(cats).sort((x, y) => y[1] - x[1]).slice(0, 6).map(([c, v]) => ({ category: c, total: r2(v) })) };
   },
   goals(a) {
@@ -118,7 +118,7 @@ const TOOLS = {
   },
   budgets(a) {
     const who = resolvePerson(a && a.person), k = MONTH.test(String((a && a.month) || "")) ? a.month : monthKey(new Date()), b = budgetsFor(who);
-    return { person: whoLabel(who), month: k, budgets: Object.keys(b).map(c => ({ category: c, limit: +b[c], spent: r2(spentIn(k, who, c)), left: r2(+b[c] - spentIn(k, who, c)) })) };
+    return { person: whoLabel(who), month: k, budgets: Object.keys(b).map(c => { const co = carriedIn(k, who, c); return { category: c, limit: r2(+b[c] + co), carried_over_included: r2(co), spent: r2(spentIn(k, who, c)), left: r2(+b[c] + co - spentIn(k, who, c)) }; }) };
   },
   owed() { const ps = owesPairs(); return !ps.length ? { status: "nobody owes anything for shared costs" } : { owing: ps.map(p => ({ owes: pname(p.debtor), to: pname(p.creditor), amount: p.amt })) }; },
   repeating(a) { const who = resolvePerson(a && a.person); return state.recurring.filter(r => who === "all" || r.person === who).map(r => ({ what: r.note || r.category, type: r.type, amount: +r.amount, day: r.day, whose: pname(r.person), paused: !!r.paused })); }

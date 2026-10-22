@@ -1,4 +1,4 @@
-// g16 (v37): compare the last 3 months and this year, Needs a look, account balances from statements. Made-up data.
+// g16 (v37): compare the last 3 months and this year, Needs a look. (Account balances from statements were removed in v55.) Made-up data.
 const { start } = require("./lib");
 const U = "uid_tomxcom", H = "households/P1";
 const now = new Date(), K = m => { const d = new Date(now.getFullYear(), now.getMonth() - m, 1); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
@@ -23,7 +23,7 @@ const csv = [
 
 (async () => {
   const T = await start({ seed, users: { "tom@x.com": "secret12" } }), { p, check } = T;
-  console.log("g16: compare, needs a look, account balances");
+  console.log("g16: compare, needs a look, no account balance card");
   await T.login("tom@x.com", "#home"); await p.waitForTimeout(900);
 
   // compare: last 3 months (a folded card since v42: open it first)
@@ -44,14 +44,12 @@ const csv = [
   await p.click('#ledger [data-keepdup]'); await p.waitForTimeout(400);
   check((await T.rows()).length === 1, "Keep takes the repeat off the list");
 
-  // account balance from a statement
+  // the account balance card was removed (v55): importing a statement no longer keeps a balance or shows Your accounts
   await p.setInputFiles("#stmtFile", { name: "bml.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
   await p.waitForTimeout(1800);
-  const bal = ((await T.db())[H].settings.balances || {});
-  const b = Object.values(bal)[0] || {};
-  check(b.bal === 5299.5 && b.asOf === "2026-09-27" && b.bank === "BML", "the closing balance is kept, from the latest row", bal);
+  check(!(((await T.db())[H].settings || {}).balances), "a statement import no longer keeps an account balance", ((await T.db())[H].settings || {}).balances);
   await p.click('#scanList [data-imp="close"], #scanList [data-imp="see"]'); await T.nav("home"); await p.waitForTimeout(500);
-  check(/Your accounts.*BML.*5,299\.50/.test(await T.text("#acctBar")), "Home shows Your accounts", await T.text("#acctBar"));
+  check(!(await p.$("#acctBar")) && !/Your accounts/.test(await T.text("#pg-home")), "Home has no Your accounts card");
   check((await T.denied()).length === 0, "no rule denials", await T.denied());
   await T.end();
 })();

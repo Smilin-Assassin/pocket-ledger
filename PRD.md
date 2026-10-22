@@ -16,7 +16,7 @@ A household in the Maldives wants to know, at any moment, **how much is left to 
 - Private by default: your space is yours; groups share only what's put in them; only the person who added something can change it.
 
 ## Features (live)
-- **Money:** income, spending, savings and withdrawals, savings goals, loans (lent/borrowed, repayments), bills and reminders (never auto-added), budgets with alerts, a dashboard with "left to spend", category breakdown (tap a category to see its entries and total).
+- **Money:** income, spending, carryover from earlier months (per category), savings and withdrawals, savings goals, loans (lent/borrowed, repayments), bills and reminders (never auto-added), budgets with alerts, a dashboard with "left to spend", category breakdown (tap a category to see its entries and total).
 - **Getting data in:** Quick add (number pad, most-used categories); scanning receipts, bank slips and screenshots with Gemini (check before adding); BML and MIB CSV statements read exactly; PDF statements via Gemini; Gemini chat by text or voice with one-tap confirm; share-to-app on Android.
 - **Together:** private space plus groups; ask to view someone's dashboard; money sent straight to a person (no group needed), chosen once then added automatically, with a push notification; who-owes-whom and settle up; the creator can delete a group.
 - **Safety:** invite-only accounts, admin page (never shows money), app lock, Undo on deletes, Recently deleted (30 days), backups and restore.
@@ -52,6 +52,8 @@ A household in the Maldives wants to know, at any moment, **how much is left to 
 4. Android app: a thin installable wrapper first; reading bank SMS only if it's worth Google's review.
 
 ## Release history (newest first)
+
+- October 2026 (pl-v55): Every month starts at zero, and carried-over money is something you choose. The Your accounts card (the bank balance from imported statements) is gone from Home, and importing a statement no longer keeps a balance. New entry type **Carryover** (a fifth button in the Entries form, with its own "Carried over" filter): money kept from an earlier month, with the spending category it belongs to. It adds to Left to spend and raises that category's budget for the month (a 1,000 budget with 300 carried over reads "of 1,300", and the 80% and over-budget alerts use the bigger limit), but it is never counted as income or spending, so the income, spending and category totals stay true. Home says how much of Left to spend was carried over. Next in this plan: a Recurring tab with totals, then a month-end screen that suggests what to carry over or save.
 
 - October 2026 (pl-v54): Fix: Left to spend no longer shows the plain amount and the rolling one at the same time. When the roll started well after the opening logo had gone (slow data, or reopening in the same session), the safety timer that unhides the amount fired straight away. Also, if the amount changed while the logo was showing (data syncing), it now rolls to the new amount instead of skipping the roll.
 

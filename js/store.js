@@ -7,7 +7,7 @@ export const EXP_CATS = ["Food & groceries", "Eating out", "Rent & bills", "Tran
 export const INC_CATS = ["Salary", "Side income", "Overtime", "Gift", "Loan repaid", "Loan received", "Other"];
 export const LOAN_OUT = "Loans given", LOAN_IN = "Loan received", LOAN_BACK_IN = "Loan repaid", LOAN_BACK_OUT = "Loan repayment";
 export const PCOLORS = ["#2F6FD6", "#9B4F96", "#0E8A7D", "#C9821B", "#4C9A2A", "#D0526E"];
-export const TYPE_LABEL = { expense: "Spent", income: "Income", save: "Save", withdraw: "Withdraw" };
+export const TYPE_LABEL = { expense: "Spent", income: "Income", save: "Save", withdraw: "Withdraw", carryover: "Carried over" };
 // Eating out is one category with a meal inside it (v40): Breakfast, Lunch, Dinner, Snacks. Stored as entry.meal.
 export const EAT = "Eating out";
 export const MEALS = [["breakfast", "Breakfast"], ["lunch", "Lunch"], ["dinner", "Dinner"], ["snacks", "Snacks"]];
@@ -279,12 +279,15 @@ const whoOk = (who, person) => who === "all" || person === who;
 export const viewEntries = (who = ui.view) => who === "all" ? state.entries : state.entries.filter(e => e.person === who);
 export const inMonth = (k, who = ui.view) => viewEntries(who).filter(e => effMonth(e) === k);
 export function monthTotals(k, who = ui.view) {
-  const t = { income: 0, spent: 0, save: 0, withdraw: 0 };
-  inMonth(k, who).filter(countsMoney).forEach(e => { const a = +e.amount || 0; if (e.type === "income") t.income += a; else if (e.type === "expense") t.spent += a; else if (e.type === "save") t.save += a; else if (e.type === "withdraw") t.withdraw += a; });
+  const t = { income: 0, spent: 0, save: 0, withdraw: 0, carry: 0 };
+  inMonth(k, who).filter(countsMoney).forEach(e => { const a = +e.amount || 0; if (e.type === "income") t.income += a; else if (e.type === "expense") t.spent += a; else if (e.type === "save") t.save += a; else if (e.type === "withdraw") t.withdraw += a; else if (e.type === "carryover") t.carry += a; });
   t.netSaved = t.save - t.withdraw;
-  t.left = t.income - t.spent - t.netSaved;
+  // Carried over is money brought in from an earlier month: it adds to what's left, but it is neither income nor spending
+  t.left = t.income + t.carry - t.spent - t.netSaved;
   return t;
 }
+// carried over into a budget category this month (all categories when cat is left out)
+export const carriedIn = (k, who, cat) => sum(state.entries.filter(e => e.type === "carryover" && effMonth(e) === k && whoOk(who, e.person) && (!cat || (e.category || "Other") === cat)), e => +e.amount);
 export const flow = e => e.type === "save" ? +e.amount : e.type === "withdraw" ? -e.amount : 0;
 export function totalSavings(uptoMonth, who = ui.view) {
   let es = viewEntries(who);
@@ -349,6 +352,8 @@ export const spentIn = (k, who, cat) => sum(state.entries.filter(e => e.type ===
 
 // categories: the defaults plus any you've used
 export function catOptions(type) {
+  // a carryover belongs to a spending category (that's where its budget is), never a loan one
+  if (type === "carryover") return catOptions("expense").filter(c => c !== LOAN_OUT && c !== LOAN_BACK_OUT);
   const base = type === "income" ? INC_CATS : EXP_CATS;
   return [...new Set(base.concat(state.entries.filter(e => e.type === type && e.category).map(e => e.category)))];
 }

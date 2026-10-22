@@ -7,7 +7,7 @@ import { go } from "./shell.js";
 import { scanViz } from "./delight.js";
 
 let scanAbort = null, items = [];
-const TYPES = Object.entries(TYPE_LABEL);
+const TYPES = Object.entries(TYPE_LABEL).filter(([k]) => k !== "carryover");
 const open = () => { $("scanWrap").hidden = false; document.body.classList.add("sheet-open"); };
 export function closeScan() { if (scanAbort) scanAbort.abort(); scanAbort = null; items = []; $("scanWrap").hidden = true; document.body.classList.remove("sheet-open"); }
 // H: while reading, the picture (or a sketch of a statement) shows with a coral beam sweeping over it
@@ -517,7 +517,6 @@ async function importStatement(file) {
     const ids = all.length ? await db.addMany(all) : [];
     res.add.forEach((r, i) => { r.id = ids[i]; });
     lastImport = { ids, importId, label, months, res };
-    saveBalance(rows, extra, here);
     renderImport();
   } catch (e) {
     importAnyway = false;
@@ -535,22 +534,6 @@ async function importStatement(file) {
     status(esc(msg) + (e && e.message && code === "http" ? '<br><small class="muted">Details: ' + esc(String(e.message).slice(0, 200)) + "</small>" : ""), false);
     $("scanFoot").hidden = false; $("scanAdd").hidden = true;
   }
-}
-// the account's latest balance, shown on Home under Your accounts (kept in your own space)
-function saveBalance(rows, extra, name) {
-  let bal = null, asOf = null;
-  if (typeof extra.closing === "number") { bal = extra.closing; asOf = extra.closingDate || rows.map(r => r.date).sort().pop(); }
-  else {
-    const withBal = rows.filter(r => typeof r.bal === "number" && !isNaN(r.bal)); if (!withBal.length) return;
-    // statements list oldest-first or newest-first: the end the latest date is on holds the closing balance
-    const first = withBal[0], last = withBal[withBal.length - 1], d = r => r.posted || r.date;
-    const end = d(first) > d(last) ? first : last; bal = end.bal; asOf = withBal.map(r => r.date).sort().pop();
-  }
-  if (typeof bal !== "number" || isNaN(bal)) return;
-  const key = String(extra.last4 || extra.bank || "account").replace(/[^A-Za-z0-9]/g, "") || "account";
-  const cur = (state.settings.balances || {})[key];
-  if (cur && cur.asOf && asOf && cur.asOf > asOf) return;           // an older statement doesn't replace a newer balance
-  db.saveSettings({ balances: Object.assign({}, state.settings.balances || {}, { [key]: { name: name === "This account" ? (extra.bank || "Account") : name, bank: extra.bank || "", bal: r2(bal), asOf } }) });
 }
 let importAnyway = false, pendingFile = null;
 function askForDetails(file) {

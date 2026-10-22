@@ -9,7 +9,7 @@ import { coinDrop } from "../delight.js";
 Object.assign(ui, { type: "expense", editId: null, filter: "all", search: "", cat: "", meal: "", searchAll: false, fMeal: "", mealPicked: false, confirm: null, openRow: null, catOther: false, goalSel: "" });
 
 // ---------- one entry row (also used on Home) ----------
-const META = { expense: ["var(--c-spent)", "out", "−"], income: ["var(--c-left)", "in", "+"], save: ["var(--c-saved)", "sv", "→ "], withdraw: ["var(--c-saved)", "in", "← "], move: ["var(--ink-3)", "mv", ""] };
+const META = { expense: ["var(--c-spent)", "out", "−"], income: ["var(--c-left)", "in", "+"], save: ["var(--c-saved)", "sv", "→ "], withdraw: ["var(--c-saved)", "in", "← "], move: ["var(--ink-3)", "mv", ""], carryover: ["var(--c-left)", "in", "+"] };
 export function rowHtml(e, opts) {
   opts = opts || {};
   const meta = META[e.type] || ["var(--ink-3)", "out", ""];
@@ -17,12 +17,13 @@ export function rowHtml(e, opts) {
   if (e.type === "save") title = "Saved" + (goalName(e.goalId) ? " for " + goalName(e.goalId) : "");
   if (e.type === "withdraw") title = "Took out of savings" + (goalName(e.goalId) ? " (" + goalName(e.goalId) + ")" : "");
   if (e.type === "move") title = "Moved between your accounts";
+  if (e.type === "carryover") title = "Carried over to " + (e.category || "Other");
   const tags = (e.split ? '<span class="owner-tag">Split</span>' : "") + (e.recurringId ? '<span class="owner-tag">Bill</span>' : "") +
     (e.countMonth && e.countMonth !== (e.date || "").slice(0, 7) ? '<span class="owner-tag">For ' + esc(monthName(e.countMonth, true)) + "</span>" : "") +
     (e.loanId && !countsMoney(e) ? '<span class="owner-tag">Loan · separate</span>' : "") +
     (e.maybeDup ? '<span class="owner-tag warn-tag">Possible repeat</span>' : "");
   const by = isGroup() && !isAll() ? addedBy(e) : "";
-  const sub = [isAll() ? pname(e.person) : "", e.category === EAT ? mealName(e.meal) : "", e.note || (e.type === "expense" ? "Spent" : e.type === "income" ? "Income" : "")].filter(Boolean).join(", ");
+  const sub = [isAll() ? pname(e.person) : "", e.category === EAT ? mealName(e.meal) : "", e.note || (e.type === "expense" ? "Spent" : e.type === "income" ? "Income" : e.type === "carryover" ? "From an earlier month" : "")].filter(Boolean).join(", ");
   const editable = !opts.noActions && canEdit(e);
   const acts = !editable ? "" : (e.maybeDup ? `<button type="button" class="icon-btn" data-keepdup="${e.id}" aria-label="Keep it, it's a real separate payment">Keep</button>` : "") + `<button type="button" class="icon-btn" data-edit="${e.id}" aria-label="Edit entry">Edit</button><button type="button" class="icon-btn danger" data-del="${e.id}" aria-label="Delete entry">Delete</button>`;
   return `<li class="tx${ui.openRow === e.id ? " open" : ""}" data-id="${e.id}"><span class="dot" style="background:${meta[0]}" data-i="${esc((title || "?").trim().charAt(0).toUpperCase())}"></span>
@@ -81,6 +82,7 @@ function renderLedger() {
   if (ui.filter === "income") es = es.filter(e => e.type === "income");
   if (ui.filter === "savings") es = es.filter(e => e.type === "save" || e.type === "withdraw");
   if (ui.filter === "moved") es = es.filter(e => e.type === "move" || e.moved);
+  if (ui.filter === "carryover") es = es.filter(e => e.type === "carryover");
   // category picker: the categories in what's shown (before picking one)
   const sel = $("catFilter"), cats = [...new Set(es.map(e => e.category || "Other"))].sort();
   if (ui.cat && !cats.includes(ui.cat)) cats.unshift(ui.cat);
@@ -103,10 +105,11 @@ function renderLedger() {
   // the total of whatever is chosen
   const out = sum(es.filter(e => e.type === "expense"), e => +e.amount), inc = sum(es.filter(e => e.type === "income"), e => +e.amount);
   const sv = sum(es.filter(e => e.type === "save"), e => +e.amount) - sum(es.filter(e => e.type === "withdraw"), e => +e.amount);
-  const what = [ui.cat && ui.cat === EAT && ui.meal ? EAT + ", " + (ui.meal === "none" ? "meal not set" : mealName(ui.meal)) : ui.cat, ui.filter === "expense" ? "Spent" : ui.filter === "income" ? "Income" : ui.filter === "savings" ? "Savings" : ui.filter === "moved" ? "Moved" : ui.filter === "review" ? "Needs a look" : "", ui.search ? "\u201c" + ui.search + "\u201d" : ""].filter(Boolean).join(" · ") || "Everything";
+  const co = sum(es.filter(e => e.type === "carryover"), e => +e.amount);
+  const what = [ui.cat && ui.cat === EAT && ui.meal ? EAT + ", " + (ui.meal === "none" ? "meal not set" : mealName(ui.meal)) : ui.cat, ui.filter === "expense" ? "Spent" : ui.filter === "income" ? "Income" : ui.filter === "savings" ? "Savings" : ui.filter === "moved" ? "Moved" : ui.filter === "carryover" ? "Carried over" : ui.filter === "review" ? "Needs a look" : "", ui.search ? "\u201c" + ui.search + "\u201d" : ""].filter(Boolean).join(" · ") || "Everything";
   const allM = (ui.search || ui.filter === "review") && ui.searchAll;
   const scope = ui.search || ui.filter === "review" ? `<button type="button" class="linkish" data-search-all="${ui.searchAll ? "" : "1"}">${ui.searchAll ? "Just " + esc(monthName(ui.month)) : ui.filter === "review" ? "All months" : "Search all months"}</button>` : "";
-  $("ledgerTotal").innerHTML = es.length ? `<span><b>${esc(what)}</b> ${allM ? "in all months" : "in " + esc(monthName(ui.month))}, ${es.length} entr${es.length === 1 ? "y" : "ies"}</span><span class="lt-sums">${out ? `<b class="num neg">${esc(money(out))}</b> spent` : ""}${out && (inc || sv) ? " · " : ""}${inc ? `<b class="num pos">${esc(money(inc))}</b> in` : ""}${inc && sv ? " · " : ""}${sv ? `<b class="num">${esc(money(sv))}</b> saved` : ""}</span>${ui.cat ? `<button type="button" class="linkish" data-cat-clear="1">Show all categories</button>` : ""}${scope}` : "";
+  $("ledgerTotal").innerHTML = es.length ? `<span><b>${esc(what)}</b> ${allM ? "in all months" : "in " + esc(monthName(ui.month))}, ${es.length} entr${es.length === 1 ? "y" : "ies"}</span><span class="lt-sums">${out ? `<b class="num neg">${esc(money(out))}</b> spent` : ""}${out && (inc || sv) ? " · " : ""}${inc ? `<b class="num pos">${esc(money(inc))}</b> in` : ""}${inc && sv ? " · " : ""}${sv ? `<b class="num">${esc(money(sv))}</b> saved` : ""}${co ? `${out || inc || sv ? " · " : ""}<b class="num">${esc(money(co))}</b> carried over` : ""}</span>${ui.cat ? `<button type="button" class="linkish" data-cat-clear="1">Show all categories</button>` : ""}${scope}` : "";
   $("ledgerTotal").hidden = !es.length;
   if (!es.length) {
     if (ui.search || ui.cat) { list.innerHTML = `<li class="empty"><span>Nothing matches${ui.cat ? " in " + esc(ui.cat) : ""}${ui.search ? ' "' + esc(ui.search) + '"' : ""}${ui.search && ui.searchAll ? " in any month" : " in " + esc(monthName(ui.month))}.</span>${ui.search && !ui.searchAll ? `<button type="button" class="linkish" data-search-all="1">Search all months</button>` : ""}</li>`; return; }
@@ -179,7 +182,7 @@ function renderForm() {
   $("purposeRow").hidden = !(t === "save" && gsel.value === "__other");
   $("goalLabel").textContent = t === "withdraw" ? "Take it from" : "Put it into";
   $("noteLabel").innerHTML = (t === "withdraw" ? "Reason" : "Note") + ' <span class="muted">(optional)</span>';
-  $("fNote").placeholder = t === "withdraw" ? "e.g. Car repair, will put back" : t === "income" ? "e.g. October salary" : "e.g. Groceries at Agora";
+  $("fNote").placeholder = t === "withdraw" ? "e.g. Car repair, will put back" : t === "income" ? "e.g. October salary" : t === "carryover" ? "e.g. Left from September" : "e.g. Groceries at Agora";
   $("forRow").hidden = t !== "income";
   if (t === "income") {
     const k = ($("fDate").value || todayISO()).slice(0, 7);
@@ -189,8 +192,8 @@ function renderForm() {
   const other = otherOf(entryWho());
   $("splitRow").hidden = t !== "expense" || people().length < 2 || !other;
   $("splitLabel").textContent = "Split half with " + pname(other);
-  $("repeatRow").hidden = !!ui.editId;
-  const verb = { expense: "expense", income: "income", save: "savings", withdraw: "withdrawal", move: "move" }[t];
+  $("repeatRow").hidden = !!ui.editId || t === "carryover"; // money kept from an earlier month is never a monthly reminder
+  const verb = { expense: "expense", income: "income", save: "savings", withdraw: "withdrawal", move: "move", carryover: "carryover" }[t];
   $("submitBtn").textContent = (ui.editId ? "Update " : "Add ") + verb;
   $("formTitle").textContent = ui.editId ? "Edit entry" : "Add an entry";
   $("cancelEdit").hidden = !ui.editId;
@@ -199,7 +202,8 @@ function renderForm() {
     income: "Money coming in. If you're paid before the month ends, choose which month it's for.",
     save: "Money you move into savings. It leaves this month's spending money and adds to your savings or a goal.",
     withdraw: "Money taken out of your savings. It's deducted from your savings (and the goal, if you pick one) and added to this month's money. Put it back later with Save.",
-    move: "Pick Spent, Income or Save above if this wasn't just a move between your own accounts."
+    move: "Pick Spent, Income or Save above if this wasn't just a move between your own accounts.",
+    carryover: "Money left over from an earlier month that you're keeping to spend. It adds to this month's budget for the category and to what's left, but it isn't income or spending."
   }[t];
   syncCatSel(); syncMeal();
   document.querySelectorAll("#formPanel button, #formPanel input, #formPanel select").forEach(el => { el.disabled = state.readOnly; });
@@ -261,6 +265,7 @@ async function submit(ev) {
     if (t === "save" && g === "__other") { const pur = $("fPurpose").value.trim(); if (pur) e.note = "Saving for " + pur + (e.note ? " · " + e.note : ""); }
   } else {
     const typed = $("fCat").value.trim(), same = catOptions(t).find(c => c.toLowerCase() === typed.toLowerCase());
+    if (t === "carryover" && !(same || typed)) return err("Pick the category this carries over to. Its budget is where it counts.");
     e.category = same || typed || (t === "income" ? "Salary" : "Other");
   }
   if (t === "expense" && e.category === EAT && ui.fMeal) e.meal = ui.fMeal;
@@ -288,7 +293,7 @@ async function submit(ev) {
     if (!n) toast("Entry updated");
   } else {
     db.add(e); toast("Added"); if (e.type === "expense") coinDrop(); // D
-    if ($("fRepeat").checked) {
+    if ($("fRepeat").checked && !$("repeatRow").hidden) {
       createRecurring({ type: e.type, amount: e.amount, category: e.category, note: e.note || e.category, person: e.person, day: +date.slice(8, 10), startMonth: shiftMonth(date.slice(0, 7), 1), goalId: e.goalId, split: e.split });
       toast("Added. You'll be reminded on day " + (+date.slice(8, 10)) + " each month.");
     }

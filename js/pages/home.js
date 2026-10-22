@@ -2,7 +2,7 @@
 import { renderSmart } from "../smart.js";
 import { $, esc, money, num, sum, monthKey, monthName, shiftMonth, lsGet, lsSet, lsJson, toast } from "../util.js";
 import { state, ui, db, isAll, isGroup, isOwner, isMine, pname, pcolor, poss, groupName, meId, monthTotals, totalSavings, inMonth, effMonth, countsMoney,
-  visibleGoals, goalBalance, openBills, dueText, openLoans, loanOutstanding, owesPairs, budgetsFor, spentIn, EXP_CATS, LOAN_OUT, LOAN_BACK_OUT, changed, canEdit } from "../store.js";
+  visibleGoals, goalBalance, openBills, dueText, openLoans, loanOutstanding, owesPairs, budgetsFor, spentIn, carriedIn, EXP_CATS, LOAN_OUT, LOAN_BACK_OUT, changed, canEdit } from "../store.js";
 import { settlePair } from "../actions.js";
 import { rowHtml, wireRows, byNewest } from "./entries.js";
 import { renderDue, wireDue } from "./bills.js";
@@ -25,7 +25,7 @@ function renderHero() {
   $("heroLabel").textContent = isAll() ? "Left to spend this month: " + groupName() : isMine(ui.view) ? "Left to spend this month" : "Left to spend this month: " + pname(ui.view);
   const big = $("leftBig"); big.textContent = money(t.left); big.classList.toggle("neg", t.left < 0);
   // C: the first time the Dashboard shows real numbers after opening the app, the amount rolls up
-  if (rollPending() && state.ready && (t.income || t.spent) && document.getElementById("pg-home").offsetParent) rollNumber(big);
+  if (rollPending() && state.ready && (t.income || t.spent || t.carry) && document.getElementById("pg-home").offsetParent) rollNumber(big);
   let sub;
   if (!hasIncome && t.spent === 0 && t.netSaved === 0) sub = "Add " + (isAll() ? "income" : poss(ui.view) + " income") + " for " + monthName(ui.month, true) + " to see what's left.";
   else if (!hasIncome) sub = "No income logged for this month yet.";
@@ -36,14 +36,15 @@ function renderHero() {
       sub = "About " + money(t.left / daysLeft, { whole: true }) + " a day for the " + daysLeft + " day" + (daysLeft === 1 ? "" : "s") + " left.";
     } else sub = "What was left at the end of " + monthName(ui.month) + ".";
   }
+  if (t.carry > 0) sub += " Includes " + money(t.carry, { whole: true }) + " carried over.";
   $("leftSub").textContent = sub;
   $("copyIncome").hidden = state.readOnly || hasIncome || !inMonth(shiftMonth(ui.month, -1)).some(e => e.type === "income" && canEdit(e));
   document.querySelectorAll("#pg-home .hero-acts [data-go-add], #pg-home .hero-acts [data-scan]").forEach(b => { b.hidden = state.readOnly; });
 
-  const base = Math.max(t.income, t.spent + Math.max(t.netSaved, 0)) || 0;
+  const pool = t.income + t.carry, base = Math.max(pool, t.spent + Math.max(t.netSaved, 0)) || 0;
   const parts = [{ k: "Spent", v: t.spent, c: "var(--c-spent)" }, { k: "Saved", v: Math.max(t.netSaved, 0), c: "var(--c-saved)" }, { k: "Left", v: Math.max(t.left, 0), c: "var(--c-left)" }];
   $("split").innerHTML = base ? parts.filter(p => p.v > 0).map(p => `<div title="${p.k}: ${esc(money(p.v))}" style="width:${p.v / base * 100}%;background:${p.c}"></div>`).join("") : "";
-  $("legend").innerHTML = parts.map(p => `<span><i style="background:${p.c}"></i>${p.k}${t.income ? ` <b class="num">${Math.round(p.v / t.income * 100)}%</b>` : ""}</span>`).join("");
+  $("legend").innerHTML = parts.map(p => `<span><i style="background:${p.c}"></i>${p.k}${pool ? ` <b class="num">${Math.round(p.v / pool * 100)}%</b>` : ""}</span>`).join("");
   $("sIncome").textContent = money(t.income); $("sIncomeH").textContent = delta(t.income, prev.income);
   $("sSpent").textContent = money(t.spent); $("sSpentH").textContent = delta(t.spent, prev.spent);
   $("sSaved").textContent = money(t.netSaved);
@@ -62,7 +63,7 @@ function renderTiles() {
   }
   if (!hide.has("budgets")) {
     const b = budgetsFor(who), over = [], near = [];
-    Object.keys(b).forEach(c => { const lim = +b[c]; if (!(lim > 0)) return; const sp = spentIn(ui.month, who, c); if (sp >= lim) over.push(c + " +" + money(sp - lim, { whole: true })); else if (sp >= lim * 0.8) near.push(c); });
+    Object.keys(b).forEach(c => { if (!(+b[c] > 0)) return; const lim = +b[c] + carriedIn(ui.month, who, c), sp = spentIn(ui.month, who, c); if (sp >= lim) over.push(c + " +" + money(sp - lim, { whole: true })); else if (sp >= lim * 0.8) near.push(c); });
     const n = Object.keys(b).filter(c => +b[c] > 0).length;
     tiles.push(`<a href="#home" data-jump="budgetList" class="tile ${over.length ? "t-red" : near.length ? "t-amber" : "t-ok"}"><div class="label">Budgets</div><div class="v">${!n ? "None set" : over.length ? over.length + " over" : near.length ? near.length + " close" : "On track"}</div><div class="h">${esc(over.length ? over.join(", ") : near.length ? near.join(", ") + " at 80%+" : n ? "All under limit" : "Set them under Budgets below")}</div></a>`);
   }
@@ -124,9 +125,11 @@ function renderBudgets() {
   }
   $("budgetBtn").hidden = !canSet;
   $("budgetBtn").textContent = cats.length ? "Edit budgets" : "Set budgets";
-  box.innerHTML = cats.length ? cats.map(c => {
-    const lim = +b[c], sp = spentIn(ui.month, ui.view, c), pct = Math.round(sp / lim * 100), cls = pct >= 100 ? "over" : pct >= 80 ? "near" : "";
-    return `<div class="bud ${cls}"><div class="bud-top"><span>${esc(c)}</span><span class="num">${esc(money(sp, { whole: true }))} of ${esc(money(lim, { whole: true }))}</span></div><div class="meter"><div style="width:${Math.min(100, pct)}%"></div></div><small>${pct >= 100 ? "Over by " + esc(money(sp - lim, { whole: true })) : esc(money(lim - sp, { whole: true })) + " left, " + pct + "% used"}</small></div>`;
+  // a category with money carried into it shows too, even without a budget of its own
+  const shown = [...new Set(cats.concat(inMonth(ui.month, ui.view).filter(e => e.type === "carryover").map(e => e.category || "Other")))];
+  box.innerHTML = shown.length ? shown.map(c => {
+    const co = carriedIn(ui.month, ui.view, c), lim = (+b[c] || 0) + co, sp = spentIn(ui.month, ui.view, c), pct = Math.round(sp / lim * 100), cls = pct >= 100 ? "over" : pct >= 80 ? "near" : "";
+    return `<div class="bud ${cls}"><div class="bud-top"><span>${esc(c)}</span><span class="num">${esc(money(sp, { whole: true }))} of ${esc(money(lim, { whole: true }))}</span></div><div class="meter"><div style="width:${Math.min(100, pct)}%"></div></div><small>${pct >= 100 ? "Over by " + esc(money(sp - lim, { whole: true })) : esc(money(lim - sp, { whole: true })) + " left, " + pct + "% used"}${co ? ", includes " + esc(money(co, { whole: true })) + " carried over" : ""}</small></div>`;
   }).join("") : `<p class="hint">No budgets yet. Set a monthly limit for any category and you'll get a heads-up at 80%.</p>`;
 }
 
@@ -210,16 +213,6 @@ function renderCompare() {
     <p class="hint">January to ${esc(upto)} each year${b.inc || b.out ? "" : ". Nothing logged last year yet, so there's nothing to compare against"}.</p>`;
 }
 
-// ---------- your accounts: the latest balance from each imported statement ----------
-function renderAccounts() {
-  const box = $("acctBar"); if (!box) return;
-  const bal = (!isGroup() && state.settings.balances) || {}, list = Object.values(bal).filter(b => b && typeof b.bal === "number").sort((x, y) => (x.name || "").localeCompare(y.name || ""));
-  box.hidden = !list.length;
-  if (box.hidden) return;
-  const total = sum(list, b => b.bal);
-  box.innerHTML = `<div class="smart-head"><b>Your accounts</b><small>From your latest statements</small></div><ul>${list.map(b => `<li><span>${esc(b.name || b.bank || "Account")}<small>as of ${esc(new Date(b.asOf + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" }))}</small></span><b class="num">${esc(money(b.bal))}</b></li>`).join("")}</ul>${list.length > 1 ? `<div class="acct-tot"><span>Together</span><b class="num">${esc(money(total))}</b></div>` : ""}`;
-}
-
 export const page = {
   init() {
     wireDue($("dueBar"), () => page.render());
@@ -262,6 +255,6 @@ export const page = {
   },
   render() {
     renderDue($("dueBar"), 4);
-    renderOwes(); renderSmart(); renderAccounts(); renderHero(); renderTiles(); renderCats(); renderBudgets(); renderRecent(); renderTrend(); renderCompare();
+    renderOwes(); renderSmart(); renderHero(); renderTiles(); renderCats(); renderBudgets(); renderRecent(); renderTrend(); renderCompare();
   }
 };

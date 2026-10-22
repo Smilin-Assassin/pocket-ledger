@@ -279,6 +279,8 @@ button { cursor: pointer; }
 
 /* Form */
 .seg { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--sunk); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg.five { grid-template-columns: repeat(5, 1fr); }
+.seg.five button { font-size: .78rem; padding: 7px 2px; }
 .seg button { border: 0; background: transparent; border-radius: 8px; padding: 7px 4px; font-size: .85rem; font-weight: 600; color: var(--ink-2); }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 .field { display: grid; gap: 4px; min-width: 0; }
@@ -801,12 +803,6 @@ a.tile:hover .v { color: var(--accent); }
 @media (min-width: 900px) { .main { padding-bottom: 104px; } }
 
 /* ---------- v37: your accounts, compare ---------- */
-.accts { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; margin-bottom: 14px; }
-.accts[hidden] { display: none; }
-.accts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.accts li, .acct-tot { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.accts li span { display: grid; } .accts li small { color: var(--ink-3); font-size: .8rem; }
-.acct-tot { border-top: 1px solid var(--line); padding-top: 8px; color: var(--ink-2); }
 .cmp-seg { width: auto; min-width: 0; }
 #cmpPanel .panel-head { flex-wrap: wrap; gap: 8px; }
 .cmp-tbl { overflow-x: auto; }
@@ -898,8 +894,8 @@ circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest
    ===================================================================================== */
 :root[data-preset="coral"] body { letter-spacing: -.005em; }
 :root[data-preset="coral"][data-theme="dark"] { --dk-bar: #2A2133; }
-:root[data-preset="coral"] :is(.panel, .summary, .bill, .stat-card, .xfer-card, .smart, .accts) { border: 0; border-radius: var(--r-card); box-shadow: 0 1px 2px rgba(43, 27, 61, .04), 0 6px 24px rgba(43, 27, 61, .06); }
-:root[data-preset="coral"][data-theme="dark"] :is(.panel, .summary, .bill, .stat-card, .xfer-card, .smart, .accts) { box-shadow: none; }
+:root[data-preset="coral"] :is(.panel, .summary, .bill, .stat-card, .xfer-card, .smart) { border: 0; border-radius: var(--r-card); box-shadow: 0 1px 2px rgba(43, 27, 61, .04), 0 6px 24px rgba(43, 27, 61, .06); }
+:root[data-preset="coral"][data-theme="dark"] :is(.panel, .summary, .bill, .stat-card, .xfer-card, .smart) { box-shadow: none; }
 :root[data-preset="coral"] .panel { padding: 20px 22px; }
 :root[data-preset="coral"] :is(.primary, .tile-cfg .primary) { border-radius: 999px; padding: 12px 20px; }
 :root[data-preset="coral"] .ghost { border-radius: 999px; }
