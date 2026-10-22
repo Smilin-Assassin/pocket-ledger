@@ -190,6 +190,22 @@
 .bill.red .bill-main span { color: var(--neg); font-weight: 600; }
 .bill-amt { width: 110px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 8px; padding: 7px 9px; font: inherit; }
 .bill-more { font-size: .8rem; color: var(--ink-3); padding-left: 4px; }
+/* monthly recurring expenses (v56) */
+.rm-sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.6rem, 1fr)); gap: 10px; }
+.rm-sum small { display: block; color: var(--ink-3); font-size: .8rem; }
+.rm-sum b { font-size: 1.05rem; font-weight: 800; }
+.rm-cats { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .86rem; color: var(--ink-2); }
+.rm-cats li { display: flex; gap: 6px; } .rm-cats b { color: var(--ink); font-weight: 700; }
+.rm-list { display: grid; gap: 2px; }
+.rm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.rm-row .rec-main { flex: 1 1 8rem; min-width: 0; }
+.rm-row .rec-main b { display: block; font-weight: 700; }
+.rm-row .rec-main small { display: block; color: var(--ink-3); font-size: .8rem; }
+.rm-row:last-child { border-bottom: 0; }
+.rm-row .rec-dot { margin-top: 0; }
+.rm-row.skipped .rec-main, .rm-row.skipped .rm-amt { opacity: .55; }
+.rm-amt { font-weight: 700; white-space: nowrap; }
+.rm-row .row-btns { flex: none; justify-content: flex-end; }
 .rec { align-items: flex-start; }
 .rec-main { flex: 1; min-width: 0; }
 .rec-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; margin-top: 5px; background: var(--line); }

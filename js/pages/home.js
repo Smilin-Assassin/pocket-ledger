@@ -2,7 +2,7 @@
 import { renderSmart } from "../smart.js";
 import { $, esc, money, num, sum, monthKey, monthName, shiftMonth, lsGet, lsSet, lsJson, toast } from "../util.js";
 import { state, ui, db, isAll, isGroup, isOwner, isMine, pname, pcolor, poss, groupName, meId, monthTotals, totalSavings, inMonth, effMonth, countsMoney,
-  visibleGoals, goalBalance, openBills, dueText, openLoans, loanOutstanding, owesPairs, budgetsFor, spentIn, carriedIn, EXP_CATS, LOAN_OUT, LOAN_BACK_OUT, changed, canEdit } from "../store.js";
+  visibleGoals, goalBalance, openBills, recurringMonth, dueText, openLoans, loanOutstanding, owesPairs, budgetsFor, spentIn, carriedIn, EXP_CATS, LOAN_OUT, LOAN_BACK_OUT, changed, canEdit } from "../store.js";
 import { settlePair } from "../actions.js";
 import { rowHtml, wireRows, byNewest } from "./entries.js";
 import { renderDue, wireDue } from "./bills.js";
@@ -37,6 +37,9 @@ function renderHero() {
     } else sub = "What was left at the end of " + monthName(ui.month) + ".";
   }
   if (t.carry > 0) sub += " Includes " + money(t.carry, { whole: true }) + " carried over.";
+  // what the month's recurring expenses (rent, phone...) still have to take: the number to plan with
+  const rb = recurringMonth(ui.month, ui.view);
+  if (rb.toPay > 0 && ui.month >= monthKey(new Date()) && t.income + t.carry > 0) sub += " " + money(rb.toPay, { whole: true }) + " of bills still to pay, " + money(t.left - rb.toPay, { whole: true }) + " after them.";
   $("leftSub").textContent = sub;
   $("copyIncome").hidden = state.readOnly || hasIncome || !inMonth(shiftMonth(ui.month, -1)).some(e => e.type === "income" && canEdit(e));
   document.querySelectorAll("#pg-home .hero-acts [data-go-add], #pg-home .hero-acts [data-scan]").forEach(b => { b.hidden = state.readOnly; });

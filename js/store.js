@@ -334,6 +334,22 @@ export function openBills(who = ui.view) {
   });
   return out.sort((a, b) => a.left - b.left);
 }
+// the month's recurring expenses (rent, phone, internet...), each with where it stands, and the totals.
+// Fixed amounts: marking one paid logs its usual amount, so paid items count what was really logged and
+// the rest count what they usually are. Skipped items are left out. Money in (type "income") isn't here.
+export function recurringMonth(k, who = ui.view) {
+  const logged = new Map(state.entries.filter(e => (e.id || "").startsWith("rec-")).map(e => [e.id, e]));
+  const items = state.recurring.filter(r => r.type === "expense" && !r.paused && whoOk(who, r.person) && (r.startMonth || "") <= k)
+    .sort((a, b) => (+a.day || 0) - (+b.day || 0) || String(a.note || "").localeCompare(String(b.note || "")))
+    .map(r => {
+      const e = logged.get(recEntryId(r, k)), skipped = !e && (r.skips || []).includes(k);
+      return { r, k, status: e ? "paid" : skipped ? "skipped" : "due", amount: e ? +e.amount || 0 : +r.amount || 0, cat: r.category || "Other" };
+    });
+  const live = items.filter(i => i.status !== "skipped"), by = {};
+  live.forEach(i => { by[i.cat] = r2((by[i.cat] || 0) + i.amount); });
+  return { items, total: r2(sum(live, i => i.amount)), paid: r2(sum(live.filter(i => i.status === "paid"), i => i.amount)), toPay: r2(sum(live.filter(i => i.status === "due"), i => i.amount)),
+    byCat: Object.entries(by).sort((a, b) => b[1] - a[1]) };
+}
 export const dueText = b => b.left < 0 ? "overdue by " + (-b.left) + " day" + (b.left === -1 ? "" : "s") : b.left === 0 ? "due today" : b.left === 1 ? "due tomorrow" : "due in " + b.left + " days";
 
 // shared costs: who owes whom

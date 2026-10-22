@@ -1,7 +1,7 @@
 // Bills & reminders: monthly things that remind you (green → amber → red) and are
 // only added when you tap Paid.
-import { $, esc, money, num, monthKey, monthName, dateIn, toast, saveFile, fillSelect } from "../util.js";
-import { state, ui, db, isAll, pname, canEdit, openBills, billStatus, billDone, remindDays, dueText, EXP_CATS, INC_CATS, meId } from "../store.js";
+import { $, esc, money, num, monthKey, monthName, shiftMonth, dateIn, toast, saveFile, fillSelect } from "../util.js";
+import { state, ui, db, isAll, pname, canEdit, openBills, billStatus, billDone, remindDays, dueText, recurringMonth, recEntryId, EXP_CATS, INC_CATS, meId } from "../store.js";
 import { payBill, skipBill, createRecurring, removeWithUndo } from "../actions.js";
 
 ui.payFor = null;
@@ -44,6 +44,23 @@ function icsFor(r) {
     "BEGIN:VALARM", "TRIGGER:PT9H", "ACTION:DISPLAY", "DESCRIPTION:" + title + " is due today", "END:VALARM", "END:VEVENT", "END:VCALENDAR"].join("\r\n");
 }
 
+// ---------- monthly recurring expenses: each one, what's paid, what's still to pay, and the total ----------
+function renderMonth() {
+  const box = $("recMonth"), k = ui.month, m = recurringMonth(k, ui.view), head = `<div class="panel-head"><h2>Monthly recurring expenses</h2><span class="muted">${esc(monthName(k))}</span></div>`;
+  if (!m.items.length) { box.innerHTML = head + `<p class="hint">Nothing recurring in ${esc(monthName(k))} yet. Add rent, phone, internet or electricity below and they'll be listed here with a total.</p>`; return; }
+  const sum3 = [["Total", m.total], ["Paid so far", m.paid], ["Still to pay", m.toPay]].map(([l, v]) => `<div><small>${l}</small><b class="num">${esc(money(v))}</b></div>`).join("");
+  const rows = m.items.map(i => {
+    const r = i.r, mine = canEdit(r), st = i.status === "due" ? billStatus(r, k) : null;
+    const dot = i.status === "paid" ? "done" : i.status === "skipped" ? "off" : st.left < 0 ? "red" : st.level;
+    const btn = !mine ? "" : i.status === "paid" ? `<button class="icon-btn" type="button" data-rmundo="${esc(r.id)}">Undo</button>`
+      : i.status === "skipped" ? `<button class="icon-btn" type="button" data-rmunskip="${esc(r.id)}">Undo skip</button>` : `<button class="ghost" type="button" data-rmpay="${esc(r.id)}">Paid</button>`;
+    const state = i.status === "paid" ? "Paid" : i.status === "skipped" ? "Skipped" : st.left < 0 ? "Overdue" : "Due";
+    return `<div class="rm-row ${i.status}"><span class="rec-dot ${dot}"></span><div class="rec-main"><b>${esc(r.note || r.category)}</b><small>${esc(i.cat)}, day ${r.day}, ${state.toLowerCase()}${isAll() ? ", " + esc(pname(r.person)) : ""}</small></div><span class="num rm-amt">${esc(money(i.amount))}</span><span class="row-btns">${btn}</span></div>`;
+  }).join("");
+  const cats = m.byCat.length > 1 ? `<ul class="rm-cats">${m.byCat.map(([c, v]) => `<li><span>${esc(c)}</span><b class="num">${esc(money(v))}</b></li>`).join("")}</ul>` : "";
+  box.innerHTML = head + `<div class="rm-sum">${sum3}</div>${cats}<div class="rm-list">${rows}</div>`;
+}
+
 function renderList() {
   const list = state.recurring.filter(r => isAll() || r.person === ui.view).sort((a, b) => (+a.day || 0) - (+b.day || 0));
   const now = monthKey(new Date());
@@ -59,6 +76,14 @@ function renderList() {
 export const page = {
   init() {
     wireDue($("billsDue"), () => page.render());
+    // one tap: Paid logs the usual amount (they're fixed), with Undo
+    $("recMonth").addEventListener("click", ev => {
+      const b = ev.target.closest("button"); if (!b) return;
+      const id = b.dataset.rmpay || b.dataset.rmundo || b.dataset.rmunskip, r = state.recurring.find(x => x.id === id), k = ui.month; if (!r || !canEdit(r)) return;
+      if (b.dataset.rmpay) { payBill(r, k, +r.amount); toast((r.note || r.category) + " paid", { action: "Undo", onAction: () => db.remove(recEntryId(r, k)) }); }
+      else if (b.dataset.rmundo) { db.remove(recEntryId(r, k)); toast("Unmarked, back to still to pay"); }
+      else db.saveDoc("recurring", r.id, Object.assign({}, r, { skips: (r.skips || []).filter(x => x !== k) }));
+    });
     fillSelect($("brCat"), [...new Set(EXP_CATS.concat(INC_CATS))].map(c => [c, c]), "Rent & bills");
     $("recList").addEventListener("click", ev => {
       const b = ev.target.closest("button"); if (!b) return;
@@ -80,6 +105,7 @@ export const page = {
   },
   render() {
     renderDue($("billsDue"));
+    renderMonth();
     renderList();
     $("billForm").hidden = state.readOnly;
   }
