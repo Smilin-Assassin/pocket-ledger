@@ -11,7 +11,7 @@ import { zoom } from "../dock.js";
 import { ringShouldWait, watchRing, rollNumber, rollPending } from "../delight.js";
 
 Object.assign(ui, { tileCfg: false, editBudgets: false, settling: null, trendSel: null });
-const TILES = [["income", "Income"], ["spent", "Spent"], ["saved", "Saved this month"], ["total", "Total savings"], ["split", "Income split bar"], ["bills", "Bills due"], ["budgets", "Budget alerts"], ["loans", "Loans"], ["goals", "Goals"]];
+const TILES = [["income", "Income"], ["spent", "Spent"], ["saved", "Saved this month"], ["total", "Total savings"], ["bills", "Bills due"], ["budgets", "Budget alerts"], ["loans", "Loans"], ["goals", "Goals"]];
 const hiddenTiles = () => lsJson("pl-tiles", []);
 const whoName = () => isAll() ? groupName() : isMine(ui.view) ? "You" : pname(ui.view);
 
@@ -228,20 +228,22 @@ function renderCompare() {
 // ---------- Plum night: on phones the cards below the plum panel stack as you scroll (CSS sticky) ----------
 // A card taller than the screen can't stay stuck (its bottom would be out of reach), so it simply scrolls.
 // Each stuck card is at least as tall as the one before it (less a sliver), so it fully covers it.
-const STACK = [[".summary", 10], [".cats-panel", 24], [".buds-panel", 38], [".recent-panel", 52], ["#trendPanel", 66], ["#cmpPanel", 80]];
+const STACK = ["#dueBar", "#owesBar", "#smartBar", ".summary", "#tiles", ".cats-panel", ".buds-panel", ".recent-panel", "#trendPanel", "#cmpPanel"];
 let stackRaf = 0;
 function stackSync() {
   cancelAnimationFrame(stackRaf);
   stackRaf = requestAnimationFrame(() => {
     const home = $("pg-home"), phone = window.matchMedia("(max-width: 899.98px)").matches;
-    const cards = STACK.map(([sel, top]) => [home.querySelector(sel), top]).filter(c => c[0]);
-    cards.forEach(([el]) => { el.style.minHeight = ""; });
-    if (home.hidden || !phone || ui.editBudgets) { cards.forEach(([el]) => el.classList.remove("stuck")); return; }
+    const cards = STACK.map(s => home.querySelector(s)).filter(Boolean);
+    cards.forEach(el => { el.style.minHeight = ""; el.style.top = ""; el.style.zIndex = ""; });
+    if (home.hidden || !phone || ui.editBudgets) { cards.forEach(el => el.classList.remove("stuck")); return; }
     const room = innerHeight / zoom() - 118;
-    let prev = 0;
-    cards.forEach(([el, top]) => {
-      const ok = el.offsetHeight > 0 && el.offsetHeight <= room - top;
+    let prev = 0, i = 0;
+    cards.forEach(el => {
+      if (!el.offsetHeight) { el.classList.remove("stuck"); return; }
+      const top = 10 + 14 * i++, ok = el.offsetHeight <= room - top;
       el.classList.toggle("stuck", ok);
+      if (ok) { el.style.top = `calc(${top}px + env(safe-area-inset-top, 0px))`; el.style.zIndex = i; }
       if (ok && prev > el.offsetHeight) el.style.minHeight = Math.max(0, prev - 14) + "px";
       prev = ok ? el.offsetHeight : 0;
     });
@@ -287,7 +289,7 @@ export const page = {
     initFolds();
     $("pg-home").addEventListener("fold-open", ev => { if (ev.target.id === "trendPanel") renderTrend(); else renderCompare(); });
     let rt = null; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("pg-home").hidden) renderTrend(); }, 200); stackSync(); });
-    if (window.ResizeObserver) { const ro = new ResizeObserver(stackSync); STACK.forEach(([sel]) => { const el = $("pg-home").querySelector(sel); if (el) ro.observe(el); }); }
+    if (window.ResizeObserver) { const ro = new ResizeObserver(stackSync); STACK.forEach(sel => { const el = $("pg-home").querySelector(sel); if (el) ro.observe(el); }); }
   },
   render() {
     renderDue($("dueBar"), 4);

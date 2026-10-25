@@ -104,13 +104,13 @@
       <section class="hero-panel" aria-label="Left to spend this month">
         <div class="hero">
           <div class="hero-ring">
-            <div class="split" id="split" data-tile="split" role="img" aria-label="How this month's income is split"></div>
+            <div class="split" id="split" role="img" aria-label="How this month's income is split"></div>
             <div class="hero-mid">
               <div class="label" id="heroLabel">Left to spend this month</div>
               <div class="big num" id="leftBig">—</div>
             </div>
           </div>
-          <div class="legend" id="legend" data-tile="split"></div>
+          <div class="legend" id="legend"></div>
           <div class="sub" id="leftSub">Add your income for this month to get started.</div>
           <div class="hero-acts">
             <button class="ghost" type="button" id="copyIncome" hidden>Copy income from last month</button>
@@ -119,10 +119,10 @@
           </div>
         </div>
       </section>
+      <div class="bills-bar" id="dueBar" hidden></div>
+      <div class="banner info owes" id="owesBar" hidden></div>
+      <section class="smart" id="smartBar" aria-label="Suggestions" hidden></section>
       <section class="summary" aria-label="This month">
-        <div class="bills-bar" id="dueBar" hidden></div>
-        <div class="banner info owes" id="owesBar" hidden></div>
-        <section class="smart" id="smartBar" aria-label="Suggestions" hidden></section>
         <div class="dash-head"><button class="icon-btn" type="button" id="tileBtn" aria-label="Customize the dashboard">Customize</button></div>
         <div class="tile-cfg" id="tileCfg" hidden></div>
         <div class="stats">
@@ -131,8 +131,8 @@
           <div data-tile="saved"><div class="label">Saved this month</div><div class="v num" id="sSaved">—</div><div class="h" id="sSavedH">&nbsp;</div></div>
           <div data-tile="total"><div class="label">Total savings</div><div class="v num" id="sTotal">—</div><div class="h" id="sTotalH">&nbsp;</div></div>
         </div>
-        <div class="tiles" id="tiles"></div>
       </section>
+      <div class="tiles" id="tiles"></div>
       <div class="grid2">
         <section class="panel cats-panel">
           <div class="panel-head"><h2>Where the money went</h2><span class="muted" id="catNote"></span></div>
