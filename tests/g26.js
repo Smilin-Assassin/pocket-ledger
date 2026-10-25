@@ -23,6 +23,8 @@ E(prev, 12, 40, "Transport", "Taxi", { maybeDup: "e4" });              // possib
   const ring = await p.evaluate(() => { const b = document.getElementById("leftBig").getBoundingClientRect(), r = document.querySelector(".hero-ring").getBoundingClientRect();
     return { circles: document.querySelectorAll("#split svg circle").length, inside: b.left >= r.left + 20 && b.right <= r.right - 20, text: document.getElementById("leftBig").textContent, ids: ["legend", "leftSub", "copyIncome", "tileBtn", "dueBar", "owesBar", "smartBar"].every(i => document.getElementById(i)) }; });
   check(ring.circles === 3 && /MVR\s?8,255/.test(ring.text), "ring: track plus spent and left (saved is 0) and Left to spend in the middle", ring);
+  const mid = await p.evaluate(() => { const a = document.querySelector(".hero-panel").getBoundingClientRect(), b = document.querySelector(".hero-ring").getBoundingClientRect(), c = document.getElementById("leftSub").getBoundingClientRect(), d = document.querySelector(".hero-acts").getBoundingClientRect(); const m = r => Math.round((r.left + r.right) / 2 - (a.left + a.right) / 2); return [m(b), m(c), m(d)]; });
+  check(mid.every(x => Math.abs(x) <= 2), "the ring, the line under it and the buttons are centred in the plum panel", mid);
   check(ring.inside, "the amount sits inside the ring", ring);
   check(await p.isVisible("#split svg") && await p.isVisible("#legend"), "the ring and its percentages always show (the old hide-split setting is ignored)");
   const pos = () => p.evaluate(() => ["summary", "tiles", "cats-panel", "buds-panel", "recent-panel"].map(c => { const el = document.querySelector("#pg-home ." + c); return [c, getComputedStyle(el).position, el.classList.contains("stuck")]; }));
