@@ -31,7 +31,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400..800&display=swap">
-<link rel="stylesheet" href="css/app.css?v=59">
+<link rel="stylesheet" href="css/app.css?v=60">
 </head>
 <body>
 <!-- A (v51): the logo opening, once per app opening; it never takes taps and leaves on its own -->
@@ -99,48 +99,54 @@
 
     <!-- ===================== HOME ===================== -->
     <section class="page" id="pg-home" data-page="home" hidden>
-      <!-- Plum night (v58): the plum panel on top (the ring is how this month's income splits, Left to spend is in its middle),
-           then the sections below it as cards that stack as you scroll (phones; js/pages/home.js stackSync) -->
-      <section class="hero-panel" aria-label="Left to spend this month">
+      <!-- v60: one plum card. The ring is where this month's money went (touch or hover a part to see it, in the middle),
+           with Left to spend, the month's numbers and the small facts in the same card. Below it, on phones, four cards stack as you
+           scroll: Needs attention (only when something does), Budgets, Latest entries, Trends (js/pages/home.js stackSync) -->
+      <section class="hero-panel" aria-label="This month">
         <div class="hero">
           <div class="hero-ring">
-            <div class="split" id="split" role="img" aria-label="How this month's income is split"></div>
+            <div class="ring" id="catRing" role="group" aria-label="Where this month's money went. Touch or point at a part to see it."></div>
             <div class="hero-mid">
               <div class="label" id="heroLabel">Left to spend this month</div>
               <div class="big num" id="leftBig">—</div>
             </div>
+            <div class="hero-pick" id="ringPick" aria-live="polite">
+              <div class="label" id="pickName"></div>
+              <div class="big num" id="pickAmt"></div>
+              <div class="pick-pct" id="pickPct"></div>
+              <button class="pick-go" type="button" id="pickGo">See entries</button>
+            </div>
           </div>
-          <div class="legend" id="legend"></div>
+          <p class="ring-hint" id="ringHint">Touch the ring to see where the money went</p>
           <div class="sub" id="leftSub">Add your income for this month to get started.</div>
           <div class="hero-acts">
             <button class="ghost" type="button" id="copyIncome" hidden>Copy income from last month</button>
             <button class="ghost" type="button" data-go-add="1"><svg class="ico sm"><use href="#i-plus"/></svg>Add</button>
             <button class="ghost" type="button" data-scan="1"><svg class="ico sm"><use href="#i-cam"/></svg>Scan</button>
           </div>
+          <div class="hero-stats">
+            <div data-tile="income"><div class="label">Income</div><div class="v num" id="sIncome">—</div><div class="h" id="sIncomeH">&nbsp;</div></div>
+            <div data-tile="spent"><div class="label">Spent</div><div class="v num" id="sSpent">—</div><div class="h" id="sSpentH">&nbsp;</div></div>
+            <div data-tile="saved"><div class="label">Saved this month</div><div class="v num" id="sSaved">—</div><div class="h" id="sSavedH">&nbsp;</div></div>
+            <div data-tile="total"><div class="label">Total savings</div><div class="v num" id="sTotal">—</div><div class="h" id="sTotalH">&nbsp;</div></div>
+          </div>
+          <div class="hero-facts" id="tiles"></div>
+          <div class="hero-more">
+            <button class="ghost" type="button" id="catMore" aria-expanded="false" aria-controls="cats">See every category<span id="catNote"></span></button>
+            <button class="icon-btn" type="button" id="tileBtn" aria-label="Customize the dashboard">Customize</button>
+          </div>
+          <div class="tile-cfg" id="tileCfg" hidden></div>
+          <div class="cats" id="cats" hidden></div>
         </div>
       </section>
-      <div class="bills-bar" id="dueBar" hidden></div>
-      <div class="banner info owes" id="owesBar" hidden></div>
-      <section class="smart" id="smartBar" aria-label="Suggestions" hidden></section>
-      <section class="summary" aria-label="This month">
-        <div class="dash-head"><button class="icon-btn" type="button" id="tileBtn" aria-label="Customize the dashboard">Customize</button></div>
-        <div class="tile-cfg" id="tileCfg" hidden></div>
-        <div class="stats">
-          <div data-tile="income"><div class="label">Income</div><div class="v num" id="sIncome">—</div><div class="h" id="sIncomeH">&nbsp;</div></div>
-          <div data-tile="spent"><div class="label">Spent</div><div class="v num" id="sSpent">—</div><div class="h" id="sSpentH">&nbsp;</div></div>
-          <div data-tile="saved"><div class="label">Saved this month</div><div class="v num" id="sSaved">—</div><div class="h" id="sSavedH">&nbsp;</div></div>
-          <div data-tile="total"><div class="label">Total savings</div><div class="v num" id="sTotal">—</div><div class="h" id="sTotalH">&nbsp;</div></div>
-        </div>
+      <section class="attn" id="attn" aria-label="Needs your attention" hidden>
+        <div class="bills-bar" id="dueBar" hidden></div>
+        <div class="banner info owes" id="owesBar" hidden></div>
+        <section class="smart" id="smartBar" aria-label="Suggestions" hidden></section>
       </section>
-      <div class="tiles" id="tiles"></div>
       <div class="grid2">
-        <section class="panel cats-panel">
-          <div class="panel-head"><h2>Where the money went</h2><span class="muted" id="catNote"></span></div>
-          <div class="ring" id="catRing" aria-hidden="true"></div>
-          <div class="cats" id="cats"></div>
-        </section>
         <section class="panel buds-panel">
-          <div class="panel-head sub-head"><h3>Budgets</h3><button class="ghost" type="button" id="budgetBtn">Set budgets</button></div>
+          <div class="panel-head"><h2>Budgets</h2><button class="ghost" type="button" id="budgetBtn">Set budgets</button></div>
           <div class="buds" id="budgetList"></div>
         </section>
         <section class="panel recent-panel">
@@ -148,22 +154,23 @@
           <ul class="ledger" id="recentList"></ul>
         </section>
       </div>
-      <!-- insights: folded cards that open in place (v42), so the Dashboard stays short and the dock keeps its tabs -->
+      <!-- Trends: the 12-month chart and Compare share one folded card (tabs), so the Dashboard stays short -->
       <section class="panel fold" id="trendPanel" data-fold="trend">
-        <button class="fold-head" type="button" aria-expanded="false" aria-controls="trendBody"><span class="fold-t"><b>Last 12 months</b><small class="fold-sum" id="trendSum"></small></span><svg class="fold-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button class="fold-head" type="button" aria-expanded="false" aria-controls="trendBody"><span class="fold-t"><b>Trends</b><small class="fold-sum" id="trendSum"></small></span><svg class="fold-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="fold-body" id="trendBody" hidden>
-          <div class="panel-head"><span class="legend"><span><i style="background:var(--c-left)"></i>Income</span><span><i style="background:var(--c-spent)"></i>Spent</span></span></div>
-          <div class="trend" id="trendChart"></div>
-          <div class="trend-detail" id="trendDetail" hidden></div>
-          <p class="hint" id="trendNote"></p>
+          <div class="modeseg two" id="trendTabs" role="group" aria-label="Show"><button type="button" data-tab="trend" aria-pressed="true">Last 12 months</button><button type="button" data-tab="cmp" aria-pressed="false">Compare</button></div>
+          <div id="trendView">
+            <div class="panel-head"><span class="legend"><span><i style="background:var(--c-left)"></i>Income</span><span><i style="background:var(--c-spent)"></i>Spent</span></span></div>
+            <div class="trend" id="trendChart"></div>
+            <div class="trend-detail" id="trendDetail" hidden></div>
+            <p class="hint" id="trendNote"></p>
+          </div>
+          <div id="cmpView" hidden>
+            <div class="panel-head"><div class="modeseg two cmp-seg" id="cmpSeg" role="group" aria-label="Compare"><button type="button" data-cmp="3m" aria-pressed="true">Last 3 months</button><button type="button" data-cmp="yr" aria-pressed="false">This year</button></div></div>
+            <div id="cmpBox" class="cmp"></div>
+          </div>
         </div>
-      </section>
-      <section class="panel fold" id="cmpPanel" data-fold="cmp">
-        <button class="fold-head" type="button" aria-expanded="false" aria-controls="cmpBody"><span class="fold-t"><b>Compare</b><small class="fold-sum" id="cmpSum"></small></span><svg class="fold-chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
-        <div class="fold-body" id="cmpBody" hidden>
-          <div class="panel-head"><div class="modeseg two cmp-seg" id="cmpSeg" role="group" aria-label="Compare"><button type="button" data-cmp="3m" aria-pressed="true">Last 3 months</button><button type="button" data-cmp="yr" aria-pressed="false">This year</button></div></div>
-          <div id="cmpBox" class="cmp"></div>
-        </div>
+        <span id="cmpSum" hidden></span>
       </section>
     </section>
 
@@ -669,6 +676,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=59"></script>
+<script type="module" src="app.js?v=60"></script>
 </body>
 </html>

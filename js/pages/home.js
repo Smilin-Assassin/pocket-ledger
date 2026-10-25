@@ -46,15 +46,6 @@ function renderHero() {
   $("copyIncome").hidden = state.readOnly || hasIncome || !inMonth(shiftMonth(ui.month, -1)).some(e => e.type === "income" && canEdit(e));
   document.querySelectorAll("#pg-home .hero-acts [data-go-add], #pg-home .hero-acts [data-scan]").forEach(b => { b.hidden = state.readOnly; });
 
-  const pool = t.income + t.carry, base = Math.max(pool, t.spent + Math.max(t.netSaved, 0)) || 0;
-  const parts = [{ k: "Spent", v: t.spent, c: "var(--hero-spent)", hc: "var(--hero-spent)" }, { k: "Saved", v: Math.max(t.netSaved, 0), c: "var(--hero-saved)", hc: "var(--hero-saved)" }, { k: "Left", v: Math.max(t.left, 0), c: "var(--hero-left)", hc: "var(--hero-left)" }];
-  // Plum night: the split is a ring around Left to spend (spent, saved, left of the month's income)
-  const R = 118, C = 2 * Math.PI * R, shown = base ? parts.filter(p => p.v > 0) : [], gap = shown.length > 1 ? 16 : 0;
-  let a0 = 0;
-  $("split").innerHTML = `<svg viewBox="0 0 264 264" aria-hidden="true"><circle cx="132" cy="132" r="${R}" fill="none" stroke="var(--hero-track)" stroke-width="12"/>` +
-    shown.map(p => { const share = p.v / base * C, len = Math.max(0.1, share - gap), off = -a0; a0 += share;
-      return `<circle cx="132" cy="132" r="${R}" fill="none" stroke="${p.hc}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${len.toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" transform="rotate(-90 132 132)"><title>${p.k}: ${esc(money(p.v))}</title></circle>`; }).join("") + `</svg>`;
-  $("legend").innerHTML = parts.map(p => `<span><i style="background:${p.c}"></i>${p.k}${pool ? ` <b class="num">${Math.round(p.v / pool * 100)}%</b>` : ""}</span>`).join("");
   $("sIncome").textContent = money(t.income); $("sIncomeH").textContent = delta(t.income, prev.income);
   $("sSpent").textContent = money(t.spent); $("sSpentH").textContent = delta(t.spent, prev.spent);
   $("sSaved").textContent = money(t.netSaved);
@@ -102,24 +93,78 @@ function renderOwes() {
     : `<div class="owe-row"><span><i class="pdot" style="background:${pcolor(p.debtor)}"></i><b>${esc(nm(p.debtor))}</b> ${p.debtor === meId() ? "owe" : "owes"} <b>${esc(p.creditor === meId() ? "you" : pname(p.creditor))}</b> <b class="num">${esc(money(p.amt))}</b> for shared costs</span>${state.readOnly ? "" : `<button class="ghost" type="button" data-settle="${i}">Settle up</button>`}</div>`).join("");
 }
 
+// ---------- the ring: where this month's money went (v60: one ring, in the plum card) ----------
+// A donut of this month's spending: every category is a part, sized by its share of what was spent. Touch (drag) or point at the ring and the part
+// under the finger swells and the middle shows it. Parts too small to touch are drawn a little wider than they are.
+const RR = 108, RW = 40, RC = 2 * Math.PI * RR, RGAP = 2.5;
+let ringArcs = [], ringSel = null;
+const arcColor = i => i < 4 ? `var(--hero-c${i + 1})` : i % 2 ? "var(--hero-c5)" : "var(--hero-c6)";
+
+function pickCat(i) {
+  const a = ringArcs[i], box = $("catRing"), svg = box.querySelector("svg"), hr = box.closest(".hero-ring");
+  ringSel = a ? a.c : null;
+  hr.classList.toggle("picking", !!a);
+  if (!svg) return;
+  svg.classList.toggle("dim", !!a);
+  const pk = svg.querySelector(".pickarc");
+  if (!a) { pk.setAttribute("opacity", "0"); return; }
+  pk.setAttribute("stroke", a.col); pk.setAttribute("opacity", "1");
+  pk.setAttribute("stroke-dasharray", `${(Math.max(1, a.share - RGAP) + 8).toFixed(2)} ${RC.toFixed(2)}`); pk.setAttribute("stroke-dashoffset", (-(a.start - 4)).toFixed(2));
+  $("pickName").textContent = a.c;
+  const amt = $("pickAmt"); amt.textContent = money(a.v, { whole: true }); amt.style.setProperty("--len", Math.max(8, amt.textContent.length));
+  $("pickPct").textContent = a.pct + "% of what you spent";
+  $("pickGo").dataset.i = String(i);
+}
+const openCat = i => { const b = $("cats").querySelector(`[data-ring="${i}"]`); if (b) b.click(); };
+
 function renderCats() {
   const es = inMonth(ui.month).filter(e => e.type === "expense" && countsMoney(e)), total = sum(es, e => +e.amount), by = {};
   es.forEach(e => { const c = e.category || "Other"; by[c] = (by[c] || 0) + +e.amount; });
   const rows = Object.entries(by).sort((a, b) => b[1] - a[1]);
-  $("catNote").textContent = total ? money(total) + " total" : "";
-  if (!rows.length) { $("catRing").innerHTML = ""; $("cats").innerHTML = `<div class="empty small">Spending by category will show here.</div>`; return; }
-  const max = rows[0][1];
-  // the ring (shown by the Palm theme): the four biggest categories and the rest, total in the middle
-  const segs = rows.slice(0, 4).concat(rows.length > 4 ? [["Everything else", sum(rows.slice(4), r => r[1])]] : []);
-  let a0 = 0; const R = 52, C = 2 * Math.PI * R, gap = segs.length > 1 ? 3 : 0;
-  // B: the first time it's seen after opening the app, the ring starts empty and draws itself (delight.js)
-  const wait = ringShouldWait() && state.ready;
-  $("catRing").innerHTML = `<svg viewBox="0 0 132 132" width="184" height="184"${wait ? ' class="wait"' : ""} style="--C:${C.toFixed(2)}"><circle cx="66" cy="66" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="14"/>` +
-    segs.map(([c, v], i) => { const len = Math.max(0, v / total * C - gap), off = -a0; a0 += v / total * C;
-      return `<circle class="seg" data-i="${i}" style="--i:${i}" cx="66" cy="66" r="${R}" fill="none" stroke="var(--ring-${i + 1}, var(--c-bar))" stroke-width="14" stroke-dasharray="${len.toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" transform="rotate(-90 66 66)"/>`; }).join("") +
-    `</svg><div class="ring-mid"><b class="num">${esc(money(total, { whole: true }))}</b><small>spent in ${esc(monthName(ui.month, true))}</small></div>`;
+    $("catNote").textContent = rows.length ? " (" + rows.length + ")" : "";
+  $("catMore").hidden = !rows.length; $("ringHint").hidden = !rows.length;
+  if (!rows.length) { $("cats").hidden = true; $("catMore").setAttribute("aria-expanded", "false"); }
+  // sizes: each category's true share of the spending, but never thinner than a fingertip can hit
+  const MIN = 0.024 * RC; let shares = [];
+  if (total) {
+    const raw = rows.map(r => r[1] / total * RC), small = raw.filter(x => x < MIN).length;
+    const bigSum = raw.reduce((s, x) => x >= MIN ? s + x : s, 0), room = RC - small * MIN, k = bigSum > 0 && room > 0 ? room / bigSum : 1;
+    shares = raw.map(x => x < MIN ? MIN : x * k);
+    const all = shares.reduce((s, x) => s + x, 0); if (all > RC) shares = shares.map(x => x * RC / all);
+  }
+  let a0 = 0; ringArcs = rows.map(([c, v], i) => { const a = { c, v, i, start: a0, share: shares[i] || 0, pct: Math.round(v / total * 100), col: arcColor(i) }; a0 += a.share; return a; });
+  const wait = ringShouldWait() && state.ready && rows.length;
+  const lab = a => { if (a.share / RC < 0.07) return ""; const th = (a.start + a.share / 2) / RC * 2 * Math.PI; return `<text class="pct" x="${(132 + RR * Math.sin(th)).toFixed(1)}" y="${(132 - RR * Math.cos(th)).toFixed(1)}" text-anchor="middle" dominant-baseline="central">${a.pct}%</text>`; };
+  $("catRing").innerHTML = `<svg viewBox="0 0 264 264"${wait ? ' class="wait"' : ""} style="--C:${RC.toFixed(2)}" aria-hidden="false"><circle cx="132" cy="132" r="${RR}" fill="none" stroke="var(--hero-track)" stroke-width="${RW}"/>` +
+    ringArcs.map(a => `<circle class="seg" data-i="${a.i}" style="--i:${a.i}" tabindex="0" role="button" aria-label="${esc(a.c)}, ${esc(money(a.v, { whole: true }))}, ${a.pct}% of what you spent. Opens its entries." cx="132" cy="132" r="${RR}" fill="none" stroke="${a.col}" stroke-width="${RW}" stroke-dasharray="${Math.max(1, a.share - RGAP).toFixed(2)} ${RC.toFixed(2)}" stroke-dashoffset="${(-a.start).toFixed(2)}" transform="rotate(-90 132 132)"/>`).join("") +
+    `<circle class="pickarc" cx="132" cy="132" r="${RR}" fill="none" stroke-width="${RW + 12}" stroke-linecap="butt" opacity="0" pointer-events="none" transform="rotate(-90 132 132)"/>` + ringArcs.map(lab).join("") + `</svg>`;
   if (wait) watchRing($("catRing"));
-  $("cats").innerHTML = rows.map(([c, v], i) => `<button type="button" class="cat c${Math.min(i + 1, 5)}" data-cat-go="${esc(c)}" data-ring="${i < 4 ? i : 4}" title="See every ${esc(c)} entry: ${esc(money(v))} (${Math.round(v / total * 100)}%)"><span class="n">${esc(c)}</span><div class="track"><div class="fill" style="width:${Math.max(v / max * 100, 1.5)}%"></div></div><span class="v num">${esc(money(v, { whole: true }))}<small>${Math.round(v / total * 100)}%</small></span></button>`).join("");
+  const keep = ringArcs.findIndex(a => a.c === ringSel); if (keep >= 0) pickCat(keep); else { ringSel = null; $("catRing").closest(".hero-ring").classList.remove("picking"); }
+  if (!rows.length) { $("cats").innerHTML = ""; return; }
+  const max = rows[0][1];
+  $("cats").innerHTML = rows.map(([c, v], i) => `<button type="button" class="cat c${i < 4 ? i + 1 : i % 2 ? 5 : 6}" data-cat-go="${esc(c)}" data-ring="${i}" title="See every ${esc(c)} entry: ${esc(money(v))} (${Math.round(v / total * 100)}%)"><span class="n">${esc(c)}</span><div class="track"><div class="fill" style="width:${Math.max(v / max * 100, 1.5)}%"></div></div><span class="v num">${esc(money(v, { whole: true }))}<small>${Math.round(v / total * 100)}%</small></span></button>`).join("");
+}
+
+function wireRing() {
+  const box = $("catRing"); let down = false;
+  const at = ev => {
+    const r = box.getBoundingClientRect(), dx = ev.clientX - (r.left + r.width / 2), dy = ev.clientY - (r.top + r.height / 2), d = Math.hypot(dx, dy) / (r.width / 2);
+    if (d < .6 || d > 1.06) return -1;
+    const pos = (Math.atan2(dx, -dy) + 2 * Math.PI) % (2 * Math.PI) / (2 * Math.PI) * RC, a = ringArcs.find(x => pos >= x.start && pos < x.start + x.share);
+    return a ? a.i : -1;
+  };
+  box.addEventListener("pointerdown", ev => { if (ev.pointerType === "mouse") return; down = true; try { box.setPointerCapture(ev.pointerId); } catch {} pickCat(at(ev)); });
+  box.addEventListener("pointermove", ev => { if (ev.pointerType === "mouse" || down) pickCat(at(ev)); });
+  const up = () => { down = false; };
+  box.addEventListener("pointerup", up); box.addEventListener("pointercancel", up);
+  box.addEventListener("pointerleave", ev => { if (ev.pointerType === "mouse") pickCat(-1); });
+  box.addEventListener("click", ev => { if (ev.pointerType !== "mouse") return; const i = at(ev); if (i >= 0) openCat(i); });
+  box.addEventListener("focusin", ev => { const c = ev.target.closest(".seg"); if (c) pickCat(+c.dataset.i); });
+  box.addEventListener("focusout", ev => { if (!box.contains(ev.relatedTarget)) pickCat(-1); });
+  box.addEventListener("keydown", ev => { const c = ev.target.closest(".seg"); if (c && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); openCat(+c.dataset.i); } });
+  $("pickGo").addEventListener("click", () => openCat(+$("pickGo").dataset.i));
+  document.addEventListener("pointerdown", ev => { if (ringSel && !ev.target.closest(".hero-ring")) pickCat(-1); });
+  $("catMore").addEventListener("click", () => { const open = $("cats").hidden; $("cats").hidden = !open; $("catMore").setAttribute("aria-expanded", String(open)); $("catMore").firstChild.textContent = open ? "Hide the list" : "See every category"; stackSync(); });
 }
 
 function renderBudgets() {
@@ -228,7 +273,7 @@ function renderCompare() {
 // ---------- Plum night: on phones the cards below the plum panel stack as you scroll (CSS sticky) ----------
 // A card taller than the screen can't stay stuck (its bottom would be out of reach), so it simply scrolls.
 // Each stuck card is at least as tall as the one before it (less a sliver), so it fully covers it.
-const STACK = ["#dueBar", "#owesBar", "#smartBar", ".summary", "#tiles", ".cats-panel", ".buds-panel", ".recent-panel", "#trendPanel", "#cmpPanel"];
+const STACK = ["#attn", ".buds-panel", ".recent-panel", "#trendPanel"];
 let stackRaf = 0;
 function stackSync() {
   cancelAnimationFrame(stackRaf);
@@ -286,8 +331,13 @@ export const page = {
     $("cmpSeg").addEventListener("click", ev => { const b = ev.target.closest("[data-cmp]"); if (b) { ui.cmp = b.dataset.cmp; renderCompare(); } });
     $("trendChart").addEventListener("click", ev => { const g = ev.target.closest("g.mon"); if (!g) return; ui.trendSel = g.dataset.k; renderTrend(); });
     $("trendDetail").addEventListener("click", ev => { const b = ev.target.closest("[data-trendgo]"); if (b) { ui.month = b.dataset.trendgo; ui.trendSel = null; changed(); } });
+    wireRing();
+    const attn = () => { $("attn").hidden = !["dueBar", "owesBar", "smartBar"].some(i => !$(i).hidden); stackSync(); };
+    const mo = new MutationObserver(attn); ["dueBar", "owesBar", "smartBar"].forEach(i => mo.observe($(i), { attributes: true, attributeFilter: ["hidden"], childList: true }));
+    const tabs = () => { const t = ui.trendTab || "trend"; document.querySelectorAll("#trendTabs button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tab === t))); $("trendView").hidden = t !== "trend"; $("cmpView").hidden = t !== "cmp"; if (t === "trend") renderTrend(); else renderCompare(); stackSync(); };
+    $("trendTabs").addEventListener("click", ev => { const b = ev.target.closest("[data-tab]"); if (b) { ui.trendTab = b.dataset.tab; tabs(); } });
     initFolds();
-    $("pg-home").addEventListener("fold-open", ev => { if (ev.target.id === "trendPanel") renderTrend(); else renderCompare(); });
+    $("pg-home").addEventListener("fold-open", tabs);
     let rt = null; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("pg-home").hidden) renderTrend(); }, 200); stackSync(); });
     if (window.ResizeObserver) { const ro = new ResizeObserver(stackSync); STACK.forEach(sel => { const el = $("pg-home").querySelector(sel); if (el) ro.observe(el); }); }
   },

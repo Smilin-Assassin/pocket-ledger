@@ -28,7 +28,7 @@ const csv = [
 
   // compare: last 3 months (a folded card since v42: open it first)
   check(/Spent MVR\s?1,610 in \w+, 61% more than \w+/.test(await T.text("#cmpSum")), "folded Compare says this month against last", await T.text("#cmpSum"));
-  await p.click("#cmpPanel .fold-head"); await p.waitForTimeout(700);
+  await p.click("#trendPanel .fold-head"); await p.waitForTimeout(700); await p.click('#trendTabs [data-tab="cmp"]'); await p.waitForTimeout(300);
   const tbl = await p.$$eval("#cmpBox tbody tr", r => r.map(x => x.innerText.replace(/\s+/g, " ").trim()));
   check(tbl.some(r => /^Income .*9,000.*9,000.*9,500/.test(r)) && tbl.some(r => /^Eating out .*1,000.*1,000.*1,500 ?▲ 50%/.test(r)), "last 3 months side by side, with the change", tbl);
   // this year so far against last year

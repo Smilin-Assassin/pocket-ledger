@@ -7,7 +7,7 @@ const { start, loadState } = require("./lib");
   for (const [amt, cat] of [[85, 2], [40, 2], [120, 1]]) await T.addEntry("expense", amt, cat);
   const c2 = await p.$eval("#fCatSel", s => s.options[2].value);
   await T.nav("home"); await p.waitForTimeout(400);
-  await p.click(`#cats [data-cat-go="${c2}"]`); await p.waitForTimeout(800);
+  await p.evaluate(() => { const m = document.getElementById('catMore'); if (m && document.getElementById('cats').hidden) m.click(); }); await p.waitForTimeout(100); await p.click(`#cats [data-cat-go="${c2}"]`); await p.waitForTimeout(800);
   check(/#entries/.test(p.url()), "tapping a category opens Entries", p.url());
   check((await p.inputValue("#catFilter")) === c2, "filtered to that category", await p.inputValue("#catFilter"));
   const rows = await T.rows();

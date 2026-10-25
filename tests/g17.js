@@ -24,6 +24,7 @@ const pressed = (p, sel) => p.$$eval(sel + " [aria-pressed=true]", b => b.map(x 
   await T.login("tom@x.com", "#home"); await p.waitForTimeout(800);
 
   // 1. old "Breakfast" category folds into Eating out, with the meal; Home shows the breakdown
+  await p.evaluate(() => { const m = document.getElementById('catMore'); if (m && document.getElementById('cats').hidden) m.click(); }); await p.waitForTimeout(100); 
   const cats = await T.text("#cats");
   check(/Eating out/.test(cats) && !/^Breakfast/m.test(await p.$$eval("#cats .cat .n", n => n.map(x => x.textContent).join("\n"))), "old Breakfast entries count under Eating out on Home", cats);
   check(!(await p.$("#cats .cat-meals")) && !/Breakfast/.test(cats), "Home keeps one plain bar for Eating out (no meal chips)", cats);

@@ -38,12 +38,13 @@ E(prev, 12, 40, "Transport", "Taxi", { maybeDup: "e4" });              // possib
   // the Dashboard in Coral Dusk
   await T.nav("home"); await p.waitForTimeout(400);
   const lay = await p.evaluate(() => { const r = s => document.querySelector(s).getBoundingClientRect(), bg = s => getComputedStyle(document.querySelector(s)).backgroundImage + getComputedStyle(document.querySelector(s)).backgroundColor;
-    return { hero: r(".hero-panel"), stats: r(".summary .stats"), cats: r(".cats-panel"), buds: r(".buds-panel"), recent: r(".recent-panel"), heroBg: bg(".hero-panel"), ring: !!document.querySelector("#catRing svg") && getComputedStyle(document.getElementById("catRing")).display !== "none" }; });
-  check(lay.hero.bottom <= lay.stats.top + 1 && lay.hero.width >= lay.stats.width - 1, "laptop: the plum panel runs full width above this month's numbers", lay);
+    return { hero: r(".hero-panel"), stats: r(".hero-stats"), buds: r(".buds-panel"), recent: r(".recent-panel"), heroBg: bg(".hero-panel"), ring: !!document.querySelector("#catRing svg") && getComputedStyle(document.getElementById("catRing")).display !== "none" }; });
+  check(lay.stats.top >= lay.hero.top && lay.stats.bottom <= lay.hero.bottom && lay.hero.width > 900, "laptop: the month's numbers sit inside the wide plum panel", lay);
   check(/rgb\(43, 27, 61\)/.test(lay.heroBg), "the Left to spend panel is plum", lay.heroBg);
-  check(Math.abs(lay.cats.top - lay.buds.top) < 2 && Math.abs(lay.buds.top - lay.recent.top) < 2 && lay.cats.right < lay.buds.left && lay.buds.right < lay.recent.left, "spending, budgets and latest entries in three columns", [lay.cats, lay.buds, lay.recent]);
-  check(lay.ring && /MVR\s?745/.test(await T.text("#catRing")), "the spending ring shows with the month's total", await T.text("#catRing"));
-  check((await p.$$("#catRing circle")).length === 6, "ring: the four biggest plus everything else (5 parts) on its track");
+  check(Math.abs(lay.buds.top - lay.recent.top) < 2 && lay.buds.right < lay.recent.left, "budgets and latest entries side by side", [lay.buds, lay.recent]);
+  check(lay.ring && /MVR\s?8,255/.test(await T.text(".hero-mid")), "the ring shows with Left to spend in its middle", await T.text(".hero-mid"));
+  check((await p.$$("#catRing circle.seg")).length === 6, "ring: every category is a part (6 here)");
+  await p.evaluate(() => { const m = document.getElementById("catMore"); if (document.getElementById("cats").hidden) m.click(); });
   const clr = await p.$$eval("#cats .cat .fill", f => f.slice(0, 2).map(x => getComputedStyle(x).backgroundColor));
   check(clr[0] !== clr[1], "bars take the ring's colours", clr);
   check(await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), "no sideways scrolling on a laptop");
@@ -61,7 +62,7 @@ E(prev, 12, 40, "Transport", "Taxi", { maybeDup: "e4" });              // possib
   }
   await p.evaluate(() => { localStorage.setItem("pl-fs", "m"); window.plApplyTheme(); });
   await T.nav("home");
-  const one = await p.evaluate(() => { const a = document.querySelector(".cats-panel").getBoundingClientRect(), b = document.querySelector(".recent-panel").getBoundingClientRect(); return b.top >= a.bottom - 1; });
+  const one = await p.evaluate(() => { const a = document.querySelector(".buds-panel").getBoundingClientRect(), b = document.querySelector(".recent-panel").getBoundingClientRect(); return b.top >= a.bottom - 1; });
   check(one, "phone: cards stack in one column");
   // dark
   await p.evaluate(() => { localStorage.setItem("pl-mode", "dark"); window.plApplyTheme(); }); await p.waitForTimeout(200);

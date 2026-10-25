@@ -45,7 +45,8 @@ E(1, 10000, "Salary", { type: "income" }); E(2, 700, "Food & groceries"); E(3, 5
   check(/9,100\.00/.test(await p.textContent("#leftBig")), "Left to spend = carried over + income - spending (9,100)", await p.textContent("#leftBig"));
   check(/Includes MVR\s300 carried over/.test(await p.textContent("#leftSub")), "the summary says how much was carried over", await p.textContent("#leftSub"));
   check(/10,000\.00/.test(await p.textContent("#sIncome")) && /1,200\.00/.test(await p.textContent("#sSpent")), "income and spending don't include it", [await p.textContent("#sIncome"), await p.textContent("#sSpent")]);
-  check(/1,200/.test(await p.textContent("#catNote")), "the spending by category total doesn't include it", await p.textContent("#catNote"));
+  await p.evaluate(() => { const m = document.getElementById("catMore"); if (document.getElementById("cats").hidden) m.click(); });
+  check(/700/.test(await p.textContent("#cats")) && /500/.test(await p.textContent("#cats")) && !/1,500|1,200/.test(await p.textContent("#cats")), "the spending by category total doesn't include it", await p.textContent("#cats"));
   // the budget of that category grows by the carryover
   const bud = await T.text("#budgetList");
   check(/Food & groceries.*700.*of.*1,300/.test(bud) && /600.*left, 54% used, includes MVR\s300 carried over/.test(bud), "Food & groceries: 700 of 1,300 (1,000 budget + 300 carried over)", bud);

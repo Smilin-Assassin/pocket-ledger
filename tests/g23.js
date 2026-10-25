@@ -47,14 +47,13 @@ E(1, 150, "Savings", { type: "save", goalId: "gA" }); E(1, 900, "Savings", { typ
     return { both, rolled, hiddenAfter: big.classList.contains("odo-hide"), odoAfter: !!document.querySelector(".odo") };
   });
   check(late.rolled > 0 && late.both === 0 && !late.hiddenAfter && !late.odoAfter, "C: a late roll never shows the plain amount and the rolling one together (v54 fix)", late);
-  // B: the ring waits off-screen, draws when scrolled to, and only once
-  check(await has("#catRing svg.wait") && !(await has("#catRing svg.draw")), "B: the ring waits until it's seen");
-  await p.evaluate(() => document.getElementById("catRing").scrollIntoView({ block: "center" })); await p.waitForTimeout(400);
-  check(await has("#catRing svg.draw") && await p.$eval("#catRing .seg", s => getComputedStyle(s).animationName) === "ringDraw", "B: scrolled into view, it draws itself");
+  // B: the ring is the top of the Dashboard now, so it draws itself as soon as it's seen (once the opening is over), and only once
+  await p.waitForTimeout(1500);
+  check(await has("#catRing svg") && !(await has("#catRing svg.wait")), "B: the ring has drawn itself (it isn't stuck waiting)");
   await p.click("#nextM"); await p.waitForTimeout(300); await p.click("#prevM"); await p.waitForTimeout(400);
-  check(!(await has("#catRing svg.wait")) && !(await has("#catRing svg.draw")), "B: drawn once per opening");
+  check(!(await has("#catRing svg.wait")), "B: drawn once per opening");
   // B: tapping a category lifts its part out, then Entries opens on it
-  await p.click('#cats .cat[data-ring="1"]'); await p.waitForTimeout(80);
+  await p.evaluate(() => { window.scrollTo(0, 0); const m = document.getElementById('catMore'); if (document.getElementById('cats').hidden) m.click(); document.querySelector('#cats .cat[data-ring="1"]').click(); }); await p.waitForTimeout(80);
   check(await has("#catRing svg.lifting .seg.lift[data-i='1']"), "B: the tapped category's part lifts out");
   await p.waitForTimeout(600);
   check(/#entries/.test(p.url()) && /Eating out/.test(await T.text("#ledgerTotal")), "B: then its entries open", await T.text("#ledgerTotal"));
