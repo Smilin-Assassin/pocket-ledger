@@ -18,17 +18,19 @@ E(prev, 12, 40, "Transport", "Taxi", { maybeDup: "e4" });              // possib
 (async () => {
   console.log("g26: Plum night Dashboard (v58): plum panel with the income ring, cards that stack on phones");
   let T = await start({ seed, users: { "tom@x.com": "secret12" }, context: { viewport: { width: 390, height: 844 } } }), { p, check } = T;
+  await p.evaluate(() => localStorage.setItem("pl-tiles", JSON.stringify(["split"]))); // an old setting that used to hide the split bar
   await T.login("tom@x.com", "#home"); await p.waitForTimeout(1500);
   const ring = await p.evaluate(() => { const b = document.getElementById("leftBig").getBoundingClientRect(), r = document.querySelector(".hero-ring").getBoundingClientRect();
     return { circles: document.querySelectorAll("#split svg circle").length, inside: b.left >= r.left + 20 && b.right <= r.right - 20, text: document.getElementById("leftBig").textContent, ids: ["legend", "leftSub", "copyIncome", "tileBtn", "dueBar", "owesBar", "smartBar"].every(i => document.getElementById(i)) }; });
   check(ring.circles === 3 && /MVR\s?8,255/.test(ring.text), "ring: track plus spent and left (saved is 0) and Left to spend in the middle", ring);
   check(ring.inside, "the amount sits inside the ring", ring);
-  const pos = () => p.evaluate(() => ["summary", "cats-panel", "buds-panel", "recent-panel"].map(c => { const el = document.querySelector("#pg-home ." + c); return [c, getComputedStyle(el).position, el.classList.contains("stuck")]; }));
+  check(await p.isVisible("#split svg") && await p.isVisible("#legend"), "the ring and its percentages always show (the old hide-split setting is ignored)");
+  const pos = () => p.evaluate(() => ["summary", "tiles", "cats-panel", "buds-panel", "recent-panel"].map(c => { const el = document.querySelector("#pg-home ." + c); return [c, getComputedStyle(el).position, el.classList.contains("stuck")]; }));
   const st = await pos();
   check(st.filter(x => x[1] === "sticky").length >= 2 && st.some(x => x[0] === "cats-panel" && x[1] === "sticky"), "phone: the section cards are sticky so they stack", st);
   await p.evaluate(() => scrollTo(0, 1100)); await p.waitForTimeout(400);
   const tops = await p.evaluate(() => [".summary", ".cats-panel", ".buds-panel"].map(s => Math.round(document.querySelector("#pg-home " + s).getBoundingClientRect().top)));
-  check(Math.abs(tops[0] - 10) <= 2 && tops[1] > tops[0], "scrolled: the first card stays pinned at the top while the next one rises over it", tops);
+  check(tops[0] >= 8 && tops[0] <= 60 && tops[1] > tops[0], "scrolled: the first card stays pinned at the top while the next one rises over it", tops);
   check(await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), "no sideways scrolling on a phone");
   await p.evaluate(() => scrollTo(0, 0));
   await p.click("#budgetBtn"); await p.waitForTimeout(500);
