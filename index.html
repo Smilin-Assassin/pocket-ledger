@@ -31,7 +31,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400..800&display=swap">
-<link rel="stylesheet" href="css/app.css?v=56">
+<link rel="stylesheet" href="css/app.css?v=58">
 </head>
 <body>
 <!-- A (v51): the logo opening, once per app opening; it never takes taps and leaves on its own -->
@@ -99,28 +99,32 @@
 
     <!-- ===================== HOME ===================== -->
     <section class="page" id="pg-home" data-page="home" hidden>
-      <div class="bills-bar" id="dueBar" hidden></div>
-      <div class="banner info owes" id="owesBar" hidden></div>
-      <section class="smart" id="smartBar" aria-label="Suggestions" hidden></section>
-      <section class="summary" aria-label="This month">
-        <div class="dash-head"><button class="icon-btn" type="button" id="tileBtn" aria-label="Customize the dashboard">Customize</button></div>
-        <div class="tile-cfg" id="tileCfg" hidden></div>
+      <!-- Plum night (v58): the plum panel on top (the ring is how this month's income splits, Left to spend is in its middle),
+           then the sections below it as cards that stack as you scroll (phones; js/pages/home.js stackSync) -->
+      <section class="hero-panel" aria-label="Left to spend this month">
         <div class="hero">
-          <div>
-            <div class="label" id="heroLabel">Left to spend this month</div>
-            <div class="big num" id="leftBig">—</div>
-            <div class="sub" id="leftSub">Add your income for this month to get started.</div>
+          <div class="hero-ring">
+            <div class="split" id="split" data-tile="split" role="img" aria-label="How this month's income is split"></div>
+            <div class="hero-mid">
+              <div class="label" id="heroLabel">Left to spend this month</div>
+              <div class="big num" id="leftBig">—</div>
+            </div>
           </div>
+          <div class="legend" id="legend" data-tile="split"></div>
+          <div class="sub" id="leftSub">Add your income for this month to get started.</div>
           <div class="hero-acts">
             <button class="ghost" type="button" id="copyIncome" hidden>Copy income from last month</button>
             <button class="ghost" type="button" data-go-add="1"><svg class="ico sm"><use href="#i-plus"/></svg>Add</button>
             <button class="ghost" type="button" data-scan="1"><svg class="ico sm"><use href="#i-cam"/></svg>Scan</button>
           </div>
         </div>
-        <div data-tile="split">
-          <div class="split" id="split" role="img" aria-label="How this month's income is split"></div>
-          <div class="legend" id="legend"></div>
-        </div>
+      </section>
+      <section class="summary" aria-label="This month">
+        <div class="bills-bar" id="dueBar" hidden></div>
+        <div class="banner info owes" id="owesBar" hidden></div>
+        <section class="smart" id="smartBar" aria-label="Suggestions" hidden></section>
+        <div class="dash-head"><button class="icon-btn" type="button" id="tileBtn" aria-label="Customize the dashboard">Customize</button></div>
+        <div class="tile-cfg" id="tileCfg" hidden></div>
         <div class="stats">
           <div data-tile="income"><div class="label">Income</div><div class="v num" id="sIncome">—</div><div class="h" id="sIncomeH">&nbsp;</div></div>
           <div data-tile="spent"><div class="label">Spent</div><div class="v num" id="sSpent">—</div><div class="h" id="sSpentH">&nbsp;</div></div>
@@ -665,6 +669,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=56"></script>
+<script type="module" src="app.js?v=58"></script>
 </body>
 </html>

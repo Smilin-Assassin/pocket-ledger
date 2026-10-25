@@ -30,9 +30,9 @@ const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebK
   // the calm card and the coral + (after the opening and the rolling number have finished)
   await p.waitForFunction(() => !document.querySelector(".odo, #splash"), null, { timeout: 5000 });
   const look = await p.evaluate(() => { const cs = s => getComputedStyle(document.querySelector(s));
-    return { hero: cs(".summary .hero").backgroundColor + " " + cs(".summary .hero").backgroundImage, big: cs("#leftBig").color, add: cs('.summary .hero [data-go-add]').backgroundColor, plus: cs("#dkPlus").backgroundColor, bubble: cs(".dk-bubble").backgroundColor }; });
-  check(look.hero === "rgb(255, 255, 255) none", "Left to spend sits on a calm white card", look.hero);
-  check(look.big === "rgb(36, 26, 46)", "the amount is plain ink", look.big);
+    return { hero: cs(".hero-panel").backgroundColor + " " + cs(".hero-panel").backgroundImage, big: cs("#leftBig").color, add: cs('.hero-panel [data-go-add]').backgroundColor, plus: cs("#dkPlus").backgroundColor, bubble: cs(".dk-bubble").backgroundColor }; });
+  check(look.hero === "rgb(43, 27, 61) none", "Left to spend sits on the plum panel", look.hero);
+  check(look.big === "rgb(245, 239, 248)", "the amount is light on plum", look.big);
   check(look.add === "rgb(201, 70, 28)" && look.plus === "rgb(201, 70, 28)", "Add and the + are coral", look);
   check(look.bubble === "rgb(255, 224, 207)", "the tab bubble is peach", look.bubble);
   const geo = await p.evaluate(() => { const d = document.getElementById("dock").getBoundingClientRect(), b = document.getElementById("dkPlus").getBoundingClientRect(); return { dR: d.right, bL: b.left, w: innerWidth, bR: b.right }; });

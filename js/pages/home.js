@@ -7,6 +7,7 @@ import { settlePair } from "../actions.js";
 import { rowHtml, wireRows, byNewest } from "./entries.js";
 import { renderDue, wireDue } from "./bills.js";
 import { initFolds } from "../fold.js";
+import { zoom } from "../dock.js";
 import { ringShouldWait, watchRing, rollNumber, rollPending } from "../delight.js";
 
 Object.assign(ui, { tileCfg: false, editBudgets: false, settling: null, trendSel: null });
@@ -24,6 +25,7 @@ function renderHero() {
   const t = monthTotals(ui.month), prev = monthTotals(shiftMonth(ui.month, -1)), hasIncome = t.income > 0;
   $("heroLabel").textContent = isAll() ? "Left to spend this month: " + groupName() : isMine(ui.view) ? "Left to spend this month" : "Left to spend this month: " + pname(ui.view);
   const big = $("leftBig"); big.textContent = money(t.left); big.classList.toggle("neg", t.left < 0);
+  big.style.setProperty("--len", Math.max(10, big.textContent.length)); // longer amounts get a smaller size so they stay inside the ring
   // C: the first time the Dashboard shows real numbers after opening the app, the amount rolls up
   if (rollPending() && state.ready && (t.income || t.spent || t.carry) && document.getElementById("pg-home").offsetParent) rollNumber(big);
   let sub;
@@ -45,8 +47,13 @@ function renderHero() {
   document.querySelectorAll("#pg-home .hero-acts [data-go-add], #pg-home .hero-acts [data-scan]").forEach(b => { b.hidden = state.readOnly; });
 
   const pool = t.income + t.carry, base = Math.max(pool, t.spent + Math.max(t.netSaved, 0)) || 0;
-  const parts = [{ k: "Spent", v: t.spent, c: "var(--c-spent)" }, { k: "Saved", v: Math.max(t.netSaved, 0), c: "var(--c-saved)" }, { k: "Left", v: Math.max(t.left, 0), c: "var(--c-left)" }];
-  $("split").innerHTML = base ? parts.filter(p => p.v > 0).map(p => `<div title="${p.k}: ${esc(money(p.v))}" style="width:${p.v / base * 100}%;background:${p.c}"></div>`).join("") : "";
+  const parts = [{ k: "Spent", v: t.spent, c: "var(--hero-spent)", hc: "var(--hero-spent)" }, { k: "Saved", v: Math.max(t.netSaved, 0), c: "var(--hero-saved)", hc: "var(--hero-saved)" }, { k: "Left", v: Math.max(t.left, 0), c: "var(--hero-left)", hc: "var(--hero-left)" }];
+  // Plum night: the split is a ring around Left to spend (spent, saved, left of the month's income)
+  const R = 118, C = 2 * Math.PI * R, shown = base ? parts.filter(p => p.v > 0) : [], gap = shown.length > 1 ? 16 : 0;
+  let a0 = 0;
+  $("split").innerHTML = `<svg viewBox="0 0 264 264" aria-hidden="true"><circle cx="132" cy="132" r="${R}" fill="none" stroke="var(--hero-track)" stroke-width="12"/>` +
+    shown.map(p => { const share = p.v / base * C, len = Math.max(0.1, share - gap), off = -a0; a0 += share;
+      return `<circle cx="132" cy="132" r="${R}" fill="none" stroke="${p.hc}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${len.toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" transform="rotate(-90 132 132)"><title>${p.k}: ${esc(money(p.v))}</title></circle>`; }).join("") + `</svg>`;
   $("legend").innerHTML = parts.map(p => `<span><i style="background:${p.c}"></i>${p.k}${pool ? ` <b class="num">${Math.round(p.v / pool * 100)}%</b>` : ""}</span>`).join("");
   $("sIncome").textContent = money(t.income); $("sIncomeH").textContent = delta(t.income, prev.income);
   $("sSpent").textContent = money(t.spent); $("sSpentH").textContent = delta(t.spent, prev.spent);
@@ -124,7 +131,7 @@ function renderBudgets() {
     box.innerHTML = `<p class="hint">Monthly limits for ${esc(isAll() ? "the whole of " + groupName() : isMine(ui.view) ? "you" : pname(ui.view))}. Leave empty for no limit.</p>` +
       all.map((c, i) => `<div class="bud-edit"><label for="bud${i}">${esc(c)}</label><input id="bud${i}" data-cat="${esc(c)}" type="number" inputmode="decimal" min="0" step="1" value="${b[c] || ""}" placeholder="No limit"></div>`).join("") +
       `<div class="formfoot"><button class="primary" type="button" id="budSave">Save budgets</button><button class="icon-btn" type="button" id="budCancel">Cancel</button></div>`;
-    $("budgetBtn").hidden = true; return;
+    $("budgetBtn").hidden = true; stackSync(); return;
   }
   $("budgetBtn").hidden = !canSet;
   $("budgetBtn").textContent = cats.length ? "Edit budgets" : "Set budgets";
@@ -134,6 +141,7 @@ function renderBudgets() {
     const co = carriedIn(ui.month, ui.view, c), lim = (+b[c] || 0) + co, sp = spentIn(ui.month, ui.view, c), pct = Math.round(sp / lim * 100), cls = pct >= 100 ? "over" : pct >= 80 ? "near" : "";
     return `<div class="bud ${cls}"><div class="bud-top"><span>${esc(c)}</span><span class="num">${esc(money(sp, { whole: true }))} of ${esc(money(lim, { whole: true }))}</span></div><div class="meter"><div style="width:${Math.min(100, pct)}%"></div></div><small>${pct >= 100 ? "Over by " + esc(money(sp - lim, { whole: true })) : esc(money(lim - sp, { whole: true })) + " left, " + pct + "% used"}${co ? ", includes " + esc(money(co, { whole: true })) + " carried over" : ""}</small></div>`;
   }).join("") : `<p class="hint">No budgets yet. Set a monthly limit for any category and you'll get a heads-up at 80%.</p>`;
+  stackSync();
 }
 
 function renderRecent() {
@@ -216,6 +224,30 @@ function renderCompare() {
     <p class="hint">January to ${esc(upto)} each year${b.inc || b.out ? "" : ". Nothing logged last year yet, so there's nothing to compare against"}.</p>`;
 }
 
+
+// ---------- Plum night: on phones the cards below the plum panel stack as you scroll (CSS sticky) ----------
+// A card taller than the screen can't stay stuck (its bottom would be out of reach), so it simply scrolls.
+// Each stuck card is at least as tall as the one before it (less a sliver), so it fully covers it.
+const STACK = [[".summary", 10], [".cats-panel", 24], [".buds-panel", 38], [".recent-panel", 52], ["#trendPanel", 66], ["#cmpPanel", 80]];
+let stackRaf = 0;
+function stackSync() {
+  cancelAnimationFrame(stackRaf);
+  stackRaf = requestAnimationFrame(() => {
+    const home = $("pg-home"), phone = window.matchMedia("(max-width: 899.98px)").matches;
+    const cards = STACK.map(([sel, top]) => [home.querySelector(sel), top]).filter(c => c[0]);
+    cards.forEach(([el]) => { el.style.minHeight = ""; });
+    if (home.hidden || !phone || ui.editBudgets) { cards.forEach(([el]) => el.classList.remove("stuck")); return; }
+    const room = innerHeight / zoom() - 118;
+    let prev = 0;
+    cards.forEach(([el, top]) => {
+      const ok = el.offsetHeight > 0 && el.offsetHeight <= room - top;
+      el.classList.toggle("stuck", ok);
+      if (ok && prev > el.offsetHeight) el.style.minHeight = Math.max(0, prev - 14) + "px";
+      prev = ok ? el.offsetHeight : 0;
+    });
+  });
+}
+
 export const page = {
   init() {
     wireDue($("dueBar"), () => page.render());
@@ -254,10 +286,12 @@ export const page = {
     $("trendDetail").addEventListener("click", ev => { const b = ev.target.closest("[data-trendgo]"); if (b) { ui.month = b.dataset.trendgo; ui.trendSel = null; changed(); } });
     initFolds();
     $("pg-home").addEventListener("fold-open", ev => { if (ev.target.id === "trendPanel") renderTrend(); else renderCompare(); });
-    let rt = null; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("pg-home").hidden) renderTrend(); }, 200); });
+    let rt = null; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("pg-home").hidden) renderTrend(); }, 200); stackSync(); });
+    if (window.ResizeObserver) { const ro = new ResizeObserver(stackSync); STACK.forEach(([sel]) => { const el = $("pg-home").querySelector(sel); if (el) ro.observe(el); }); }
   },
   render() {
     renderDue($("dueBar"), 4);
     renderOwes(); renderSmart(); renderHero(); renderTiles(); renderCats(); renderBudgets(); renderRecent(); renderTrend(); renderCompare();
+    stackSync();
   }
 };
