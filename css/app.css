@@ -32,10 +32,10 @@
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --bg: #16111C; --surface: #221A2B; --sunk: #2E2438; --ink: #F5EFF8; --ink-2: #CFC4D6; --ink-3: #B3A8BC;
-  --line: #33293D; --accent: #FF7A45; --accent-ink: #2B1B3D; --coral: #FF7A45; --coral-ink: #2B1B3D; --hl: #FF7A45; --hl-ink: #2B1B3D;
-  --c-spent: #FF7A45; --c-saved: #9C8BC4; --c-left: #FFD166; --c-bar: #FF7A45;
-  --ring-1: #FF7A45; --ring-2: #FF4D8D; --ring-3: #FFD166; --ring-4: #9C8BC4; --ring-5: #5A4D66;
+  --bg: #121214; --surface: #1C1C20; --sunk: #28282D; --ink: #F2F2F4; --ink-2: #C9C9D0; --ink-3: #AEAEB6;
+  --line: #303036; --accent: #EE9A63; --accent-ink: #17171A; --coral: #C2652B; --coral-ink: #FFFFFF; --hl: #E8894D; --hl-ink: #17171A;
+  --c-spent: #E8894D; --c-saved: #B9A7D6; --c-left: #F2C14E; --c-bar: #E8894D;
+  --ring-1: #E8894D; --ring-2: #F2705A; --ring-3: #F2C14E; --ring-4: #B9A7D6; --ring-5: #6B7482;
   --neg: #FF8A73; --pos: #6FD3A6; --warn-bg: #3A2A12; --warn-ink: #F4D08A;
   color-scheme: dark;
 }
@@ -905,7 +905,7 @@ circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest
    spending ring, budgets and latest entries in three columns).
    ===================================================================================== */
 :root[data-preset="coral"] body { letter-spacing: -.005em; }
-:root[data-preset="coral"][data-theme="dark"] { --dk-bar: #2A2133; }
+:root[data-preset="coral"][data-theme="dark"] { --dk-bar: #222226; }
 :root[data-preset="coral"] :is(.panel, .summary, .bill, .stat-card, .xfer-card, .smart) { border: 0; border-radius: var(--r-card); box-shadow: 0 1px 2px rgba(43, 27, 61, .04), 0 6px 24px rgba(43, 27, 61, .06); }
 :root[data-preset="coral"][data-theme="dark"] :is(.panel, .summary, .bill, .stat-card, .xfer-card, .smart) { box-shadow: none; }
 :root[data-preset="coral"] .panel { padding: 20px 22px; }
@@ -1118,8 +1118,8 @@ h1, h2, h3, .hero .big, .fold-t b, .goal-top .pct, .loan-top .num { font-weight:
 :root[data-preset="coral"] { --hero: #F6E9DE; --hero-track: #E6D5C8; --hero-ink: #2B1B3D; --hero-ink-2: #6B5A66; --hero-neg: #B5381F; --hero-btn: rgba(43, 27, 61, .08);
   --hero-c1: #FF7A45; --hero-c2: #FF4D8D; --hero-c3: #F2A91B; --hero-c4: #A58BD6; --hero-c5: #B9A99A; --hero-c6: #8E7FA3;
   --stack-shadow: 0 -10px 28px rgba(43, 27, 61, .12); }
-:root[data-preset="coral"][data-theme="dark"] { --hero: #2B1B3D; --hero-track: #46325A; --hero-ink: #F5EFF8; --hero-ink-2: #D2C6DE; --hero-neg: #FFB5A1; --hero-btn: rgba(255, 255, 255, .14);
-  --hero-c3: #FFC145; --hero-c5: #D9CEC5; --hero-c6: #9C8DB0; --stack-shadow: 0 -10px 28px rgba(0, 0, 0, .4); }
+:root[data-preset="coral"][data-theme="dark"] { --hero: #232327; --hero-track: #3A3A41; --hero-ink: #F2F2F4; --hero-ink-2: #AEAEB6; --hero-neg: #FFB5A1; --hero-btn: rgba(255, 255, 255, .12);
+  --hero-c1: #E8894D; --hero-c2: #F2705A; --hero-c3: #F2C14E; --hero-c4: #B9A7D6; --hero-c5: #8E98A6; --hero-c6: #6B7482; --stack-shadow: 0 -10px 28px rgba(0, 0, 0, .4); }
 :root[data-preset="coral"] .hero-panel { background: var(--hero); color: var(--hero-ink); border-radius: 28px; padding: 18px 16px 20px; }
 :root[data-preset="coral"] .hero-panel .hero { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 12px; text-align: center; }
 :root[data-preset="coral"] .hero-ring { position: relative; width: min(268px, 100%); aspect-ratio: 1; container-type: inline-size; }
@@ -1129,7 +1129,7 @@ h1, h2, h3, .hero .big, .fold-t b, .goal-top .pct, .loan-top .num { font-weight:
 :root[data-preset="coral"] .hero-ring .seg.sel { filter: url(#ringLift); translate: var(--tx, 0) var(--ty, 0); }
 :root[data-preset="coral"] .hero-ring .seg:focus-visible { stroke: var(--hero-ink); }
 :root[data-preset="coral"] .hero-ring svg.dim .seg:not(.sel), :root[data-preset="coral"] .hero-ring svg.dim .pct { opacity: .3; }
-:root[data-preset="coral"] .hero-ring .pct { font-family: var(--f-body); font-size: 12px; font-weight: 800; fill: #2B1B3D; pointer-events: none; transition: opacity .15s ease; }
+:root[data-preset="coral"] .hero-ring .pct { font-family: var(--f-body); font-size: 12px; font-weight: 800; fill: #17171A; pointer-events: none; transition: opacity .15s ease; }
 :root[data-preset="coral"] .hero-mid, :root[data-preset="coral"] .hero-pick { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 0 24%; pointer-events: none; }
 :root[data-preset="coral"] .hero-pick { visibility: hidden; }
 :root[data-preset="coral"] .hero-ring.picking .hero-mid { visibility: hidden; }

@@ -59,7 +59,8 @@ const pressed = (p, sel) => p.$$eval(sel + " [aria-pressed=true]", b => b.map(x 
   // 3. new entry with the full form: a guess is pre-picked for today, tap to change, tap again to clear
   await p.fill("#fAmount", "65"); await p.selectOption("#fCatSel", "Eating out"); await p.fill("#fDate", today); await p.dispatchEvent("#fDate", "change"); await p.waitForTimeout(200);
   check(await T.visible("#mealRow") && (await pressed(p, "#mealSeg")).length === 1, "Eating out pre-picks a meal by the clock", await pressed(p, "#mealSeg"));
-  await p.click('#mealSeg [data-meal="lunch"]'); await p.fill("#fNote", "Office lunch"); await p.click("#submitBtn"); await p.waitForTimeout(600);
+  if (!(await pressed(p, "#mealSeg")).includes("lunch")) await p.click('#mealSeg [data-meal="lunch"]'); // at lunchtime it is already picked, and a second tap would clear it
+  await p.fill("#fNote", "Office lunch"); await p.click("#submitBtn"); await p.waitForTimeout(600);
   es = await mine(T);
   check((es.find(e => e.note === "Office lunch") || {}).meal === "lunch", "saved with Lunch", es.find(e => e.note === "Office lunch"));
   await p.fill("#fAmount", "15"); await p.selectOption("#fCatSel", "Eating out"); await p.waitForTimeout(100);

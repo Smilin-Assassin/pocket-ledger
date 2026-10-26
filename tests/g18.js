@@ -66,7 +66,7 @@ E(prev, 12, 40, "Transport", "Taxi", { maybeDup: "e4" });              // possib
   check(one, "phone: cards stack in one column");
   // dark
   await p.evaluate(() => { localStorage.setItem("pl-mode", "dark"); window.plApplyTheme(); }); await p.waitForTimeout(200);
-  check(await p.evaluate(() => document.documentElement.getAttribute("data-theme")) === "dark" && await p.evaluate(() => getComputedStyle(document.body).backgroundColor) === "rgb(22, 17, 28)", "Coral Dusk has a dark look");
+  check(await p.evaluate(() => document.documentElement.getAttribute("data-theme")) === "dark" && await p.evaluate(() => getComputedStyle(document.body).backgroundColor) === "rgb(18, 18, 20)", "Dark is graphite");
   check((await T.denied()).length === 0, "no rule denials", await T.denied());
   await T.end();
 })();

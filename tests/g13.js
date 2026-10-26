@@ -50,14 +50,14 @@ const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebK
   check(!(await p.$(".theme-sw")) && !(await p.$("#setAmoled")) && !(await p.$("#glassNote")), "no theme list, no pure black option, no Glass note");
   check(await p.$eval('#modeSeg [data-mode="light"]', b => b.getAttribute("aria-pressed")) === "true", "Light is marked as chosen");
   await p.click('#modeSeg [data-mode="dark"]'); await p.waitForTimeout(800);
-  check(await attr("data-theme") === "dark" && await bg() === "rgb(22, 17, 28)" && await p.evaluate(() => localStorage.getItem("pl-mode")) === "dark", "Dark: deep plum page, saved on this device", await bg());
+  check(await attr("data-theme") === "dark" && await bg() === "rgb(18, 18, 20)" && await p.evaluate(() => localStorage.getItem("pl-mode")) === "dark", "Dark: graphite page, saved on this device", await bg());
   check(await p.$eval('#modeSeg [data-mode="dark"]', b => b.getAttribute("aria-pressed")) === "true", "Dark is marked as chosen");
   await p.emulateMedia({ colorScheme: "light" }); await p.waitForTimeout(200);
   check(await attr("data-theme") === "dark", "the phone's own setting doesn't change it");
   await reopen();
   check(await attr("data-theme") === "dark", "Dark stays after reopening");
   const dark = await p.evaluate(() => { const cs = s => getComputedStyle(document.querySelector(s)); return { card: cs("#pg-home .panel").backgroundColor, plus: cs("#dkPlus").backgroundColor }; });
-  check(dark.card === "rgb(34, 26, 43)" && dark.plus === "rgb(255, 122, 69)", "dark cards in plum, the + in bright coral", dark);
+  check(dark.card === "rgb(28, 28, 32)" && dark.plus === "rgb(194, 101, 43)", "dark cards in graphite, the + in copper", dark);
   await T.nav("settings/look"); await p.click('#modeSeg [data-mode="light"]'); await p.waitForTimeout(800);
   check(await attr("data-theme") === "light" && !(await p.evaluate(() => localStorage.getItem("pl-mode"))), "back to Light");
 

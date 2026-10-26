@@ -96,13 +96,18 @@ function renderOwes() {
 // ---------- the ring: where this month's money went (v61: paper cut) ----------
 // Every category is a rounded piece of paper sized by its share of what was spent (never thinner than a fingertip can hit). Touch (drag) or point
 // at the ring and the piece under the finger lifts off the page and the middle shows it.
-const R0 = 76, R1 = 116, RMIN = 0.16, RGAPA = 0.12, TAU = 2 * Math.PI;
+const R0 = 76, R1 = 116, RMIN = 0.22, TAU = 2 * Math.PI;
 let ringArcs = [], ringSel = null;
 const arcColor = i => i < 4 ? `var(--hero-c${i + 1})` : i % 2 ? "var(--hero-c5)" : "var(--hero-c6)";
 const polar = (r, a) => [(132 + r * Math.sin(a)).toFixed(2), (132 - r * Math.cos(a)).toFixed(2)];
+// A piece is the part of the ring between two radial lines, pulled in from each line by half the gap so every gap is the same width (not wider at the
+// outside), then drawn with a stroke of the same colour so its corners are round. R0/R1 are the middle of that stroke; GAPP = the visible gap (3) + the stroke (8).
+const GAPP = 11;
 function sectorPath(a0, a1) {
-  const p = polar(R1, a0), q = polar(R1, a1), u = polar(R0, a1), w = polar(R0, a0), big = a1 - a0 > Math.PI ? 1 : 0;
-  return `M${p}A${R1} ${R1} 0 ${big} 1 ${q}L${u}A${R0} ${R0} 0 ${big} 0 ${w}Z`;
+  const d = GAPP / 2, off = r => Math.asin(Math.min(1, d / r));
+  const i0 = a0 + off(R0), i1 = a1 - off(R0), u0 = a0 + off(R1), u1 = a1 - off(R1);
+  const p = polar(R1, u0), q = polar(R1, u1), w = polar(R0, i1), z = polar(R0, i0);
+  return `M${p}A${R1} ${R1} 0 ${u1 - u0 > Math.PI ? 1 : 0} 1 ${q}L${w}A${R0} ${R0} 0 ${i1 - i0 > Math.PI ? 1 : 0} 0 ${z}Z`;
 }
 
 function pickCat(i) {
@@ -140,7 +145,7 @@ function renderCats() {
   const mid = a => (a.a0 + a.a1) / 2;
   const lab = a => { if ((a.a1 - a.a0) / TAU < 0.07) return ""; const [x, y] = polar((R0 + R1) / 2, mid(a)); return `<text class="pct" x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central">${a.pct}%</text>`; };
   $("catRing").innerHTML = `<svg viewBox="0 0 264 264"${wait ? ' class="wait"' : ""} aria-hidden="false"><defs><filter id="ringSh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#2B1B3D" flood-opacity=".28"/></filter><filter id="ringLift" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#2B1B3D" flood-opacity=".42"/></filter></defs>` +
-    ringArcs.map(a => `<path class="seg" data-i="${a.i}" style="--i:${a.i};--tx:${(Math.sin(mid(a)) * 7).toFixed(1)}px;--ty:${(-Math.cos(mid(a)) * 7).toFixed(1)}px" tabindex="0" role="button" aria-label="${esc(a.c)}, ${esc(money(a.v, { whole: true }))}, ${a.pct}% of what you spent. Opens its entries." d="${sectorPath(a.a0 + RGAPA / 2, a.a1 - RGAPA / 2)}" fill="${a.col}" stroke="${a.col}" stroke-width="8" stroke-linejoin="round"/>`).join("") +
+    ringArcs.map(a => `<path class="seg" data-i="${a.i}" style="--i:${a.i};--tx:${(Math.sin(mid(a)) * 7).toFixed(1)}px;--ty:${(-Math.cos(mid(a)) * 7).toFixed(1)}px" tabindex="0" role="button" aria-label="${esc(a.c)}, ${esc(money(a.v, { whole: true }))}, ${a.pct}% of what you spent. Opens its entries." d="${sectorPath(a.a0, a.a1)}" fill="${a.col}" stroke="${a.col}" stroke-width="8" stroke-linejoin="round"/>`).join("") +
     ringArcs.map(lab).join("") + `</svg>`;
   if (wait) watchRing($("catRing"));
   const keep = ringArcs.findIndex(a => a.c === ringSel); if (keep >= 0) pickCat(keep); else { ringSel = null; $("catRing").closest(".hero-ring").classList.remove("picking"); }
