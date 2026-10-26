@@ -105,7 +105,8 @@ const polar = (r, a) => [(132 + r * Math.sin(a)).toFixed(2), (132 - r * Math.cos
 const GAPP = 11;
 function sectorPath(a0, a1) {
   const d = GAPP / 2, off = r => Math.asin(Math.min(1, d / r));
-  const i0 = a0 + off(R0), i1 = a1 - off(R0), u0 = a0 + off(R1), u1 = a1 - off(R1);
+  let i0 = a0 + off(R0), i1 = a1 - off(R0), u0 = a0 + off(R1), u1 = a1 - off(R1);
+  if (i1 <= i0) i0 = i1 = (a0 + a1) / 2; if (u1 <= u0) u0 = u1 = (a0 + a1) / 2; // a piece squeezed thinner than the gap stays a thin line, never turns inside out
   const p = polar(R1, u0), q = polar(R1, u1), w = polar(R0, i1), z = polar(R0, i0);
   return `M${p}A${R1} ${R1} 0 ${u1 - u0 > Math.PI ? 1 : 0} 1 ${q}L${w}A${R0} ${R0} 0 ${i1 - i0 > Math.PI ? 1 : 0} 0 ${z}Z`;
 }
@@ -144,7 +145,7 @@ function renderCats() {
   const wait = ringShouldWait() && state.ready && rows.length;
   const mid = a => (a.a0 + a.a1) / 2;
   const lab = a => { if ((a.a1 - a.a0) / TAU < 0.07) return ""; const [x, y] = polar((R0 + R1) / 2, mid(a)); return `<text class="pct" x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central">${a.pct}%</text>`; };
-  $("catRing").innerHTML = `<svg viewBox="0 0 264 264"${wait ? ' class="wait"' : ""} aria-hidden="false"><defs><filter id="ringSh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#2B1B3D" flood-opacity=".28"/></filter><filter id="ringLift" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#2B1B3D" flood-opacity=".42"/></filter></defs>` +
+  $("catRing").innerHTML = `<svg viewBox="0 0 264 264"${wait ? ' class="wait"' : ""} aria-hidden="false"><defs><filter id="ringSh" filterUnits="userSpaceOnUse" x="-20" y="-20" width="304" height="304"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#2B1B3D" flood-opacity=".28"/></filter><filter id="ringLift" filterUnits="userSpaceOnUse" x="-20" y="-20" width="304" height="304"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#2B1B3D" flood-opacity=".42"/></filter></defs>` +
     ringArcs.map(a => `<path class="seg" data-i="${a.i}" style="--i:${a.i};--tx:${(Math.sin(mid(a)) * 7).toFixed(1)}px;--ty:${(-Math.cos(mid(a)) * 7).toFixed(1)}px" tabindex="0" role="button" aria-label="${esc(a.c)}, ${esc(money(a.v, { whole: true }))}, ${a.pct}% of what you spent. Opens its entries." d="${sectorPath(a.a0, a.a1)}" fill="${a.col}" stroke="${a.col}" stroke-width="8" stroke-linejoin="round"/>`).join("") +
     ringArcs.map(lab).join("") + `</svg>`;
   if (wait) watchRing($("catRing"));
