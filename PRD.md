@@ -53,6 +53,7 @@ A household in the Maldives wants to know, at any moment, **how much is left to 
 
 ## Release history (newest first)
 
+- October 2026 (pl-v66): **No empty space in the phone bar pills.** The tabs now share the whole pill (the tab you're on grows to fill its share), instead of sitting in the middle with gaps.
 - October 2026 (pl-v65): **New phone bar.** Two pill islands with a plain coral disc + between them. The current tab is a chip that stretches to show its name (on narrow phones or with 6 tabs the name floats above it as a tag). 6 tabs sit 3 + 3 around the +. Hold the + and the three shortcuts (Scan, Type it, Voice) fan out from the centre. New test g28.
 - October 2026 (pl-v64): **See entries works every time.** Tapping a ring piece and then See entries sometimes did nothing: moving focus onto the button un-picked the piece first, so the button vanished before the tap landed. Only the keyboard un-picks that way now. New test g27 taps every piece by touch.
 - October 2026 (pl-v63): **Ring shadows no longer clipped.** The small pieces' shadow was cut off in a straight line (the shadow filter only covered the piece's own box), which made the smallest pieces look misshapen. The shadows now cover the whole ring. A piece squeezed thinner than its gap can no longer turn inside out.

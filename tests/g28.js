@@ -31,7 +31,7 @@ E(prev, 12, 40, "Transport", "Taxi", { maybeDup: "e4" });              // possib
   T = await start({ seed, users: { "tom@x.com": "secret12" }, context: { viewport: { width: 360, height: 800 } } }); p = T.p;
   await T.login("tom@x.com", "#home"); await p.waitForTimeout(1500); s = await shape();
   const tag = await p.evaluate(() => { const l = document.querySelector("#dock .dk-tab.on .lbl"), r = l.getBoundingClientRect(), cs = getComputedStyle(l); return { pos: cs.position, vis: cs.opacity, left: Math.round(r.left), above: r.bottom <= document.querySelector("#dock .dk-isl").getBoundingClientRect().top + 2 }; });
-  T.check(s.mode === "tag" && s.tab === 38 && tag.pos === "absolute" && tag.vis === "1" && tag.left >= 0 && tag.above, "360px phone: the tab stays small and its name floats above as a tag", [s, tag]);
+  T.check(s.mode === "tag" && s.tab >= 38 && tag.pos === "absolute" && tag.vis === "1" && tag.left >= 0 && tag.above, "360px phone: the tabs share the island and the name floats above as a tag", [s, tag]);
   await T.end();
   T = await start({ seed, users: { "tom@x.com": "secret12" }, context: { viewport: { width: 390, height: 844 } } }); p = T.p;
   await p.addInitScript(() => { try { localStorage.setItem("pl-motion", JSON.stringify({ preset: "lively", tabs: 6, dock: ["home", "entries", "bills"], buzz: true })); } catch {} });
