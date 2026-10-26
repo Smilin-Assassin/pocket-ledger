@@ -611,55 +611,51 @@ body.readonly .hero-acts [data-go-add], body.readonly .hero-acts [data-scan] { d
 
 /* ===================== motion: the dock, the liquid highlight, Quick add ===================== */
 /* everything here moves with transform/opacity only, so it stays on the GPU at any refresh rate */
-:root { --dk-bar: var(--surface); --dk-soft: color-mix(in srgb, var(--accent) 17%, var(--surface)); --dk-glass: color-mix(in srgb, var(--surface) 76%, transparent); --dk-shadow: color-mix(in srgb, var(--ink) 20%, transparent); }
-:root[data-theme="dark"] { --dk-bar: color-mix(in srgb, var(--surface) 40%, #000); }
+:root { --dk-edge: #E8D9CA; --dk-chip: #2B1B3D; --dk-chip-ink: #FFFFFF; --dk-tag: #2B1B3D; --dk-tag-ink: #FFFFFF; --dk-ros1: #FF7A45; --dk-ros1-ink: #2B1B3D; --dk-ros-edge: rgba(122, 40, 10, .45); --dk-bar: var(--surface); --dk-soft: color-mix(in srgb, var(--accent) 17%, var(--surface)); --dk-glass: color-mix(in srgb, var(--surface) 76%, transparent); --dk-shadow: color-mix(in srgb, var(--ink) 20%, transparent); }
+:root[data-theme="dark"] { --dk-bar: color-mix(in srgb, var(--surface) 40%, #000); --dk-edge: #0A0A0B; --dk-chip: #E8894D; --dk-chip-ink: #17171A; --dk-tag: #F2F2F4; --dk-tag-ink: #121214; --dk-ros1: #C2652B; --dk-ros1-ink: #FFFFFF; --dk-ros-edge: rgba(0, 0, 0, .55); }
 html { -webkit-tap-highlight-color: transparent; }
 .dk-wrap, .dk-sat, .qa-wrap { display: none; }
 @media (max-width: 899.98px) {
   .nav { display: none; }
   .main { padding-bottom: calc(118px + env(safe-area-inset-bottom, 0px)); overflow-x: clip; }
-  /* v37 bar: a floating bar with a curved dip; the current tab rides in a bubble above the dip (js/dock.js) */
-  .dk-wrap { display: flex; align-items: flex-end; gap: 10px; position: fixed; z-index: 15; left: 0; right: 0; bottom: 0;
+  /* v64 dock: two pill islands with the plain coral disc + between them (js/dock.js). The tab you're on is a chip: with
+     room it stretches to show its name (data-mode="stretch"), otherwise the name floats above it as a tag (data-mode="tag") */
+  .dk-wrap { display: flex; align-items: flex-end; position: fixed; z-index: 15; left: 0; right: 0; bottom: 0;
     padding: 0 max(12px, calc((100% - 560px) / 2)) calc(12px + env(safe-area-inset-bottom, 0px)); pointer-events: none; }
-  .dk { pointer-events: auto; position: relative; flex: 1 1 auto; min-width: 0; height: 64px; touch-action: none; user-select: none; -webkit-user-select: none;
-    filter: drop-shadow(0 8px 18px var(--dk-shadow)) drop-shadow(0 1px 2px color-mix(in srgb, var(--ink) 10%, transparent)); }
-  .dk-bar { position: absolute; inset: 0; border-radius: 24px; background: var(--dk-bar); will-change: clip-path; }
-  .dk-line { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 0; display: none; }
-  .dk-line path { fill: none; stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
-  .dk-bubble { position: absolute; left: 0; top: -25px; width: 50px; height: 50px; border-radius: 50%; background: var(--dk-bar); color: var(--accent);
-    display: grid; place-items: center; z-index: 2; pointer-events: none; will-change: transform; transform-origin: 50% 100%;
-    box-shadow: 0 6px 16px color-mix(in srgb, var(--ink) 14%, transparent); }
-  .dk-bub-ic { display: grid; place-items: center; }
-  .dk-bub-ic svg { width: 24px; height: 24px; stroke-width: 2.1; }
-  .dk-bub-ic .fill { display: none; }
-  .dk-tabs { position: absolute; inset: 0; display: flex; z-index: 3; }
-  .dk-tab { position: relative; flex: 1 1 0; min-width: 0; border: 0; background: none; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-    gap: 3px; padding-top: 12px; color: var(--ink-3); font: inherit; font-size: 11px; font-weight: 500; letter-spacing: .01em; cursor: pointer; transition: color .25s; }
-  .dk-tab svg { flex: none; transition: transform .4s var(--spring-ease, ease), opacity .2s; }
+  .dk { position: relative; flex: 1 1 auto; min-width: 0; display: flex; justify-content: space-between; gap: 80px; touch-action: none; user-select: none; -webkit-user-select: none; pointer-events: none; }
+  .dk-isl { pointer-events: auto; position: relative; flex: 1 1 0; min-width: 0; height: 58px; box-sizing: border-box; padding: 0 2px; border-radius: 29px; background: var(--dk-bar);
+    box-shadow: 0 3px 0 var(--dk-edge), 0 12px 20px var(--dk-shadow); display: flex; align-items: center; justify-content: center; gap: 4px; }
+  .dk-tab { position: relative; flex: none; width: 38px; height: 46px; border: 0; border-radius: 23px; background: none; padding: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--ink-3); font: inherit; font-size: 11.5px; font-weight: 800; letter-spacing: 0; cursor: pointer; transition: width .5s var(--spring-ease, ease), background .3s, color .25s; }
+  .dk-tab svg { flex: none; }
   .dk-tab .fill { display: none; }
-  .dk-tab .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; line-height: 14px; transition: transform .4s var(--spring-ease, ease), font-weight .2s; }
-  /* the current tab: its icon goes up into the bubble, its name drops below the dip in bold */
-  .dk-tab.on { color: var(--ink); }
-  .dk-tab.on svg { opacity: 0; transform: translateY(-14px) scale(.6); }
-  .dk-tab.on .lbl { font-weight: 800; transform: translateY(8px); }
+  .dk-tab .lbl { display: block; flex: none; width: 0; opacity: 0; overflow: hidden; white-space: nowrap; line-height: 16px; transition: width .5s var(--spring-ease, ease), opacity .25s .08s, margin .5s var(--spring-ease, ease); }
   .dk-tab.hover { color: var(--ink); }
-  .dk-tab .badge { top: 6px; left: calc(50% + 6px); }
-  .dk-tab .badge.dot { top: 9px; left: calc(50% + 9px); }
-  .dk-tab.on .badge { top: -24px; left: calc(50% + 12px); }
-  /* the +: its own circle beside the bar */
-  .dk-plus { pointer-events: auto; position: relative; flex: none; width: 62px; height: 62px; margin: 0; border: 0; border-radius: 50%;
-    background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; z-index: 2; touch-action: none; cursor: pointer; will-change: transform;
-    box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 45%, transparent); transition: scale .4s var(--spring-ease, ease); }
-  .dk-plus.down { scale: .9; transition-duration: .12s; }
-  .dk-plus svg { transition: transform .45s var(--spring-ease, ease); }
-  .dk-plus.open svg { transform: rotate(45deg); }
+  .dk-tab.on { background: var(--dk-chip); color: var(--dk-chip-ink); }
+  .dk[data-mode="stretch"] .dk-tab.on { width: calc(var(--lw, 0px) + 34px); }
+  .dk[data-mode="stretch"] .dk-tab.on .lbl { width: var(--lw, 0px); opacity: 1; margin-left: 4px; }
+  /* tag: the name floats above the chip */
+  .dk:not([data-mode="stretch"]) .dk-tab .lbl { position: absolute; left: 50%; top: -34px; transform: translateX(-50%); width: auto; padding: 4px 10px; border-radius: 999px; background: var(--dk-tag); color: var(--dk-tag-ink); font-size: 11px; pointer-events: none; transition: opacity .25s; }
+  .dk:not([data-mode="stretch"]) .dk-tab.on .lbl { opacity: 1; }
+  .dk:not([data-mode="stretch"]) .dk-isl:first-child .dk-tab:first-child .lbl { left: 0; transform: none; }
+  .dk:not([data-mode="stretch"]) .dk-isl:last-child .dk-tab:last-child .lbl { left: auto; right: 0; transform: none; }
+  .dk-tab .badge { top: -3px; left: auto; right: -1px; box-shadow: 0 0 0 2px var(--dk-bar); }
+  .dk-tab .badge.dot { top: 4px; right: 4px; }
+  /* the +: a plain coral disc in the middle; its + turns into a x when it opens */
+  .dk-plus { pointer-events: auto; position: absolute; left: 50%; bottom: calc(15px + env(safe-area-inset-bottom, 0px)); width: 72px; height: 72px; margin-left: -36px; padding: 0; border: 0; background: none; color: var(--dk-ros1-ink);
+    display: grid; place-items: center; z-index: 2; touch-action: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .dk-ros { position: absolute; inset: 0; width: 72px; height: 72px; overflow: visible; filter: drop-shadow(0 3px 0 var(--dk-ros-edge)) drop-shadow(0 10px 10px var(--dk-shadow)); transition: transform .6s var(--spring-ease, ease), scale .4s var(--spring-ease, ease); }
+  .dk-ros .p1 { fill: var(--dk-ros1); }
+  .dk-pi { position: relative; width: 26px; height: 26px; transition: transform .5s var(--spring-ease, ease); }
+  .dk-plus.down .dk-ros { scale: .92; transition-duration: .12s; }
+  .dk-plus.open .dk-pi { transform: rotate(135deg); }
   body.readonly .dk-plus { display: none; }
   .main, .fab { transition: opacity .25s; }
   body.sat-open .main, body.sat-open .fab { opacity: .22; }
   body.chat-open .dk-wrap, body.sheet-open .dk-wrap { display: none; }
 
   /* hold the + : three shortcuts fan out */
-  .dk-sat { display: block; position: fixed; left: auto; right: calc(max(12px, (100% - 560px) / 2) + 31px); bottom: calc(12px + env(safe-area-inset-bottom, 0px) + 31px); width: 0; height: 0; z-index: 16; pointer-events: none; }
+  .dk-sat { display: block; position: fixed; left: 50%; bottom: calc(15px + env(safe-area-inset-bottom, 0px) + 36px); width: 0; height: 0; z-index: 16; pointer-events: none; }
   .dk-sat button { position: absolute; left: -27px; top: -27px; width: 54px; height: 54px; border: 0; border-radius: 18px; background: var(--surface); color: var(--accent); display: grid; place-items: center;
     box-shadow: 0 8px 22px var(--dk-shadow); transform: scale(.2); opacity: 0; pointer-events: none; will-change: transform, opacity; }
   .dk-sat.open button { pointer-events: auto; }
@@ -973,8 +969,6 @@ circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest
 :root[data-preset="coral"] .nav-blob { background: var(--hl); border-radius: 999px; }
 :root[data-preset="coral"] .nav a { border-radius: 999px; }
 :root[data-preset="coral"] .nav a[aria-current="page"] { color: var(--hl-ink); }
-:root[data-preset="coral"] .dk-bubble { background: var(--hl); color: var(--hl-ink); }
-:root[data-preset="coral"] .dk-plus { background: var(--coral); color: var(--coral-ink); }
 :root[data-preset="coral"] .fab { border-radius: 999px; }
 /* laptop: Home as a grid of cards */
 @media (min-width: 900px) {

@@ -20,7 +20,7 @@ Short version: `ARCHITECTURE-ESSENTIALS.md`. What the app is for and the product
 | `js/actions.js` | Shared actions used by forms, scanning and chat: loans and repayments, bills (create/pay/skip), settle up, budgets and budget alerts, `addEntries`, `removeWithUndo`. |
 | `js/shell.js` | Hash router (`#page/anchor`), page title, month switcher, space chips, "whose money" switch, banners, `onRoute` hooks. |
 | `js/pages/*.js` | One page each. `entries` has the form, the list with category picker and total line, CSV export; `home` the dashboard and category bars (tap → entries for that category); `settings` holds every section including Appearance. |
-| `js/dock.js` | Phone bar (v37): 4 or 6 tabs (+ More), the dip drawn as a `clip-path` path that follows a spring, the bubble with the current icon, scrub, badges, More page; side-menu highlight on wide screens; page slide-in. |
+| `js/dock.js` | Phone bar (v65): two pill islands with a coral disc + between them, 4 or 6 tabs (+ More), the current tab as a chip that stretches (or shows a name tag), scrub, badges, More page; side-menu highlight on wide screens; page slide-in. |
 | `js/quick.js` | Quick add sheet that grows out of the +; number pad, most-used categories, date, note; hold the + for Scan / Type it / Voice. |
 | `js/motion.js` | Spring physics on real time, presets (Calm/Lively/Jelly), CSS `linear()` easing from the spring, vibrations, refresh-rate measurement. Settings in localStorage `pl-motion`. |
 | `js/scan.js` | Receipt and screenshot scanning (Gemini prompt + check-before-adding sheet) and bank statement import: BML CSV and MIB CSV parsed exactly, other CSVs and PDFs via Gemini; own-account detection, cross-checked duplicates, categorising, Undo. |
@@ -43,7 +43,7 @@ Short version: `ARCHITECTURE-ESSENTIALS.md`. What the app is for and the product
 
 ## Navigation, motion and layout
 
-- **Phones (under 900px): a floating bar with a dip** (`js/dock.js`, v37). The current tab's icon sits in a bubble above a curved dip in the bar and both spring to whichever tab you tap or slide to; the + is its own circle beside the bar. Tabs are **always 4 or 6, never 5** (owner's rule, for symmetry). 4 = three chosen pages + More (default Home, Entries | Bills, More); 6 = every page, no More. 6 is only offered when each tab still gets 48px next to the +. Rounded corners only (squircle was tried and dropped).
+- **Phones (under 900px): two pill islands with a + disc between them** (`js/dock.js`, v65). The current tab is a chip showing its name (stretch) or with a tag above it on narrow phones. Tabs are **always 4 or 6, never 5** (owner's rule, for symmetry). 4 = three chosen pages + More (default Home, Entries | Bills, More); 6 = every page, no More, offered only when each island fits 3 tabs.
 - The dock's highlight is a liquid spring: tap, or hold and slide across to scrub. It stays put while scrolling (the tuck-away was removed at the owner's request). Bills count / Settings dot show on the dock, or on More when that page is hidden there. More (`#more`) lists the pages not in the dock, plus Admin for admins.
 - **The +:** tap = Quick add (`js/quick.js`): number pad, Spent/Income, most-used categories first, Today (tap to change the date), optional note, "More options" opens the full Entries form filled in. Adds as you, with Undo. Hold the + = Scan / Type it / Voice.
 - **Wide screens (900px+):** side menu, with the same liquid highlight moving vertically. No dock.

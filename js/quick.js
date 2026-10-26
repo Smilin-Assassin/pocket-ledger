@@ -112,8 +112,7 @@ function save() {
 
 // ---------- hold the + : Scan / Type it / Voice ----------
 const SAT_FAN = [[-86, -40], [0, -94], [86, -40]];
-// the + sits at the right edge beside the bar, so the shortcuts fan up and to the left
-const SAT_CORNER = [[-104, -2], [-78, -78], [0, -104]];
+// the + sits in the middle of the dock (v64), so the shortcuts fan up and to both sides
 let SAT_POS = SAT_FAN;
 const satS = [0, 1, 2].map(() => new Spring(0));
 let satOpen = false, hold = null;
@@ -128,7 +127,6 @@ const satClock = clock(dt => {
 function setSat(on) {
   if (on === satOpen) return; satOpen = on;
   const sat = $("dkSat"); if (!sat) return;
-  if (on) SAT_POS = SAT_CORNER; // the + sits in the corner beside the bar for every theme (v37)
   sat.classList.toggle("open", on); sat.setAttribute("aria-hidden", String(!on));
   document.body.classList.toggle("sat-open", on);
   satS.forEach((s, i) => setTimeout(() => { s.t = on ? 1 : 0; if (reduced()) s.snap(); satClock.kick(); }, on ? i * 45 : (2 - i) * 25));

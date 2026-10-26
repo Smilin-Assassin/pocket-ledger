@@ -19,11 +19,10 @@ const { start, loadState } = require("./lib");
   for (let i = 1; i <= 8; i++) { await p.mouse.move(b1[0] + (b2[0] - b1[0]) * i / 8, b1[1]); await p.waitForTimeout(16); }
   await p.mouse.up(); await p.waitForTimeout(600);
   check(/#bills/.test(p.url()), "sliding across the dock lands on Bills", p.url());
-  // the bubble (and the dip under it) settle centred on the tab, showing its icon
-  const bub = await p.$eval("#dkBubble", e => { const r = e.getBoundingClientRect(); return r.x + r.width / 2; });
-  const tabC = await p.$eval("#dock [data-p=bills]", e => { const r = e.getBoundingClientRect(); return r.x + r.width / 2; });
-  check(Math.abs(bub - tabC) < 3, "bubble settled on the tab", [bub, tabC]);
-  check(/path\(/.test(await p.$eval("#dkBar", e => e.style.clipPath)) && (await p.$$eval("#dkBubble svg", s => s.length)) === 1, "the bar has its dip and the bubble shows the icon");
+  // v64: two islands with the + between them; the tab you're on is a chip, and its name shows (stretched or as a tag)
+  const shape = await p.evaluate(() => { const isl = [...document.querySelectorAll("#dock .dk-isl")].map(e => e.getBoundingClientRect()), pl = document.getElementById("dkPlus").getBoundingClientRect(), on = document.querySelectorAll("#dock .dk-tab.on"), lb = document.querySelector("#dock .dk-tab.on .lbl");
+    return { islands: isl.length, between: isl.length === 2 && isl[0].right <= pl.left + 2 && pl.right <= isl[1].left + 2, one: on.length, name: lb && getComputedStyle(lb).opacity, mode: document.getElementById("dock").dataset.mode }; });
+  check(shape.islands === 2 && shape.between && shape.one === 1 && shape.name === "1" && /stretch|tag/.test(shape.mode), "two islands, the + between them, the current tab is a chip showing its name", shape);
   // More lists the other pages
   await p.click("#dock [data-p=more]"); await p.waitForTimeout(500);
   const more = await p.$$eval("#moreList [data-more]", b => b.map(x => x.dataset.more));
@@ -115,8 +114,8 @@ const { start, loadState } = require("./lib");
   // highlight lines up with every tab at every text size (Small/Large zoom the page), dock and side menu
   const off = async () => p.evaluate(() => {
     const vis = e => e && e.offsetParent !== null;
-    if (vis(document.getElementById("dock"))) { const b = document.getElementById("dkBubble").getBoundingClientRect(), t = document.querySelector("#dock .dk-tab.on").getBoundingClientRect();
-      return Math.abs((b.left + b.right) / 2 - (t.left + t.right) / 2); }
+    if (vis(document.getElementById("dock"))) { const t = document.querySelector("#dock .dk-tab.on").getBoundingClientRect(), i = document.querySelector("#dock .dk-tab.on").closest(".dk-isl").getBoundingClientRect();
+      return Math.max(0, i.left - t.left, t.right - i.right, i.top - t.top, t.bottom - i.bottom); }
     const b = document.querySelector(".nav-blob").getBoundingClientRect(), a = document.querySelector('#nav a[aria-current="page"]').getBoundingClientRect();
     return Math.max(Math.abs(b.top - a.top), Math.abs(b.bottom - a.bottom), Math.abs((b.left + b.right) / 2 - (a.left + a.right) / 2)); });
   const bad = [];

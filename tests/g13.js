@@ -30,13 +30,13 @@ const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebK
   // the calm card and the coral + (after the opening and the rolling number have finished)
   await p.waitForFunction(() => !document.querySelector(".odo, #splash"), null, { timeout: 5000 });
   const look = await p.evaluate(() => { const cs = s => getComputedStyle(document.querySelector(s));
-    return { heroTone: getComputedStyle(document.documentElement).getPropertyValue("--hero").trim().toLowerCase(), big: cs("#leftBig").color, add: cs('.hero-panel [data-go-add]').backgroundColor, plus: cs("#dkPlus").backgroundColor, bubble: cs(".dk-bubble").backgroundColor }; });
+    return { heroTone: getComputedStyle(document.documentElement).getPropertyValue("--hero").trim().toLowerCase(), big: cs("#leftBig").color, add: cs('.hero-panel [data-go-add]').backgroundColor, plus: cs("#dkPlus .p1").fill, bubble: cs("#dock .dk-tab.on").backgroundColor }; });
   check(look.heroTone === "#f6e9de", "the top of the Dashboard is on warm cream", look.heroTone);
   check(look.big === "rgb(43, 27, 61)", "the amount is dark plum ink on the cream", look.big);
-  check(look.add === "rgb(201, 70, 28)" && look.plus === "rgb(201, 70, 28)", "Add and the + are coral", look);
-  check(look.bubble === "rgb(255, 224, 207)", "the tab bubble is peach", look.bubble);
-  const geo = await p.evaluate(() => { const d = document.getElementById("dock").getBoundingClientRect(), b = document.getElementById("dkPlus").getBoundingClientRect(); return { dR: d.right, bL: b.left, w: innerWidth, bR: b.right }; });
-  check(geo.bL > geo.dR && geo.bR <= geo.w, "the + sits in its own circle beside the bar", geo);
+  check(look.add === "rgb(201, 70, 28)" && look.plus === "rgb(255, 122, 69)", "Add is coral and the + disc is bright coral", look);
+  check(look.bubble === "rgb(43, 27, 61)", "the current tab is a plum chip", look.bubble);
+  const geo = await p.evaluate(() => { const i = [...document.querySelectorAll("#dock .dk-isl")].map(e => e.getBoundingClientRect()), b = document.getElementById("dkPlus").getBoundingClientRect(); return { iR: i[0].right, jL: i[1].left, bL: b.left, bR: b.right, mid: Math.abs((b.left + b.right) / 2 - innerWidth / 2) }; });
+  check(geo.bL >= geo.iR - 2 && geo.bR <= geo.jL + 2 && geo.mid < 2, "the + sits in the middle, between the two islands", geo);
   // the spending ring shows on phones too, in the icon's colours
   const ring = await p.evaluate(() => { const r = document.getElementById("catRing"); return { shown: !!r.querySelector("svg") && getComputedStyle(r).display !== "none", strokes: [...r.querySelectorAll("path.seg")].slice(0, 2).map(c => getComputedStyle(c).fill) }; });
   check(ring.shown, "the spending ring shows on the phone Dashboard", ring);
@@ -56,7 +56,7 @@ const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebK
   check(await attr("data-theme") === "dark", "the phone's own setting doesn't change it");
   await reopen();
   check(await attr("data-theme") === "dark", "Dark stays after reopening");
-  const dark = await p.evaluate(() => { const cs = s => getComputedStyle(document.querySelector(s)); return { card: cs("#pg-home .panel").backgroundColor, plus: cs("#dkPlus").backgroundColor }; });
+  const dark = await p.evaluate(() => { const cs = s => getComputedStyle(document.querySelector(s)); return { card: cs("#pg-home .panel").backgroundColor, plus: cs("#dkPlus .p1").fill }; });
   check(dark.card === "rgb(28, 28, 32)" && dark.plus === "rgb(194, 101, 43)", "dark cards in graphite, the + in copper", dark);
   await T.nav("settings/look"); await p.click('#modeSeg [data-mode="light"]'); await p.waitForTimeout(800);
   check(await attr("data-theme") === "light" && !(await p.evaluate(() => localStorage.getItem("pl-mode"))), "back to Light");

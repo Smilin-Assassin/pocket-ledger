@@ -93,9 +93,9 @@ function syncAppearance() {
   document.querySelectorAll("#dockSizeSeg button").forEach(b => { b.setAttribute("aria-pressed", String(+b.dataset.tabs === tabs)); b.disabled = b.dataset.tabs === "6" && !six; });
   const picks = $("dockPicks"); picks.hidden = tabs === 6;
   picks.innerHTML = PAGES.map(p => `<label class="dp"><input type="checkbox" data-dpick="${p}" ${dockDraft.includes(p) ? "checked" : ""} ${!dockDraft.includes(p) && dockDraft.length >= 3 ? "disabled" : ""}><span>${NAMES[p]}</span></label>`).join("");
-  $("dockFit").textContent = tabs === 6 ? "All six pages are in your dock. The + sits in its own circle beside it."
+  $("dockFit").textContent = tabs === 6 ? "All six pages are in your dock, three on each side of the +."
     : dockDraft.length < 3 ? "Pick " + (3 - dockDraft.length) + " more. The 4th tab is More, which holds the rest."
-    : "Three pages plus More. The + sits in its own circle beside the dock." + (six ? "" : " Your screen is too narrow for 6 tabs, so it stays at 4. The dock only uses 4 or 6 so it stays balanced.");
+    : "Three pages plus More, with the + in the middle." + (six ? "" : " Your screen is too narrow for 6 tabs, so it stays at 4. The dock only uses 4 or 6 so it stays balanced.");
   const hz = refreshHz(), hzText = n => "Your screen runs at up to " + n + " Hz while things move. Animations follow it automatically.";
   $("hzNote").textContent = hz ? hzText(hz) : "Animations follow your screen's refresh rate automatically (60, 90, 120 Hz or more).";
   if (!hz) measureHz(() => { const n = $("hzNote"); if (n) n.textContent = hzText(refreshHz()); });

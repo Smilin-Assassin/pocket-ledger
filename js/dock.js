@@ -1,13 +1,13 @@
 // Navigation that feels alive.
-// Phones (v37): a floating bar with a curved dip; the current tab's icon rides in a round bubble that
-// sits in the dip, its name in bold underneath. Tap a tab (or hold and slide across the bar) and the
-// dip flows along the bar while the bubble springs over. The + sits in its own circle beside the bar.
-// Always 4 or 6 tabs; pages that don't fit live under More.
+// Phones (v64): two pill islands with the plain coral disc + between them. The tab you're on stretches to show
+// its name (or, with 6 tabs or on a narrow screen, gets a name tag above it). Tap a tab, or hold and slide across
+// the dock and let go. Always 4 or 6 tabs (half on each side of the +); pages that don't fit live under More.
 // Wide screens: the side menu, with a liquid highlight moving up and down.
 import { $, esc } from "./util.js";
 import { ctx, state, ui, openBills } from "./store.js";
 import { go, currentPage, onRoute } from "./shell.js";
 import { M, PAGES, Spring, clock, params, reduced, buzz, ease, applyEase, measureHz } from "./motion.js";
+
 
 export const NAMES = { home: "Dashboard", entries: "Entries", loans: "Loans", bills: "Bills", goals: "Goals", settings: "Settings", more: "More", admin: "Admin" };
 const ABOUT = { home: "This month at a glance", entries: "Everything you've added", loans: "Money lent and borrowed", bills: "Bills and reminders", goals: "Savings goals", settings: "Your details, groups, appearance", admin: "People and spaces" };
@@ -28,23 +28,40 @@ export const isPhone = () => phoneMQ.matches;
 // Settings › Text size zooms the page; screen measurements must be divided by it
 export const zoom = () => { const z = parseFloat(getComputedStyle(document.body).zoom); return z > 0 ? z : 1; };
 const layoutWidth = () => Math.min(window.innerWidth / zoom(), 560);
-// 6 tabs only when each still gets a comfortable thumb-sized target (the + takes 62px plus a 10px gap)
-export function fitsSix() { const w = layoutWidth() - 24 - 72 - 12; return Math.floor(w / 48) >= 6; }
+// the dock: two islands either side of the + (PLUS_GAP between them), tabs TAB wide with TGAP between them
+const TAB = 38, TGAP = 4, ISL_PAD = 2, PLUS_GAP = 80;
+// 6 tabs only when 3 of them still fit comfortably in each island
+export function fitsSix() { return (layoutWidth() - 24 - PLUS_GAP) / 2 >= 3 * TAB + 2 * TGAP + ISL_PAD * 2 + 6; }
 export const dockPages = () => (M.tabs === 6 && fitsSix()) ? PAGES.slice() : M.dock.concat("more");
 const tabFor = p => { const l = dockPages(); return l.includes(p) ? p : "more"; };
 
-let dock, bar, line, bubble, bubIc, tabs = [], shown = "";
+let dock, tabs = [];
 
-// ---------- building the bar ----------
+// ---------- building the dock ----------
+// Two pill islands with the + disc between them (v64). With room, the tab you're on stretches to show its name
+// (data-mode="stretch"); with less room, or with 6 tabs, it shows a name tag above it (data-mode="tag").
 export function buildDock() {
   dock = $("dock"); if (!dock) return;
-  const list = dockPages(), cur = tabFor(currentPage());
-  const btn = p => `<button class="dk-tab${cur === p ? " on" : ""}" type="button" data-p="${p}" aria-label="${NAMES[p]}"${cur === p ? ' aria-current="page"' : ""}>${icon(p)}<span class="lbl">${NAMES[p]}</span><i class="badge" data-badge="${p}" hidden></i></button>`;
-  dock.innerHTML = `<div class="dk-bar" id="dkBar"></div><svg class="dk-line" aria-hidden="true"><path/></svg><span class="dk-bubble" id="dkBubble" aria-hidden="true"><span class="dk-bub-ic"></span></span><div class="dk-tabs">${list.map(btn).join("")}</div>`;
+  const list = dockPages(), cur = tabFor(currentPage()), half = list.length / 2;
+  const btn = p => `<button class="dk-tab${cur === p ? " on" : ""}" type="button" data-p="${p}" aria-label="${NAMES[p]}"${cur === p ? ' aria-current="page"' : ""}>${icon(p, 20)}<span class="lbl">${NAMES[p]}</span><i class="badge" data-badge="${p}" hidden></i></button>`;
+  dock.innerHTML = `<div class="dk-isl">${list.slice(0, half).map(btn).join("")}</div><div class="dk-isl">${list.slice(half).map(btn).join("")}</div>`;
   dock.dataset.n = list.length;
-  bar = $("dkBar"); line = dock.querySelector(".dk-line path"); bubble = $("dkBubble"); bubIc = bubble.firstChild; tabs = [...dock.querySelectorAll(".dk-tab")]; shown = "";
-  renderMore(); dockBadges();
-  requestAnimationFrame(() => { aim(); X.snap(); V.snap(); swapIcon(true); paint(); });
+  tabs = [...dock.querySelectorAll(".dk-tab")];
+  renderMore(); dockBadges(); measure(); requestAnimationFrame(measure);
+}
+// how wide each name is, and whether the stretched tab fits inside its island
+function measure() {
+  if (!dock) return;
+  const isl = dock.querySelector(".dk-isl"); if (!isl || !isl.clientWidth) return;
+  let widest = 0;
+  tabs.forEach(t => {
+    const l = t.querySelector(".lbl"), keep = l.style.cssText;
+    l.style.cssText = "position:static;flex:none;width:auto;max-width:none;opacity:0;margin:0;padding:0;transition:none";
+    const w = Math.ceil(l.getBoundingClientRect().width / zoom()); l.style.cssText = keep;
+    t.style.setProperty("--lw", w + "px"); widest = Math.max(widest, w);
+  });
+  const n = isl.children.length, inner = isl.clientWidth - ISL_PAD * 2;
+  dock.dataset.mode = inner >= (n - 1) * (TAB + TGAP) + widest + 34 ? "stretch" : "tag";
 }
 export function dockBadges() {
   if (!dock) return;
@@ -65,63 +82,11 @@ function renderMore() {
     || `<p class="hint">Every page is in your bar.</p>`;
 }
 
-// ---------- the dip and the bubble ----------
-// X: where the dip and bubble are (layout px across the bar, so text-size zoom doesn't matter).
-// V: a lagging copy of X; the gap between them stretches the bubble sideways and lowers it a touch.
-const X = new Spring(0), V = new Spring(0);
-let scrub = false, keepUntil = 0;
-const BUB = 50, GAP = 6, DIP_W = BUB / 2 + GAP, DIP_D = BUB / 2 + GAP, RR = 24;   // bubble size, gap around it, dip (a half circle), bar corner radius
-function aim() {
-  if (scrub || !dock) return;
-  const el = tabs.find(t => t.dataset.p === tabFor(currentPage())); if (!el) return;
-  X.t = el.offsetLeft + el.offsetWidth / 2;
-}
-function tune() { const { k, zeta, trail } = params(); X.k = k; X.z = zeta; V.k = k * trail * trail * .8; V.z = Math.min(1.1, zeta + .15); V.t = X.x; }
-// the bar's outline: a rounded bar whose top edge dips smoothly around x = cx
-// the dip is a half circle centred on the bar's top edge, a little wider than the bubble
-const dipAt = (x, cx) => { const dx = Math.abs(x - cx); return dx >= DIP_W ? 0 : Math.sqrt(DIP_W * DIP_W - dx * dx); };
-function outline(w, h, cx) {
-  const top = x => {
-    let y = dipAt(x, cx);
-    if (x < RR) y = Math.max(y, RR - Math.sqrt(Math.max(0, RR * RR - (RR - x) * (RR - x))));
-    if (x > w - RR) y = Math.max(y, RR - Math.sqrt(Math.max(0, RR * RR - (x - (w - RR)) * (x - (w - RR)))));
-    return y;
-  };
-  const pts = [], add = x => pts.push(x.toFixed(1) + "," + top(x).toFixed(1));
-  // fine steps in the corners and the dip, nothing in between (straight)
-  for (let x = 0; x <= RR; x += 2) add(x);
-  const a = Math.max(RR, cx - DIP_W), b = Math.min(w - RR, cx + DIP_W);
-  // always end exactly on the dip's edges: stopping a step short left the rest of the bar slanting up to the corner
-  if (a < b) { for (let x = a; x < b; x += 2) add(x); add(b); }
-  for (let x = w - RR; x <= w; x += 2) add(x);
-  add(w);
-  return `M${pts.join(" L")} L${w},${h - RR} A${RR},${RR} 0 0 1 ${w - RR},${h} L${RR},${h} A${RR},${RR} 0 0 1 0,${h - RR} Z`;
-}
-let lastW = 0;
-function paint() {
-  if (!bar || !dock) return;
-  const w = dock.offsetWidth, h = dock.offsetHeight; if (!w) return;
-  lastW = w;
-  const cx = Math.max(BUB / 2 + 2, Math.min(w - BUB / 2 - 2, X.x));
-  // the bar is cut to this shape; the same shape is drawn as a thin rim so the dip shows on pale glass too
-  const d = outline(w, h, cx); bar.style.clipPath = `path('${d}')`; if (line) line.setAttribute("d", d);
-  const lag = X.x - V.x, st = Math.min(.22, Math.abs(lag) / 260);
-  bubble.style.transform = `translate3d(${(cx - BUB / 2).toFixed(2)}px,${(st * 18).toFixed(2)}px,0) scale(${(1 + st).toFixed(4)},${(1 - st * .7).toFixed(4)})`;
-}
-// the bubble shows the current tab's icon; when it changes it pops in
-function swapIcon(now) {
-  const p = tabFor(currentPage()); if (!bubIc || p === shown) return;
-  shown = p; bubIc.innerHTML = icon(p, 24);
-  if (!now && !reduced() && bubIc.animate) bubIc.animate([{ transform: "scale(.4) rotate(-20deg)", opacity: 0 }, { transform: "scale(1.12)", opacity: 1, offset: .6 }, { transform: "none", opacity: 1 }], { duration: 380, easing: "cubic-bezier(.3,1.4,.5,1)" });
-}
-const dockClock = clock((dt, now) => {
-  if (!dock || !isPhone()) return false;
-  aim(); tune(); X.run(dt); V.run(dt); paint();
-  return !(X.idle() && V.idle() && !scrub && now > keepUntil);
-});
-function kick() {
-  if (reduced()) { aim(); X.snap(); V.snap(); paint(); return; }
-  dockClock.kick();
+
+// ---------- the current tab ----------
+function paintTabs() {
+  const cur = tabFor(currentPage());
+  tabs.forEach(t => { const on = t.dataset.p === cur; t.classList.toggle("on", on); if (on) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
 }
 
 // ---------- side menu (wide screens): the same liquid, vertical ----------
@@ -163,9 +128,7 @@ function onPage(id, first) {
   }
   prevPage = id;
   if (dock) {
-    const cur = tabFor(id);
-    tabs.forEach(t => { const on = t.dataset.p === cur; t.classList.toggle("on", on); if (on) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
-    swapIcon(false); keepUntil = performance.now() + 1100; kick();
+    paintTabs();
   }
   kickNav(!first);
 }
@@ -175,27 +138,23 @@ let press = null;
 function wireDock() {
   dock.addEventListener("pointerdown", e => {
     if (e.button > 0) return;
-    press = { x: e.clientX, id: e.pointerId, moved: false, over: tabs.findIndex(t => t.dataset.p === tabFor(currentPage())) };
+    press = { x: e.clientX, id: e.pointerId, moved: false, over: -1 };
     try { dock.setPointerCapture(e.pointerId); } catch {}
   });
   dock.addEventListener("pointermove", e => {
     if (!press || e.pointerId !== press.id) return;
     if (!press.moved && Math.abs(e.clientX - press.x) < 8) return;
-    press.moved = true; scrub = true;
-    const d = dock.getBoundingClientRect(), x = (e.clientX - d.left) / zoom();
-    X.t = Math.max(0, Math.min(dock.offsetWidth, x));
-    let over = press.over, best = 1e9;
-    tabs.forEach((t, i) => { const dist = Math.abs(t.offsetLeft + t.offsetWidth / 2 - x); if (dist < best) { best = dist; over = i; } });
+    press.moved = true;
+    let over = -1, best = 1e9;
+    tabs.forEach((t, i) => { const r = t.getBoundingClientRect(), dist = Math.abs(r.left + r.width / 2 - e.clientX); if (dist < best) { best = dist; over = i; } });
     if (over !== press.over) { tabs.forEach((t, i) => t.classList.toggle("hover", i === over)); press.over = over; buzz(5); }
-    kick();
   }, { passive: true });
   const release = e => {
     if (!press || e.pointerId !== press.id) return;
-    const p = press; press = null; scrub = false;
+    const p = press; press = null;
     tabs.forEach(t => t.classList.remove("hover"));
     const i = p.moved ? p.over : tabs.findIndex(t => { const r = t.getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top - 30 && e.clientY <= r.bottom + 12; });
     if (e.type !== "pointercancel" && i >= 0) pick(tabs[i].dataset.p);
-    kick();
   };
   dock.addEventListener("pointerup", release);
   dock.addEventListener("pointercancel", release);
@@ -232,8 +191,8 @@ export function initDock() {
     if (window.innerWidth === lastW && isPhone() === wasPhone) return;
     lastW = window.innerWidth; wasPhone = isPhone(); buildDock(); kickNav(true);
   }, 120); });
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { aim(); X.snap(); V.snap(); paint(); kickNav(true); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { measure(); kickNav(true); });
   // measure the screen's refresh rate once the app has settled (shown in Settings › Appearance)
   setTimeout(() => { if (document.visibilityState === "visible") measureHz(); }, 1500);
 }
-export function motionChanged() { applyEase(); buildDock(); keepUntil = performance.now() + 900; kick(); kickNav(); }
+export function motionChanged() { applyEase(); buildDock(); kickNav(); }

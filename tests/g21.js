@@ -92,7 +92,7 @@ E(2, 120, "Food & groceries", "Agora"); E(3, 80, "Food & groceries", "Agora"); E
   check(Math.abs(after.z - 1.12) < .01 && after.fs === "custom" && after.ls === "1.12", "letting go applies exactly 112% (not one of four steps)", after);
   await p.click("#fsReset"); await p.waitForTimeout(300);
   check(Math.abs(parseFloat(await p.evaluate(() => getComputedStyle(document.body).zoom)) - 1) < .01 && await p.isHidden("#fsReset"), "Reset goes back to Normal");
-  check(!/on each side/.test(await p.textContent("#dockFit")) && /\+ sits in its own circle/.test(await p.textContent("#dockFit")), "the dock note describes the + as its own circle", await p.textContent("#dockFit"));
+  check(!/on each side/.test(await p.textContent("#dockFit")) && /\+ in the middle/.test(await p.textContent("#dockFit")), "the dock note describes the + in the middle", await p.textContent("#dockFit"));
 
   // 7. erase entries
   await T.nav("settings/erase"); await p.waitForTimeout(500);
