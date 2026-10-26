@@ -15,7 +15,7 @@ const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebK
   const reopen = async () => { await p.goto("about:blank"); await p.goto(URL0 + "#home"); await p.waitForTimeout(1300); };
 
   check(await attr("data-preset") === "coral" && await attr("data-theme") === "light", "iPhone in dark mode still starts on Coral Dusk light", [await attr("data-preset"), await attr("data-theme")]);
-  check(await bg() === "rgb(251, 247, 243)", "warm off-white page", await bg());
+  check(["rgb(251, 247, 243)", "rgb(246, 233, 222)"].includes(await bg()), "warm off-white page (warm cream behind the pinned Dashboard top)", await bg());
   check(await p.evaluate(() => document.querySelector('meta[name="theme-color"]').content) === "rgb(251, 247, 243)", "the phone's status bar takes the page colour");
 
   // v52: Nunito everywhere, loaded from Google Fonts
@@ -30,15 +30,15 @@ const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebK
   // the calm card and the coral + (after the opening and the rolling number have finished)
   await p.waitForFunction(() => !document.querySelector(".odo, #splash"), null, { timeout: 5000 });
   const look = await p.evaluate(() => { const cs = s => getComputedStyle(document.querySelector(s));
-    return { hero: cs(".hero-panel").backgroundColor + " " + cs(".hero-panel").backgroundImage, big: cs("#leftBig").color, add: cs('.hero-panel [data-go-add]').backgroundColor, plus: cs("#dkPlus").backgroundColor, bubble: cs(".dk-bubble").backgroundColor }; });
-  check(look.hero === "rgb(43, 27, 61) none", "Left to spend sits on the plum panel", look.hero);
-  check(look.big === "rgb(245, 239, 248)", "the amount is light on plum", look.big);
+    return { heroTone: getComputedStyle(document.documentElement).getPropertyValue("--hero").trim().toLowerCase(), big: cs("#leftBig").color, add: cs('.hero-panel [data-go-add]').backgroundColor, plus: cs("#dkPlus").backgroundColor, bubble: cs(".dk-bubble").backgroundColor }; });
+  check(look.heroTone === "#f6e9de", "the top of the Dashboard is on warm cream", look.heroTone);
+  check(look.big === "rgb(43, 27, 61)", "the amount is dark plum ink on the cream", look.big);
   check(look.add === "rgb(201, 70, 28)" && look.plus === "rgb(201, 70, 28)", "Add and the + are coral", look);
   check(look.bubble === "rgb(255, 224, 207)", "the tab bubble is peach", look.bubble);
   const geo = await p.evaluate(() => { const d = document.getElementById("dock").getBoundingClientRect(), b = document.getElementById("dkPlus").getBoundingClientRect(); return { dR: d.right, bL: b.left, w: innerWidth, bR: b.right }; });
   check(geo.bL > geo.dR && geo.bR <= geo.w, "the + sits in its own circle beside the bar", geo);
   // the spending ring shows on phones too, in the icon's colours
-  const ring = await p.evaluate(() => { const r = document.getElementById("catRing"); return { shown: !!r.querySelector("svg") && getComputedStyle(r).display !== "none", strokes: [...r.querySelectorAll("circle")].slice(1, 3).map(c => getComputedStyle(c).stroke) }; });
+  const ring = await p.evaluate(() => { const r = document.getElementById("catRing"); return { shown: !!r.querySelector("svg") && getComputedStyle(r).display !== "none", strokes: [...r.querySelectorAll("path.seg")].slice(0, 2).map(c => getComputedStyle(c).fill) }; });
   check(ring.shown, "the spending ring shows on the phone Dashboard", ring);
   check(ring.strokes[0] === "rgb(255, 122, 69)", "the biggest category is coral, like the icon", ring.strokes);
   check(await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), "no sideways scrolling");

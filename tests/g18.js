@@ -38,12 +38,12 @@ E(prev, 12, 40, "Transport", "Taxi", { maybeDup: "e4" });              // possib
   // the Dashboard in Coral Dusk
   await T.nav("home"); await p.waitForTimeout(400);
   const lay = await p.evaluate(() => { const r = s => document.querySelector(s).getBoundingClientRect(), bg = s => getComputedStyle(document.querySelector(s)).backgroundImage + getComputedStyle(document.querySelector(s)).backgroundColor;
-    return { hero: r(".hero-panel"), stats: r(".hero-stats"), buds: r(".buds-panel"), recent: r(".recent-panel"), heroBg: bg(".hero-panel"), ring: !!document.querySelector("#catRing svg") && getComputedStyle(document.getElementById("catRing")).display !== "none" }; });
-  check(lay.stats.top >= lay.hero.top && lay.stats.bottom <= lay.hero.bottom && lay.hero.width > 900, "laptop: the month's numbers sit inside the wide plum panel", lay);
-  check(/rgb\(43, 27, 61\)/.test(lay.heroBg), "the Left to spend panel is plum", lay.heroBg);
+    return { hero: r(".hero-panel"), stats: r(".hero-stats"), month: r(".month-panel"), buds: r(".buds-panel"), recent: r(".recent-panel"), heroBg: bg(".hero-panel"), ring: !!document.querySelector("#catRing svg") && getComputedStyle(document.getElementById("catRing")).display !== "none" }; });
+  check(lay.stats.top >= lay.month.top && lay.stats.bottom <= lay.month.bottom && lay.month.width > 900 && lay.hero.width > 900, "laptop: the month's numbers sit inside the wide This month card, under the wide cream top", lay);
+  check(/rgb\(246, 233, 222\)/.test(lay.heroBg), "the Left to spend panel is warm cream", lay.heroBg);
   check(Math.abs(lay.buds.top - lay.recent.top) < 2 && lay.buds.right < lay.recent.left, "budgets and latest entries side by side", [lay.buds, lay.recent]);
   check(lay.ring && /MVR\s?8,255/.test(await T.text(".hero-mid")), "the ring shows with Left to spend in its middle", await T.text(".hero-mid"));
-  check((await p.$$("#catRing circle.seg")).length === 6, "ring: every category is a part (6 here)");
+  check((await p.$$("#catRing path.seg")).length === 6, "ring: every category is a part (6 here)");
   await p.evaluate(() => { const m = document.getElementById("catMore"); if (document.getElementById("cats").hidden) m.click(); });
   const clr = await p.$$eval("#cats .cat .fill", f => f.slice(0, 2).map(x => getComputedStyle(x).backgroundColor));
   check(clr[0] !== clr[1], "bars take the ring's colours", clr);

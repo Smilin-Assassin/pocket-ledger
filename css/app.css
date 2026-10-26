@@ -1064,11 +1064,11 @@ circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest
 .sp-name { color: #FFFFFF; font-family: var(--f-display); font-size: 1.45rem; font-weight: 700; letter-spacing: -.01em; animation: spUp .45s ease-out .72s both; }
 @keyframes spUp { from { opacity: 0; transform: translateY(10px); } }
 /* B: the spending ring draws itself; a tapped category lifts out */
-.ring svg.wait .seg { stroke-dasharray: 0 var(--C); }
-.ring svg.draw .seg { animation: ringDraw .8s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i) * 90ms); }
-@keyframes ringDraw { from { stroke-dasharray: 0 var(--C); } }
+.ring svg.wait .seg, .ring svg.wait .pct { opacity: 0; transform: scale(.7); transform-origin: 132px 132px; }
+.ring svg.draw .seg { animation: ringDraw .7s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i) * 80ms); }
+@keyframes ringDraw { from { opacity: 0; transform: scale(.7); } }
 .ring svg.lifting .seg { opacity: .3; transition: opacity .2s ease; }
-.ring svg.lifting .seg.lift { opacity: 1; stroke-width: 20; transition: stroke-width .24s cubic-bezier(.3, 1.6, .5, 1); }
+.ring svg.lifting .seg.lift { opacity: 1; translate: var(--tx, 0) var(--ty, 0); transition: translate .24s cubic-bezier(.3, 1.6, .5, 1); }
 /* C: the rolling number */
 #leftBig { font-variant-numeric: tabular-nums; }
 .odo-host { position: relative; }
@@ -1112,58 +1112,56 @@ circle.rep-rest { stroke: var(--v-rest); } i.rep-rest { background: var(--v-rest
 h1, h2, h3, .hero .big, .fold-t b, .goal-top .pct, .loan-top .num { font-weight: 800; }
 .stats .v, .tile .v, .stat-card b { font-weight: 700; }
 
-/* ===== v60 PLUM NIGHT: one plum card (the ring is where the money went, Left to spend in its middle, the month's numbers under it),
-   then four cards that stack as you scroll on phones: Needs attention, Budgets, Latest entries, Trends ===== */
-:root[data-preset="coral"] { --hero: #2B1B3D; --hero-track: #46325A; --hero-ink: #F5EFF8; --hero-ink-2: #D2C6DE;
-  --hero-c1: #FF7A45; --hero-c2: #FF4D8D; --hero-c3: #FFC145; --hero-c4: #A58BD6; --hero-c5: #D9CEC5; --hero-c6: #9C8DB0;
-  --stack-shadow: 0 -10px 28px rgba(43, 27, 61, .14); }
-:root[data-preset="coral"][data-theme="dark"] { --hero: #34224A; --hero-track: #4D3A66; --stack-shadow: 0 -10px 28px rgba(0, 0, 0, .4); }
-:root[data-preset="coral"] .hero-panel { background: var(--hero); color: var(--hero-ink); border-radius: 28px; padding: 22px 18px 18px; }
-:root[data-preset="coral"] .hero-panel .hero { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 14px; text-align: center; }
-:root[data-preset="coral"] .hero-ring { position: relative; width: min(280px, 100%); aspect-ratio: 1; container-type: inline-size; }
+/* ===== v61 PAPER CUT ON WARM CREAM: the top of the Dashboard is a layer, not a card. It holds the paper-cut ring (where the money went, Left to spend in
+   its middle), one line about the month and Add / Scan. On phones it stays put (body.pin-home, set by pinSync in js/pages/home.js) and the cards slide
+   up over it: Needs attention, This month, Budgets, Latest entries, Trends. ===== */
+:root[data-preset="coral"] { --hero: #F6E9DE; --hero-track: #E6D5C8; --hero-ink: #2B1B3D; --hero-ink-2: #6B5A66; --hero-neg: #B5381F; --hero-btn: rgba(43, 27, 61, .08);
+  --hero-c1: #FF7A45; --hero-c2: #FF4D8D; --hero-c3: #F2A91B; --hero-c4: #A58BD6; --hero-c5: #B9A99A; --hero-c6: #8E7FA3;
+  --stack-shadow: 0 -10px 28px rgba(43, 27, 61, .12); }
+:root[data-preset="coral"][data-theme="dark"] { --hero: #2B1B3D; --hero-track: #46325A; --hero-ink: #F5EFF8; --hero-ink-2: #D2C6DE; --hero-neg: #FFB5A1; --hero-btn: rgba(255, 255, 255, .14);
+  --hero-c3: #FFC145; --hero-c5: #D9CEC5; --hero-c6: #9C8DB0; --stack-shadow: 0 -10px 28px rgba(0, 0, 0, .4); }
+:root[data-preset="coral"] .hero-panel { background: var(--hero); color: var(--hero-ink); border-radius: 28px; padding: 18px 16px 20px; }
+:root[data-preset="coral"] .hero-panel .hero { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 12px; text-align: center; }
+:root[data-preset="coral"] .hero-ring { position: relative; width: min(268px, 100%); aspect-ratio: 1; container-type: inline-size; }
 :root[data-preset="coral"] .hero-ring .ring:not(:empty), :root[data-preset="coral"] .hero-ring .ring { position: absolute; inset: 0; display: block; margin: 0; touch-action: none; -webkit-tap-highlight-color: transparent; }
 :root[data-preset="coral"] .hero-ring .ring svg { display: block; width: 100%; height: 100%; overflow: visible; }
-:root[data-preset="coral"] .hero-ring .seg { cursor: pointer; outline: none; transition: opacity .15s ease; }
-:root[data-preset="coral"] .hero-ring .seg:focus-visible { outline: 2px solid var(--hero-ink); outline-offset: 2px; }
-:root[data-preset="coral"] .hero-ring svg.dim .seg, :root[data-preset="coral"] .hero-ring svg.dim .pct { opacity: .3; }
+:root[data-preset="coral"] .hero-ring .seg { cursor: pointer; outline: none; filter: url(#ringSh); transition: opacity .15s ease, translate .18s ease; }
+:root[data-preset="coral"] .hero-ring .seg.sel { filter: url(#ringLift); translate: var(--tx, 0) var(--ty, 0); }
+:root[data-preset="coral"] .hero-ring .seg:focus-visible { stroke: var(--hero-ink); }
+:root[data-preset="coral"] .hero-ring svg.dim .seg:not(.sel), :root[data-preset="coral"] .hero-ring svg.dim .pct { opacity: .3; }
 :root[data-preset="coral"] .hero-ring .pct { font-family: var(--f-body); font-size: 12px; font-weight: 800; fill: #2B1B3D; pointer-events: none; transition: opacity .15s ease; }
-:root[data-preset="coral"] .hero-mid, :root[data-preset="coral"] .hero-pick { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0 22%; pointer-events: none; }
+:root[data-preset="coral"] .hero-mid, :root[data-preset="coral"] .hero-pick { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 0 24%; pointer-events: none; }
 :root[data-preset="coral"] .hero-pick { visibility: hidden; }
 :root[data-preset="coral"] .hero-ring.picking .hero-mid { visibility: hidden; }
 :root[data-preset="coral"] .hero-ring.picking .hero-pick { visibility: visible; }
-:root[data-preset="coral"] :is(.hero-mid, .hero-pick) .label { color: var(--hero-ink-2); font-size: .8rem; line-height: 1.25; }
-:root[data-preset="coral"] :is(.hero-mid, .hero-pick) .big { display: block; font-size: min(9cqw, calc(94cqw / var(--len, 12))); line-height: 1.05; font-weight: 800; letter-spacing: -.01em; color: var(--hero-ink); white-space: nowrap; }
-:root[data-preset="coral"] .hero-mid .big.neg { color: #FFB5A1; }
-:root[data-preset="coral"] .pick-pct { font-size: .78rem; color: var(--hero-ink-2); }
-:root[data-preset="coral"] .pick-go { pointer-events: auto; border: 0; background: none; color: var(--hero-ink); font: inherit; font-size: .84rem; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; min-height: 44px; padding: 8px 12px; cursor: pointer; }
+:root[data-preset="coral"] :is(.hero-mid, .hero-pick) .label { color: var(--hero-ink-2); font-size: .76rem; line-height: 1.25; }
+:root[data-preset="coral"] :is(.hero-mid, .hero-pick) .big { display: block; font-size: min(8cqw, calc(78cqw / var(--len, 12))); line-height: 1.05; font-weight: 800; letter-spacing: -.01em; color: var(--hero-ink); white-space: nowrap; }
+:root[data-preset="coral"] .hero-mid .big.neg { color: var(--hero-neg); }
+:root[data-preset="coral"] .pick-pct { font-size: .74rem; line-height: 1.25; color: var(--hero-ink-2); }
+:root[data-preset="coral"] .pick-go { pointer-events: auto; border: 0; background: none; color: var(--hero-ink); font: inherit; font-size: .84rem; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; min-height: 44px; padding: 8px 12px; margin-bottom: -14px; cursor: pointer; }
 @media (hover: hover) and (pointer: fine) { :root[data-preset="coral"] .pick-go { display: none; } }
 :root[data-preset="coral"] .ring-hint { margin: 0; font-size: .82rem; color: var(--hero-ink-2); }
 :root[data-preset="coral"] .hero-panel .sub { margin: 0; max-width: 34ch; color: var(--hero-ink-2); font-size: .92rem; line-height: 1.45; }
 :root[data-preset="coral"] .hero-panel .hero-acts { justify-content: center; }
-:root[data-preset="coral"] .hero-panel .ghost { background: rgba(255, 255, 255, .14); border: 0; color: var(--hero-ink); font-weight: 700; padding: 10px 20px; min-height: 44px; border-radius: 999px; }
+:root[data-preset="coral"] .hero-panel .ghost { background: var(--hero-btn); border: 0; color: var(--hero-ink); font-weight: 700; padding: 10px 22px; min-height: 44px; border-radius: 999px; }
 :root[data-preset="coral"] .hero-panel .ghost[data-go-add] { background: var(--coral); color: var(--coral-ink); }
-:root[data-preset="coral"] .hero-panel .ghost:hover { filter: brightness(1.12); }
-:root[data-preset="coral"] :is(.hero-stats, .hero-facts) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 0; width: 100%; text-align: left; border-top: 1px solid var(--hero-track); padding-top: 14px; }
-:root[data-preset="coral"] .hero-stats > div, :root[data-preset="coral"] .hero-facts > .tile.tile { padding: 0 0 0 12px; border: 0; border-left: 1px solid var(--hero-track); border-radius: 0; background: none; min-width: 0; color: var(--hero-ink); }
-:root[data-preset="coral"] :is(.hero-stats > div, .hero-facts > .tile.tile):nth-child(odd) { padding-left: 0; border-left: 0; }
-:root[data-preset="coral"] :is(.hero-stats, .hero-facts) .label { font-size: .78rem; color: var(--hero-ink-2); }
-:root[data-preset="coral"] :is(.hero-stats, .hero-facts) .v { font-family: var(--f-display); font-size: clamp(1rem, 4.6vw, 1.2rem); font-weight: 800; white-space: nowrap; color: var(--hero-ink); }
-:root[data-preset="coral"] :is(.hero-stats, .hero-facts) .h { font-size: .76rem; line-height: 1.3; color: var(--hero-ink-2); overflow-wrap: anywhere; }
-:root[data-preset="coral"] .hero-facts .tile.t-red .v { color: #FFB5A1; }
-:root[data-preset="coral"] .hero-facts a.tile:hover .v { color: var(--hero-c3); }
-:root[data-preset="coral"] .hero-more { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
-:root[data-preset="coral"] .hero-more .icon-btn { color: var(--hero-ink-2); background: none; min-height: 44px; }
-:root[data-preset="coral"] .hero-panel .tile-cfg { width: 100%; text-align: left; background: rgba(255, 255, 255, .08); color: var(--hero-ink); border-radius: 16px; }
-:root[data-preset="coral"] .hero-panel .tile-cfg .hint { color: var(--hero-ink-2); }
-:root[data-preset="coral"] .hero-panel .cats { width: 100%; text-align: left; }
-:root[data-preset="coral"] .hero-panel .cat { color: var(--hero-ink); }
-:root[data-preset="coral"] .hero-panel .cat .n, :root[data-preset="coral"] .hero-panel .cat .v { color: var(--hero-ink); }
-:root[data-preset="coral"] .hero-panel .cat .v small { color: var(--hero-ink-2); }
-:root[data-preset="coral"] .hero-panel .cat .track { background: var(--hero-track); }
-:root[data-preset="coral"] .hero-panel button.cat:hover, :root[data-preset="coral"] .hero-panel button.cat:focus-visible { background: rgba(255, 255, 255, .08); }
-:root[data-preset="coral"] .hero-panel .cat.c1 .fill { background: var(--hero-c1); } :root[data-preset="coral"] .hero-panel .cat.c2 .fill { background: var(--hero-c2); }
-:root[data-preset="coral"] .hero-panel .cat.c3 .fill { background: var(--hero-c3); } :root[data-preset="coral"] .hero-panel .cat.c4 .fill { background: var(--hero-c4); }
-:root[data-preset="coral"] .hero-panel .cat.c5 .fill { background: var(--hero-c5); } :root[data-preset="coral"] .hero-panel .cat.c6 .fill { background: var(--hero-c6); }
+:root[data-preset="coral"] .hero-panel .ghost:hover { filter: brightness(.96); }
+/* This month: the month's numbers, small facts and every category, on a normal white card */
+:root[data-preset="coral"] .month-panel .hero-stats, :root[data-preset="coral"] .month-panel .hero-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 0; }
+:root[data-preset="coral"] .month-panel .hero-facts:empty { display: none; }
+:root[data-preset="coral"] .month-panel .hero-facts { border-top: 1px solid var(--line); padding-top: 14px; }
+:root[data-preset="coral"] .month-panel :is(.hero-stats > div, .hero-facts > .tile.tile) { padding: 0 0 0 14px; border: 0; border-left: 1px solid var(--line); border-radius: 0; background: none; min-width: 0; color: var(--ink); }
+:root[data-preset="coral"] .month-panel :is(.hero-stats > div, .hero-facts > .tile.tile):nth-child(odd) { padding-left: 0; border-left: 0; }
+:root[data-preset="coral"] .month-panel :is(.hero-stats, .hero-facts) .label { font-size: .78rem; color: var(--ink-2); }
+:root[data-preset="coral"] .month-panel :is(.hero-stats, .hero-facts) .v { font-family: var(--f-display); font-size: clamp(1rem, 4.6vw, 1.2rem); font-weight: 800; white-space: nowrap; color: var(--ink); }
+:root[data-preset="coral"] .month-panel :is(.hero-stats, .hero-facts) .h { font-size: .76rem; line-height: 1.3; color: var(--ink-3); overflow-wrap: anywhere; }
+:root[data-preset="coral"] .month-panel .hero-facts .tile.t-red .v { color: var(--neg); }
+:root[data-preset="coral"] .month-panel .hero-facts a.tile:hover .v { color: var(--accent); }
+:root[data-preset="coral"] .month-panel .hero-more { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+:root[data-preset="coral"] .month-panel .hero-more .icon-btn { min-height: 44px; }
+:root[data-preset="coral"] .month-panel .cat.c1 .fill { background: var(--hero-c1); } :root[data-preset="coral"] .month-panel .cat.c2 .fill { background: var(--hero-c2); }
+:root[data-preset="coral"] .month-panel .cat.c3 .fill { background: var(--hero-c3); } :root[data-preset="coral"] .month-panel .cat.c4 .fill { background: var(--hero-c4); }
+:root[data-preset="coral"] .month-panel .cat.c5 .fill { background: var(--hero-c5); } :root[data-preset="coral"] .month-panel .cat.c6 .fill { background: var(--hero-c6); }
 /* Needs attention: bills due, who owes whom and suggestions share one card, shown only when there is something */
 :root[data-preset="coral"] .attn { background: var(--surface); border-radius: 28px; padding: 18px 20px; display: grid; gap: 14px; box-shadow: 0 1px 2px rgba(43, 27, 61, .04), 0 6px 24px rgba(43, 27, 61, .06); align-content: start; }
 :root[data-preset="coral"][data-theme="dark"] .attn { box-shadow: none; }
@@ -1173,20 +1171,28 @@ h1, h2, h3, .hero .big, .fold-t b, .goal-top .pct, .loan-top .num { font-weight:
 @media (max-width: 899.98px) {
   :root[data-preset="coral"] #pg-home { display: block; }
   :root[data-preset="coral"] #pg-home .grid2 { display: contents; }
-  :root[data-preset="coral"] #pg-home > :is(.attn, .panel), :root[data-preset="coral"] #pg-home .grid2 > .panel { margin-top: 14px; border-radius: 28px; align-content: start; }
-  :root[data-preset="coral"] #pg-home .stuck { position: sticky; box-shadow: var(--stack-shadow); }
+  :root[data-preset="coral"] #pg-home > :is(.attn, .panel), :root[data-preset="coral"] #pg-home .grid2 > .panel { margin-top: 14px; border-radius: 28px; align-content: start; position: relative; z-index: 1; }
+  :root[data-preset="coral"] #pg-home :is(.attn, .panel).stuck, :root[data-preset="coral"] #pg-home .grid2 > .panel.stuck { position: sticky; box-shadow: var(--stack-shadow); }
+  /* pinned top: the page title, month switcher and ring stay where they are, the cards ride up over them */
+  :root[data-preset="coral"] body.pin-home { background: var(--hero); }
+  :root[data-preset="coral"] body.pin-home .pagehead { position: sticky; top: calc(14px + env(safe-area-inset-top, 0px)); z-index: 0; }
+  :root[data-preset="coral"] body.pin-home .hero-panel { position: sticky; top: calc(14px + env(safe-area-inset-top, 0px) + var(--pin-top, 0px)); z-index: 0; background: none; padding-block: 0 6px; transform-origin: 50% 0; will-change: transform, opacity; }
+  :root[data-preset="coral"] body.pin-home .monthnav { background: var(--surface); }
+  :root[data-preset="coral"] .hero-panel { padding-inline: 0; background: none; }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 899.98px) {
+  :root[data-preset="coral"] body.pin-home .hero-panel { transform: scale(calc(1 - .05 * var(--p, 0))); opacity: calc(1 - .5 * var(--p, 0)); }
 }
 @media (min-width: 900px) {
-  :root[data-preset="coral"] .hero-panel { padding: 36px 44px; }
-  :root[data-preset="coral"] .hero-panel .hero { grid-template-columns: 288px minmax(0, 1fr); column-gap: 48px; row-gap: 16px; justify-items: start; align-items: start; text-align: left; }
-  :root[data-preset="coral"] .hero-ring { grid-column: 1; grid-row: 1 / span 8; width: 288px; }
+  :root[data-preset="coral"] .hero-panel { padding: 32px 44px; }
+  :root[data-preset="coral"] .hero-panel .hero { grid-template-columns: 288px minmax(0, 1fr); column-gap: 48px; row-gap: 14px; justify-items: start; align-items: center; text-align: left; }
+  :root[data-preset="coral"] .hero-ring { grid-column: 1; grid-row: 1 / span 4; width: 288px; }
   :root[data-preset="coral"] .hero-panel .hero > :not(.hero-ring) { grid-column: 2; }
   :root[data-preset="coral"] .hero-panel .hero-acts { justify-content: flex-start; }
   :root[data-preset="coral"] .hero-panel .sub { max-width: 52ch; }
-  :root[data-preset="coral"] :is(.hero-stats, .hero-facts) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  :root[data-preset="coral"] :is(.hero-stats > div, .hero-facts > .tile.tile):nth-child(odd) { padding-left: 12px; border-left: 1px solid var(--hero-track); }
-  :root[data-preset="coral"] :is(.hero-stats > div, .hero-facts > .tile.tile):first-child { padding-left: 0; border-left: 0; }
-  :root[data-preset="coral"] .hero-more { justify-content: flex-start; gap: 16px; }
+  :root[data-preset="coral"] .month-panel :is(.hero-stats, .hero-facts) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  :root[data-preset="coral"] .month-panel :is(.hero-stats > div, .hero-facts > .tile.tile):nth-child(odd) { padding-left: 14px; border-left: 1px solid var(--line); }
+  :root[data-preset="coral"] .month-panel :is(.hero-stats > div, .hero-facts > .tile.tile):first-child { padding-left: 0; border-left: 0; }
   :root[data-preset="coral"] .grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "buds recent"; }
 }
 @media (prefers-reduced-motion: reduce) { :root[data-preset="coral"] .hero-ring .seg { transition: none; } }

@@ -16,18 +16,28 @@ E(prev, 10, 66, "Other", "Mystery shop last month");                   // needs 
 E(prev, 12, 40, "Transport", "Taxi", { maybeDup: "e4" });              // possible repeat last month
 
 (async () => {
-  console.log("g26: Plum night Dashboard (v58): plum panel with the income ring, cards that stack on phones");
+  console.log("g26: Paper cut on warm cream (v61): the top stays pinned on phones, cards slide over it, paper-cut ring");
   let T = await start({ seed, users: { "tom@x.com": "secret12" }, context: { viewport: { width: 390, height: 844 } } }), { p, check } = T;
   await p.evaluate(() => localStorage.setItem("pl-tiles", JSON.stringify(["split"]))); // an old setting that used to hide the split bar
   await T.login("tom@x.com", "#home"); await p.waitForTimeout(1500);
+  // the backup reminder is a banner above the page: while it shows, nothing is pinned (the top would ride up under it)
+  const nag = await p.evaluate(() => !document.getElementById("backupNag").hidden);
+  if (nag) { check(await p.evaluate(() => !document.body.classList.contains("pin-home")), "a banner above the Dashboard turns pinning off"); await p.click("#backupNag button >> text=Later"); await p.waitForTimeout(500); }
   const ring = await p.evaluate(() => { const b = document.getElementById("leftBig").getBoundingClientRect(), r = document.querySelector(".hero-ring").getBoundingClientRect();
-    return { arcs: document.querySelectorAll("#catRing circle.seg").length, inside: b.left >= r.left + 20 && b.right <= r.right - 20, text: document.getElementById("leftBig").textContent, ids: ["leftSub", "copyIncome", "tileBtn", "dueBar", "owesBar", "smartBar", "tiles", "cats", "sIncome", "sTotal"].every(i => document.getElementById(i)) }; });
-  check(ring.arcs === 6 && /MVR\s?8,255/.test(ring.text) && ring.ids, "ring: every category is a part of the donut, Left to spend in the middle, all the ids are still there", ring);
+    return { arcs: document.querySelectorAll("#catRing path.seg").length, inside: b.left >= r.left + 20 && b.right <= r.right - 20, text: document.getElementById("leftBig").textContent, ids: ["leftSub", "copyIncome", "tileBtn", "dueBar", "owesBar", "smartBar", "tiles", "cats", "sIncome", "sTotal"].every(i => document.getElementById(i)) }; });
+  check(ring.arcs === 6 && /MVR\s?8,255/.test(ring.text) && ring.ids, "ring: every category is a paper-cut piece, Left to spend in the middle, all the ids are still there", ring);
   const mid = await p.evaluate(() => { const a = document.querySelector(".hero-panel").getBoundingClientRect(), b = document.querySelector(".hero-ring").getBoundingClientRect(), c = document.getElementById("leftSub").getBoundingClientRect(), d = document.querySelector(".hero-acts").getBoundingClientRect(); const m = r => Math.round((r.left + r.right) / 2 - (a.left + a.right) / 2); return [m(b), m(c), m(d)]; });
-  check(mid.every(x => Math.abs(x) <= 2), "the ring, the line under it and the buttons are centred in the plum panel", mid);
+  check(mid.every(x => Math.abs(x) <= 2), "the ring, the line under it and the buttons are centred in the cream top", mid);
   check(ring.inside, "the amount sits inside the ring", ring);
   check(await p.isVisible("#catRing svg"), "the ring always shows (the old hide-split setting is ignored)");
-  const pos = () => p.evaluate(() => ["attn", "buds-panel", "recent-panel"].map(c => { const el = document.querySelector("#pg-home ." + c); return [c, getComputedStyle(el).position, el.classList.contains("stuck")]; }));
+  // pinned: scrolling moves the cards, not the title or the ring; the cards end up over the top
+  const top0 = await p.evaluate(() => ({ pinned: document.body.classList.contains("pin-home"), t: document.getElementById("pageTitle").getBoundingClientRect().top, h: document.querySelector(".hero-panel").getBoundingClientRect().top, c: document.querySelector("#pg-home .month-panel, #pg-home .attn:not([hidden])").getBoundingClientRect().top }));
+  await p.evaluate(() => scrollTo(0, 300)); await p.waitForTimeout(400);
+  const top1 = await p.evaluate(() => ({ t: document.getElementById("pageTitle").getBoundingClientRect().top, h: document.querySelector(".hero-panel").getBoundingClientRect().top, c: document.querySelector("#pg-home .month-panel, #pg-home .attn:not([hidden])").getBoundingClientRect().top, hb: document.querySelector(".hero-panel").getBoundingClientRect().bottom }));
+  check(top0.pinned && Math.abs(top1.t - top0.t) <= 1 && Math.abs(top1.h - top0.h) <= 3, "phone: the title and the ring stay where they are while the page scrolls", [top0, top1]);
+  check(top1.c < top0.c - 250 && top1.c < top1.hb, "the cards slide up over the top", [top0, top1]);
+  await p.evaluate(() => scrollTo(0, 0)); await p.waitForTimeout(200);
+  const pos = () => p.evaluate(() => ["attn", "month-panel", "buds-panel", "recent-panel"].map(c => { const el = document.querySelector("#pg-home ." + c); return [c, getComputedStyle(el).position, el.classList.contains("stuck")]; }));
   const st = await pos();
   check(st.some(x => x[0] === "buds-panel" && x[1] === "sticky") && st.some(x => x[0] === "recent-panel" && x[1] === "sticky"), "phone: the section cards are sticky so they stack", st);
   await p.evaluate(() => scrollTo(0, 1100)); await p.waitForTimeout(400);
@@ -37,13 +47,13 @@ E(prev, 12, 40, "Transport", "Taxi", { maybeDup: "e4" });              // possib
   await p.evaluate(() => scrollTo(0, 0)); await p.waitForTimeout(300);
   // pointing at the ring: the part under the pointer swells and the middle shows it
   const rc = await p.evaluate(() => { const r = document.getElementById("catRing").getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2, r.width / 2]; });
-  const ang = 8 * Math.PI / 180; await p.mouse.move(rc[0] + Math.sin(ang) * rc[2] * .94, rc[1] - Math.cos(ang) * rc[2] * .94); await p.waitForTimeout(300);
-  const pk = await p.evaluate(() => ({ on: document.querySelector(".hero-ring").classList.contains("picking"), name: document.getElementById("pickName").textContent, amt: document.getElementById("pickAmt").textContent, w: document.querySelector(".pickarc").getAttribute("stroke-width"), op: document.querySelector(".pickarc").getAttribute("opacity") }));
-  check(pk.on && /Food/.test(pk.name) && /400/.test(pk.amt) && pk.op === "1" && +pk.w > 14, "pointing at the biggest part shows Food & groceries MVR 400 and swells it", pk);
+  const ang = 8 * Math.PI / 180; await p.mouse.move(rc[0] + Math.sin(ang) * rc[2] * .72, rc[1] - Math.cos(ang) * rc[2] * .72); await p.waitForTimeout(300);
+  const pk = await p.evaluate(() => ({ on: document.querySelector(".hero-ring").classList.contains("picking"), name: document.getElementById("pickName").textContent, amt: document.getElementById("pickAmt").textContent, sel: [...document.querySelectorAll("#catRing .seg.sel")].map(x => x.dataset.i), lift: getComputedStyle(document.querySelector("#catRing .seg.sel") || document.body).translate }));
+  check(pk.on && /Food/.test(pk.name) && /400/.test(pk.amt) && pk.sel.length === 1 && pk.lift !== "none", "pointing at the biggest part shows Food & groceries MVR 400 and lifts its piece", pk);
   await p.mouse.move(5, 5); await p.waitForTimeout(200);
   check(await p.evaluate(() => !document.querySelector(".hero-ring").classList.contains("picking")), "moving away puts Left to spend back");
   // the smallest part can still be picked: sweep the whole ring and count the different parts reached
-  const seen = new Set(); for (let d = 0; d < 360; d += 2) { const an = d * Math.PI / 180; await p.mouse.move(rc[0] + Math.sin(an) * rc[2] * .94, rc[1] - Math.cos(an) * rc[2] * .94); const n = await p.evaluate(() => document.querySelector(".hero-ring").classList.contains("picking") ? document.getElementById("pickName").textContent : ""); if (n) seen.add(n); }
+  const seen = new Set(); for (let d = 0; d < 360; d += 2) { const an = d * Math.PI / 180; await p.mouse.move(rc[0] + Math.sin(an) * rc[2] * .72, rc[1] - Math.cos(an) * rc[2] * .72); const n = await p.evaluate(() => document.querySelector(".hero-ring").classList.contains("picking") ? document.getElementById("pickName").textContent : ""); if (n) seen.add(n); }
   check(seen.size === 6, "sweeping around the ring reaches all six categories, even the smallest", [...seen]);
   await p.mouse.move(5, 5);
   // the two Trends views are tabs in one card

@@ -93,12 +93,17 @@ function renderOwes() {
     : `<div class="owe-row"><span><i class="pdot" style="background:${pcolor(p.debtor)}"></i><b>${esc(nm(p.debtor))}</b> ${p.debtor === meId() ? "owe" : "owes"} <b>${esc(p.creditor === meId() ? "you" : pname(p.creditor))}</b> <b class="num">${esc(money(p.amt))}</b> for shared costs</span>${state.readOnly ? "" : `<button class="ghost" type="button" data-settle="${i}">Settle up</button>`}</div>`).join("");
 }
 
-// ---------- the ring: where this month's money went (v60: one ring, in the plum card) ----------
-// A donut of this month's spending: every category is a part, sized by its share of what was spent. Touch (drag) or point at the ring and the part
-// under the finger swells and the middle shows it. Parts too small to touch are drawn a little wider than they are.
-const RR = 108, RW = 40, RC = 2 * Math.PI * RR, RGAP = 2.5;
+// ---------- the ring: where this month's money went (v61: paper cut) ----------
+// Every category is a rounded piece of paper sized by its share of what was spent (never thinner than a fingertip can hit). Touch (drag) or point
+// at the ring and the piece under the finger lifts off the page and the middle shows it.
+const R0 = 76, R1 = 116, RMIN = 0.16, RGAPA = 0.12, TAU = 2 * Math.PI;
 let ringArcs = [], ringSel = null;
 const arcColor = i => i < 4 ? `var(--hero-c${i + 1})` : i % 2 ? "var(--hero-c5)" : "var(--hero-c6)";
+const polar = (r, a) => [(132 + r * Math.sin(a)).toFixed(2), (132 - r * Math.cos(a)).toFixed(2)];
+function sectorPath(a0, a1) {
+  const p = polar(R1, a0), q = polar(R1, a1), u = polar(R0, a1), w = polar(R0, a0), big = a1 - a0 > Math.PI ? 1 : 0;
+  return `M${p}A${R1} ${R1} 0 ${big} 1 ${q}L${u}A${R0} ${R0} 0 ${big} 0 ${w}Z`;
+}
 
 function pickCat(i) {
   const a = ringArcs[i], box = $("catRing"), svg = box.querySelector("svg"), hr = box.closest(".hero-ring");
@@ -106,10 +111,8 @@ function pickCat(i) {
   hr.classList.toggle("picking", !!a);
   if (!svg) return;
   svg.classList.toggle("dim", !!a);
-  const pk = svg.querySelector(".pickarc");
-  if (!a) { pk.setAttribute("opacity", "0"); return; }
-  pk.setAttribute("stroke", a.col); pk.setAttribute("opacity", "1");
-  pk.setAttribute("stroke-dasharray", `${(Math.max(1, a.share - RGAP) + 8).toFixed(2)} ${RC.toFixed(2)}`); pk.setAttribute("stroke-dashoffset", (-(a.start - 4)).toFixed(2));
+  svg.querySelectorAll(".seg").forEach(g => g.classList.toggle("sel", !!a && +g.dataset.i === i));
+  if (!a) return;
   $("pickName").textContent = a.c;
   const amt = $("pickAmt"); amt.textContent = money(a.v, { whole: true }); amt.style.setProperty("--len", Math.max(8, amt.textContent.length));
   $("pickPct").textContent = a.pct + "% of what you spent";
@@ -125,19 +128,20 @@ function renderCats() {
   $("catMore").hidden = !rows.length; $("ringHint").hidden = !rows.length;
   if (!rows.length) { $("cats").hidden = true; $("catMore").setAttribute("aria-expanded", "false"); }
   // sizes: each category's true share of the spending, but never thinner than a fingertip can hit
-  const MIN = 0.024 * RC; let shares = [];
+  let shares = [];
   if (total) {
-    const raw = rows.map(r => r[1] / total * RC), small = raw.filter(x => x < MIN).length;
-    const bigSum = raw.reduce((s, x) => x >= MIN ? s + x : s, 0), room = RC - small * MIN, k = bigSum > 0 && room > 0 ? room / bigSum : 1;
-    shares = raw.map(x => x < MIN ? MIN : x * k);
-    const all = shares.reduce((s, x) => s + x, 0); if (all > RC) shares = shares.map(x => x * RC / all);
+    const raw = rows.map(r => r[1] / total * TAU), small = raw.filter(x => x < RMIN).length;
+    const bigSum = raw.reduce((s, x) => x >= RMIN ? s + x : s, 0), room = TAU - small * RMIN, k = bigSum > 0 && room > 0 ? room / bigSum : 1;
+    shares = raw.map(x => x < RMIN ? RMIN : x * k);
+    const all = shares.reduce((s, x) => s + x, 0); if (all > TAU) shares = shares.map(x => x * TAU / all);
   }
-  let a0 = 0; ringArcs = rows.map(([c, v], i) => { const a = { c, v, i, start: a0, share: shares[i] || 0, pct: Math.round(v / total * 100), col: arcColor(i) }; a0 += a.share; return a; });
+  let a0 = 0; ringArcs = rows.map(([c, v], i) => { const a = { c, v, i, a0, a1: a0 + (shares[i] || 0), pct: Math.round(v / total * 100), col: arcColor(i) }; a0 = a.a1; return a; });
   const wait = ringShouldWait() && state.ready && rows.length;
-  const lab = a => { if (a.share / RC < 0.07) return ""; const th = (a.start + a.share / 2) / RC * 2 * Math.PI; return `<text class="pct" x="${(132 + RR * Math.sin(th)).toFixed(1)}" y="${(132 - RR * Math.cos(th)).toFixed(1)}" text-anchor="middle" dominant-baseline="central">${a.pct}%</text>`; };
-  $("catRing").innerHTML = `<svg viewBox="0 0 264 264"${wait ? ' class="wait"' : ""} style="--C:${RC.toFixed(2)}" aria-hidden="false"><circle cx="132" cy="132" r="${RR}" fill="none" stroke="var(--hero-track)" stroke-width="${RW}"/>` +
-    ringArcs.map(a => `<circle class="seg" data-i="${a.i}" style="--i:${a.i}" tabindex="0" role="button" aria-label="${esc(a.c)}, ${esc(money(a.v, { whole: true }))}, ${a.pct}% of what you spent. Opens its entries." cx="132" cy="132" r="${RR}" fill="none" stroke="${a.col}" stroke-width="${RW}" stroke-dasharray="${Math.max(1, a.share - RGAP).toFixed(2)} ${RC.toFixed(2)}" stroke-dashoffset="${(-a.start).toFixed(2)}" transform="rotate(-90 132 132)"/>`).join("") +
-    `<circle class="pickarc" cx="132" cy="132" r="${RR}" fill="none" stroke-width="${RW + 12}" stroke-linecap="butt" opacity="0" pointer-events="none" transform="rotate(-90 132 132)"/>` + ringArcs.map(lab).join("") + `</svg>`;
+  const mid = a => (a.a0 + a.a1) / 2;
+  const lab = a => { if ((a.a1 - a.a0) / TAU < 0.07) return ""; const [x, y] = polar((R0 + R1) / 2, mid(a)); return `<text class="pct" x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central">${a.pct}%</text>`; };
+  $("catRing").innerHTML = `<svg viewBox="0 0 264 264"${wait ? ' class="wait"' : ""} aria-hidden="false"><defs><filter id="ringSh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#2B1B3D" flood-opacity=".28"/></filter><filter id="ringLift" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#2B1B3D" flood-opacity=".42"/></filter></defs>` +
+    ringArcs.map(a => `<path class="seg" data-i="${a.i}" style="--i:${a.i};--tx:${(Math.sin(mid(a)) * 7).toFixed(1)}px;--ty:${(-Math.cos(mid(a)) * 7).toFixed(1)}px" tabindex="0" role="button" aria-label="${esc(a.c)}, ${esc(money(a.v, { whole: true }))}, ${a.pct}% of what you spent. Opens its entries." d="${sectorPath(a.a0 + RGAPA / 2, a.a1 - RGAPA / 2)}" fill="${a.col}" stroke="${a.col}" stroke-width="8" stroke-linejoin="round"/>`).join("") +
+    ringArcs.map(lab).join("") + `</svg>`;
   if (wait) watchRing($("catRing"));
   const keep = ringArcs.findIndex(a => a.c === ringSel); if (keep >= 0) pickCat(keep); else { ringSel = null; $("catRing").closest(".hero-ring").classList.remove("picking"); }
   if (!rows.length) { $("cats").innerHTML = ""; return; }
@@ -148,9 +152,9 @@ function renderCats() {
 function wireRing() {
   const box = $("catRing"); let down = false;
   const at = ev => {
-    const r = box.getBoundingClientRect(), dx = ev.clientX - (r.left + r.width / 2), dy = ev.clientY - (r.top + r.height / 2), d = Math.hypot(dx, dy) / (r.width / 2);
-    if (d < .6 || d > 1.06) return -1;
-    const pos = (Math.atan2(dx, -dy) + 2 * Math.PI) % (2 * Math.PI) / (2 * Math.PI) * RC, a = ringArcs.find(x => pos >= x.start && pos < x.start + x.share);
+    const r = box.getBoundingClientRect(), dx = ev.clientX - (r.left + r.width / 2), dy = ev.clientY - (r.top + r.height / 2), d = Math.hypot(dx, dy) / (r.width / 2) * 132;
+    if (d < R0 - 14 || d > R1 + 24) return -1;
+    const ang = (Math.atan2(dx, -dy) + TAU) % TAU, a = ringArcs.find(x => ang >= x.a0 && ang < x.a1);
     return a ? a.i : -1;
   };
   box.addEventListener("pointerdown", ev => { if (ev.pointerType === "mouse") return; down = true; try { box.setPointerCapture(ev.pointerId); } catch {} pickCat(at(ev)); });
@@ -270,10 +274,10 @@ function renderCompare() {
 }
 
 
-// ---------- Plum night: on phones the cards below the plum panel stack as you scroll (CSS sticky) ----------
+// ---------- on phones the cards below the top layer stack as you scroll (CSS sticky) ----------
 // A card taller than the screen can't stay stuck (its bottom would be out of reach), so it simply scrolls.
 // Each stuck card is at least as tall as the one before it (less a sliver), so it fully covers it.
-const STACK = ["#attn", ".buds-panel", ".recent-panel", "#trendPanel"];
+const STACK = ["#attn", "#monthPanel", ".buds-panel", ".recent-panel", "#trendPanel"];
 let stackRaf = 0;
 function stackSync() {
   cancelAnimationFrame(stackRaf);
@@ -293,6 +297,29 @@ function stackSync() {
       prev = ok ? el.offsetHeight : 0;
     });
   });
+}
+
+// ---------- v61: on phones the top of the Dashboard (title, month switcher, ring) never scrolls: the cards slide up over it ----------
+// body.pin-home turns on the CSS (css/app.css). It is only turned on when the whole top fits above the dock; on a small screen or at a big text size
+// the Dashboard just scrolls as a normal page, because a pinned top taller than the screen would hide its own lower half.
+// While the cards cover it, the top eases back a little (--p, 0 to 1): scale and fade only.
+let pinRaf = 0;
+function pinSync() {
+  cancelAnimationFrame(pinRaf);
+  pinRaf = requestAnimationFrame(() => {
+    const home = $("pg-home"), body = document.body, hd = document.querySelector(".pagehead"), hero = home.querySelector(".hero-panel");
+    const phone = window.matchMedia("(max-width: 899.98px)").matches;
+    let on = phone && !home.hidden && !!hd && !!hero && !document.querySelector(".main > .banner:not([hidden]), .main > .xfer-bar:not([hidden])"); // a banner above the page (backup reminder...) turns pinning off until it is gone
+    if (on) { const head = hd.offsetHeight + 16; home.style.setProperty("--pin-top", head + "px"); on = head + hero.offsetHeight + 14 <= innerHeight / zoom() - 118 - 14 - 90; }
+    body.classList.toggle("pin-home", on);
+    if (!on) { home.style.removeProperty("--pin-top"); home.style.removeProperty("--p"); return; }
+    pinFade();
+  });
+}
+function pinFade() {
+  const home = $("pg-home"), hero = home.querySelector(".hero-panel");
+  if (!document.body.classList.contains("pin-home") || !hero) return;
+  home.style.setProperty("--p", Math.min(1, Math.max(0, scrollY / Math.max(1, hero.offsetHeight))).toFixed(3));
 }
 
 export const page = {
@@ -338,12 +365,16 @@ export const page = {
     $("trendTabs").addEventListener("click", ev => { const b = ev.target.closest("[data-tab]"); if (b) { ui.trendTab = b.dataset.tab; tabs(); } });
     initFolds();
     $("pg-home").addEventListener("fold-open", tabs);
-    let rt = null; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("pg-home").hidden) renderTrend(); }, 200); stackSync(); });
+    let rt = null; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("pg-home").hidden) renderTrend(); }, 200); stackSync(); pinSync(); });
+    window.addEventListener("scroll", pinFade, { passive: true });
+    const pinMo = new MutationObserver(pinSync); pinMo.observe($("pg-home"), { attributes: true, attributeFilter: ["hidden"] });
+    ["readonlyBanner", "xferBar", "backupNag"].forEach(id => { const b = $(id); if (b) pinMo.observe(b, { attributes: true, attributeFilter: ["hidden"] }); });
+    if (window.ResizeObserver) new ResizeObserver(pinSync).observe(document.querySelector(".hero-panel"));
     if (window.ResizeObserver) { const ro = new ResizeObserver(stackSync); STACK.forEach(sel => { const el = $("pg-home").querySelector(sel); if (el) ro.observe(el); }); }
   },
   render() {
     renderDue($("dueBar"), 4);
     renderOwes(); renderSmart(); renderHero(); renderTiles(); renderCats(); renderBudgets(); renderRecent(); renderTrend(); renderCompare();
-    stackSync();
+    stackSync(); pinSync();
   }
 };
