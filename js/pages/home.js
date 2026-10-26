@@ -170,7 +170,12 @@ function wireRing() {
   box.addEventListener("pointerleave", ev => { if (ev.pointerType === "mouse") pickCat(-1); });
   box.addEventListener("click", ev => { if (ev.pointerType !== "mouse") return; const i = at(ev); if (i >= 0) openCat(i); });
   box.addEventListener("focusin", ev => { const c = ev.target.closest(".seg"); if (c) pickCat(+c.dataset.i); });
-  box.addEventListener("focusout", ev => { if (!box.contains(ev.relatedTarget)) pickCat(-1); });
+  // Only a keyboard leaving the ring un-picks it. A tap on "See entries" moves focus off the piece first (on some phones with nothing
+  // receiving it), which used to hide the button before its tap landed, so "See entries" sometimes did nothing (v64).
+  let byKey = false;
+  document.addEventListener("keydown", () => { byKey = true; }, true);
+  document.addEventListener("pointerdown", () => { byKey = false; }, true);
+  box.addEventListener("focusout", ev => { if (byKey && !box.closest(".hero-ring").contains(ev.relatedTarget)) pickCat(-1); });
   box.addEventListener("keydown", ev => { const c = ev.target.closest(".seg"); if (c && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); openCat(+c.dataset.i); } });
   $("pickGo").addEventListener("click", () => openCat(+$("pickGo").dataset.i));
   document.addEventListener("pointerdown", ev => { if (ringSel && !ev.target.closest(".hero-ring")) pickCat(-1); });
