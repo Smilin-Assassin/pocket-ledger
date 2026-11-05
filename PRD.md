@@ -53,6 +53,7 @@ A household in the Maldives wants to know, at any moment, **how much is left to 
 
 ## Release history (newest first)
 
+- November 2026 (pl-v69): **The current tab's chip now sits an even 2px in from the pill on every side.** It used to be inset 2px left/right but 6px top/bottom (fixed height vs. a centred, shorter box), so it hugged the sides while floating clear of the top and bottom — the actual cause of the "not aligned with the pill" look. The chip's height and corner radius now scale with the pill's own, so the gap is the same all the way round.
 - November 2026 (pl-v68): **Phone bar: a softer lift, a cleaner corner.** The heavy drop shadow (v67 removed it outright) is back as a lighter lift so the pills still read against the cream page. The current tab's chip has a smaller corner radius so it nests cleanly inside the pill's own corner instead of looking cut off.
 - November 2026 (pl-v67): **Phone bar: no more drop shadow.** The pills no longer cast the old heavy shadow underneath.
 - October 2026 (pl-v66): **No empty space in the phone bar pills.** The tabs now share the whole pill (the tab you're on grows to fill its share), instead of sitting in the middle with gaps.
