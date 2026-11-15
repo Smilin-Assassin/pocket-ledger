@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400..800&family=Chakra+Petch:wght@500;600;700&display=swap">
-<link rel="stylesheet" href="css/app.css?v=71">
+<link rel="stylesheet" href="css/app.css?v=72">
 </head>
 <body>
 <!-- A (v51): the logo opening, once per app opening; it never takes taps and leaves on its own -->
@@ -79,6 +79,7 @@
            month and Add / Scan. The cards below: Needs attention (only when something does), This month (the numbers), Budgets, Latest entries, Trends.
            js/pages/home.js: pinSync pins the top, stackSync stacks the cards. -->
       <section class="hero-panel" aria-label="Where this month's money went">
+        <div class="arcade-hud" id="arcadeHud" hidden></div>
         <div class="hero">
           <div class="hero-ring">
             <div class="ring" id="catRing" role="group" aria-label="Where this month's money went. Touch or point at a part to see it."></div>
@@ -659,6 +660,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=71"></script>
+<script type="module" src="app.js?v=72"></script>
 </body>
 </html>

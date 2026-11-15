@@ -219,7 +219,7 @@ async function onClick(ev) {
   if (d.acctdel !== undefined) { readAccts(); acctRows.splice(+d.acctdel, 1); if (!acctRows.length) acctRows.push({ bank: "", name: "", last4: "" }); renderAccts(); return; }
   try {
     if (b.id === "saveSettings") return saveMyDetails();
-    if (d.look) { lsSet("pl-look", d.look === "arcade" ? "arcade" : ""); window.plApplyTheme(); syncAppearance(); }
+    if (d.look) { lsSet("pl-look", d.look === "arcade" ? "arcade" : ""); window.plApplyTheme(); syncAppearance(); changed(); }
     else if (d.mode) { lsSet("pl-mode", d.mode === "dark" ? "dark" : ""); window.plApplyTheme(); syncAppearance(); }
     else if (d.motion) { M.preset = PRESETS[d.motion] ? d.motion : "lively"; motionSaved(); }
     else if (d.tabs) { M.tabs = d.tabs === "6" ? 6 : 4; motionSaved(); }

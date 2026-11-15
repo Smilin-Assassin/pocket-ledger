@@ -8,6 +8,7 @@ import { rowHtml, wireRows, byNewest } from "./entries.js";
 import { renderDue, wireDue } from "./bills.js";
 import { initFolds } from "../fold.js";
 import { zoom } from "../dock.js";
+import { renderArcade } from "../arcade.js";
 import { ringShouldWait, watchRing, rollNumber, rollPending } from "../delight.js";
 
 Object.assign(ui, { tileCfg: false, editBudgets: false, settling: null, trendSel: null });
@@ -385,7 +386,7 @@ export const page = {
   },
   render() {
     renderDue($("dueBar"), 4);
-    renderOwes(); renderSmart(); renderHero(); renderTiles(); renderCats(); renderBudgets(); renderRecent(); renderTrend(); renderCompare();
+    renderOwes(); renderSmart(); renderHero(); renderTiles(); renderCats(); renderArcade(); renderBudgets(); renderRecent(); renderTrend(); renderCompare();
     stackSync(); pinSync();
   }
 };

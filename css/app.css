@@ -1208,14 +1208,50 @@ h1, h2, h3, .hero .big, .fold-t b, .goal-top .pct, .loan-top .num { font-weight:
   --stack-shadow: 0 -10px 28px rgba(0, 0, 0, .45);
 }
 :root[data-look="arcade"] :is(h1, h2, h3, .hero .big, .stats .v, .tile .v, .stat-card b, .ring-mid b, .goal-top .pct, .loan-top .num) { font-family: var(--f-display); letter-spacing: 0; }
-:root[data-look="arcade"][data-preset="coral"] :is(.panel, .summary, .bill, .stat-card, .xfer-card, .smart) { border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: none; }
+:root[data-look="arcade"][data-preset="coral"] :is(.panel, .summary, .bill, .stat-card, .xfer-card, .smart, .attn, .hero-panel) { border: 0; border-radius: 0; box-shadow: none; clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px); }
 :root[data-look="arcade"][data-preset="coral"] .hero-panel { border-radius: 6px; }
 :root[data-look="arcade"][data-preset="coral"] :is(.primary, .tile-cfg .primary, .summary .hero .ghost[data-go-add]) { border-radius: 0; font-family: var(--f-display); font-weight: 600;
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
 :root[data-look="arcade"][data-preset="coral"] :is(.ghost, .chip, .monthnav, .seg, .modeseg, .seg button, .modeseg button, input, select, textarea) { border-radius: 4px; }
 :root[data-look="arcade"][data-preset="coral"] :is(.split, .split div, .cat .track) { border-radius: 0 !important; }
 :root[data-look="arcade"][data-preset="coral"] .tile { border-radius: 4px; }
-:root[data-look="arcade"] .dk-isl { border-radius: 14px; box-shadow: none; border: 1px solid var(--line); }
-:root[data-look="arcade"] .dk-tab.on { border-radius: 8px; }
-@media (max-width: 899px) { :root[data-look="arcade"][data-preset="coral"] #pg-home > :is(.attn, .panel), :root[data-look="arcade"][data-preset="coral"] #pg-home .grid2 > .panel { border-radius: 6px; } }
-:root[data-look="arcade"][data-preset="coral"] .attn { border-radius: 6px; box-shadow: none; border: 1px solid var(--line); }
+@media (max-width: 899px) { :root[data-look="arcade"][data-preset="coral"] #pg-home > :is(.attn, .panel), :root[data-look="arcade"][data-preset="coral"] #pg-home .grid2 > .panel { border-radius: 0; } }
+/* Arcade: the Dashboard HUD (js/arcade.js), cut-corner dock and plus */
+:root[data-look="arcade"] .arcade-hud { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; width: 100%; text-align: left; color: var(--ink); }
+:root[data-look="arcade"] .arcade-hud[hidden] { display: none; }
+:root[data-look="arcade"] .hero-ring, :root[data-look="arcade"] .ring-hint { display: none; }
+:root[data-look="arcade"][data-preset="coral"] .hero-panel .hero { justify-items: stretch; text-align: left; gap: 10px; }
+:root[data-look="arcade"][data-preset="coral"] .hero-panel .hero-acts { justify-content: flex-start; }
+:root[data-look="arcade"] .ar-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--sunk); padding: 12px 0; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+:root[data-look="arcade"] .ar-strip > div { padding: 0 10px; min-width: 0; border-right: 1px solid var(--line); }
+:root[data-look="arcade"] .ar-strip > div:last-child { border-right: 0; }
+:root[data-look="arcade"] .ar-strip small { display: block; font-size: .78rem; color: var(--ink-3); }
+:root[data-look="arcade"] .ar-strip b { display: block; margin-top: 2px; font-family: var(--f-display); font-weight: 700; font-size: .98rem; white-space: nowrap; }
+:root[data-look="arcade"] .ar-strip .sp b { color: var(--c-spent); } :root[data-look="arcade"] .ar-strip .sv b { color: var(--c-saved); } :root[data-look="arcade"] .ar-strip .lf b { color: var(--c-left); } :root[data-look="arcade"] .ar-strip .lf.neg b { color: var(--neg); }
+:root[data-look="arcade"] .ar-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+:root[data-look="arcade"] .ar-title h2 { margin: 0; font-size: 1.4rem; }
+:root[data-look="arcade"] .ar-title span { font-family: var(--f-display); font-weight: 600; font-size: .9rem; color: var(--ink-3); }
+:root[data-look="arcade"] .ar-map svg { display: block; width: 100%; height: auto; }
+:root[data-look="arcade"] .ar-map .ax { stroke: var(--line); } :root[data-look="arcade"] .ar-map .b { fill: var(--c-spent); } :root[data-look="arcade"] .ar-map .z { fill: var(--ink-3); opacity: .6; } :root[data-look="arcade"] .ar-map .f { fill: var(--line); }
+:root[data-look="arcade"] .ar-map .al { stroke: var(--c-saved); stroke-width: 1; stroke-dasharray: 4 4; } :root[data-look="arcade"] .ar-map .td { stroke: var(--ink); stroke-width: 1.5; } :root[data-look="arcade"] .ar-map .tdm { fill: var(--ink); }
+:root[data-look="arcade"] .ar-map text { fill: var(--ink-3); font: 600 11px var(--f-display); }
+:root[data-look="arcade"] .ar-key { margin: -6px 0 0; font-size: .8rem; color: var(--ink-3); }
+:root[data-look="arcade"] .ar-left { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
+:root[data-look="arcade"] .ar-left small { display: block; font-size: .82rem; color: var(--ink-3); }
+:root[data-look="arcade"] .ar-left > div b { display: block; margin-top: 2px; font-family: var(--f-display); font-weight: 700; font-size: clamp(1.55rem, 8vw, 2.1rem); line-height: 1.1; color: var(--c-left); }
+:root[data-look="arcade"] .ar-left > div b.neg { color: var(--neg); }
+:root[data-look="arcade"] .ar-left > span { text-align: right; } :root[data-look="arcade"] .ar-left > span b { font-weight: 700; font-size: .9rem; display: block; }
+:root[data-look="arcade"] .ar-cats { display: grid; }
+:root[data-look="arcade"] .ar-cat { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 56px; padding: 8px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; color: var(--ink); text-align: left; font: inherit; cursor: pointer; }
+:root[data-look="arcade"] .ar-n { display: grid; gap: 6px; font-weight: 600; font-size: .95rem; }
+:root[data-look="arcade"] .ar-cells { display: flex; gap: 3px; } :root[data-look="arcade"] .ar-cells i { width: 9px; height: 12px; background: var(--line); } :root[data-look="arcade"] .ar-cells i.on { background: var(--c-spent); } :root[data-look="arcade"] .ar-cells.over i.on { background: var(--neg); }
+:root[data-look="arcade"] .ar-v { text-align: right; } :root[data-look="arcade"] .ar-v b { display: block; font-family: var(--f-display); font-weight: 600; font-size: 1rem; } :root[data-look="arcade"] .ar-v small { display: block; font-size: .78rem; color: var(--ink-3); }
+:root[data-look="arcade"] .dk-isl { border-radius: 0; box-shadow: none; clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); }
+:root[data-look="arcade"] .dk-tab.on { border-radius: 0; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+:root[data-look="arcade"] .dk:not([data-mode="stretch"]) .dk-tab .lbl { border-radius: 0; clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); }
+:root[data-look="arcade"] .dk-ros { display: none; }
+:root[data-look="arcade"] .dk-plus { width: 58px; height: 58px; margin-left: -29px; bottom: calc(15px + env(safe-area-inset-bottom, 0px)); background: var(--dk-ros1); clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); }
+:root[data-look="arcade"] .ar-left > span b { white-space: nowrap; }
+:root[data-look="arcade"][data-preset="coral"] :is(.primary, .ghost, .chip, .seg button, .modeseg button) { border: 0; }
+:root[data-look="arcade"][data-preset="coral"] .ghost { background: var(--line); }
+@media (min-width: 900px) { :root[data-look="arcade"] .arcade-hud { max-width: 560px; } }
