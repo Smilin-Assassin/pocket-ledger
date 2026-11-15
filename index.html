@@ -14,8 +14,8 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400..800&display=swap">
-<link rel="stylesheet" href="css/app.css?v=70">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400..800&family=Chakra+Petch:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="css/app.css?v=71">
 </head>
 <body>
 <!-- A (v51): the logo opening, once per app opening; it never takes taps and leaves on its own -->
@@ -340,6 +340,9 @@
 
       <section class="panel setsec" id="set-look">
         <h2>Appearance on this device</h2>
+        <div class="field"><span class="flabel">Look</span>
+          <div class="modeseg two" id="lookSeg" role="group" aria-label="Look"><button type="button" data-look="coral">Coral Dusk</button><button type="button" data-look="arcade">Arcade</button></div>
+          <small class="hint" id="lookHint"></small></div>
         <div class="modeseg two" id="modeSeg" role="group" aria-label="Light or dark"><button type="button" data-mode="light">Light</button><button type="button" data-mode="dark">Dark</button></div>
         <div class="field"><span class="flabel">Text size</span>
           <div class="fs-row"><span class="fs-a sm" aria-hidden="true">A</span><input type="range" id="fsRange" min="85" max="135" step="1" aria-label="Text size"><span class="fs-a lg" aria-hidden="true">A</span></div>
@@ -656,6 +659,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=70"></script>
+<script type="module" src="app.js?v=71"></script>
 </body>
 </html>

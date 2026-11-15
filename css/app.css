@@ -1190,3 +1190,32 @@ h1, h2, h3, .hero .big, .fold-t b, .goal-top .pct, .loan-top .num { font-weight:
   :root[data-preset="coral"] .grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "buds recent"; }
 }
 @media (prefers-reduced-motion: reduce) { :root[data-preset="coral"] .hero-ring .seg { transition: none; } }
+
+/* ===== v71 ARCADE: a second look beside Coral Dusk (Settings › Appearance › Look). Dark only (theme.js sets data-theme="dark" with data-look="arcade").
+   Same layout and features; only colours, the heading font (Chakra Petch), small square corners and angled-corner buttons change. ===== */
+:root[data-look="arcade"][data-preset="coral"][data-theme="dark"] {
+  --bg: #141216; --surface: #1E1B26; --sunk: #2A2634; --ink: #F2EDF4; --ink-2: #CFC8D6; --ink-3: #A59DAE; --line: #2E2A38;
+  --accent: #FF7A45; --accent-ink: #1B0F0A; --coral: #FF7A45; --coral-ink: #1B0F0A; --hl: #FF7A45; --hl-ink: #1B0F0A;
+  --c-spent: #FF7A45; --c-saved: #FFD166; --c-left: #7CE3C8; --c-bar: #FF7A45;
+  --ring-1: #FF7A45; --ring-2: #FF8FB8; --ring-3: #FFD166; --ring-4: #B79CFF; --ring-5: #7CE3C8;
+  --neg: #FF9E7A; --pos: #7CE3C8; --warn-bg: #3A2A12; --warn-ink: #F4D08A;
+  --f-display: "Chakra Petch", "Nunito", "Segoe UI", system-ui, sans-serif;
+  --r: 4px; --r-card: 6px;
+  --dk-bar: #1E1B26; --dk-edge: #0A0A0B; --dk-chip: #FF7A45; --dk-chip-ink: #1B0F0A; --dk-tag: #F2EDF4; --dk-tag-ink: #141216;
+  --dk-ros1: #FF7A45; --dk-ros1-ink: #1B0F0A; --dk-ros-edge: rgba(0, 0, 0, .55);
+  --hero: #1E1B26; --hero-track: #2E2A38; --hero-ink: #F2EDF4; --hero-ink-2: #A59DAE; --hero-neg: #FF9E7A; --hero-btn: rgba(255, 255, 255, .1);
+  --hero-c1: #FF7A45; --hero-c2: #FF8FB8; --hero-c3: #FFD166; --hero-c4: #B79CFF; --hero-c5: #7CE3C8; --hero-c6: #A59DAE;
+  --stack-shadow: 0 -10px 28px rgba(0, 0, 0, .45);
+}
+:root[data-look="arcade"] :is(h1, h2, h3, .hero .big, .stats .v, .tile .v, .stat-card b, .ring-mid b, .goal-top .pct, .loan-top .num) { font-family: var(--f-display); letter-spacing: 0; }
+:root[data-look="arcade"][data-preset="coral"] :is(.panel, .summary, .bill, .stat-card, .xfer-card, .smart) { border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: none; }
+:root[data-look="arcade"][data-preset="coral"] .hero-panel { border-radius: 6px; }
+:root[data-look="arcade"][data-preset="coral"] :is(.primary, .tile-cfg .primary, .summary .hero .ghost[data-go-add]) { border-radius: 0; font-family: var(--f-display); font-weight: 600;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+:root[data-look="arcade"][data-preset="coral"] :is(.ghost, .chip, .monthnav, .seg, .modeseg, .seg button, .modeseg button, input, select, textarea) { border-radius: 4px; }
+:root[data-look="arcade"][data-preset="coral"] :is(.split, .split div, .cat .track) { border-radius: 0 !important; }
+:root[data-look="arcade"][data-preset="coral"] .tile { border-radius: 4px; }
+:root[data-look="arcade"] .dk-isl { border-radius: 14px; box-shadow: none; border: 1px solid var(--line); }
+:root[data-look="arcade"] .dk-tab.on { border-radius: 8px; }
+@media (max-width: 899px) { :root[data-look="arcade"][data-preset="coral"] #pg-home > :is(.attn, .panel), :root[data-look="arcade"][data-preset="coral"] #pg-home .grid2 > .panel { border-radius: 6px; } }
+:root[data-look="arcade"][data-preset="coral"] .attn { border-radius: 6px; box-shadow: none; border: 1px solid var(--line); }

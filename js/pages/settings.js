@@ -84,6 +84,10 @@ async function saveMyDetails() {
 // ---------- appearance (this device) ----------
 function syncAppearance() {
   const mode = lsGet("pl-mode") === "dark" ? "dark" : "light", fs = lsGet("pl-fs") || "m";
+  const arcade = lsGet("pl-look") === "arcade";
+  document.querySelectorAll("#lookSeg [data-look]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.look === (arcade ? "arcade" : "coral"))));
+  $("modeSeg").hidden = arcade;
+  $("lookHint").textContent = arcade ? "Arcade is always dark. Switch back to Coral Dusk for Light." : "Coral Dusk, in Light or Dark below.";
   document.querySelectorAll("#set-look [data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
   fsSync();
   // motion, dock and vibrations
@@ -215,7 +219,8 @@ async function onClick(ev) {
   if (d.acctdel !== undefined) { readAccts(); acctRows.splice(+d.acctdel, 1); if (!acctRows.length) acctRows.push({ bank: "", name: "", last4: "" }); renderAccts(); return; }
   try {
     if (b.id === "saveSettings") return saveMyDetails();
-    if (d.mode) { lsSet("pl-mode", d.mode === "dark" ? "dark" : ""); window.plApplyTheme(); syncAppearance(); }
+    if (d.look) { lsSet("pl-look", d.look === "arcade" ? "arcade" : ""); window.plApplyTheme(); syncAppearance(); }
+    else if (d.mode) { lsSet("pl-mode", d.mode === "dark" ? "dark" : ""); window.plApplyTheme(); syncAppearance(); }
     else if (d.motion) { M.preset = PRESETS[d.motion] ? d.motion : "lively"; motionSaved(); }
     else if (d.tabs) { M.tabs = d.tabs === "6" ? 6 : 4; motionSaved(); }
     else if (d.renameok) {

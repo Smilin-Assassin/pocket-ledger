@@ -4,7 +4,10 @@
   window.plApplyTheme = function () {
     // one look, Coral Dusk (v50), in light or dark, chosen by hand in Settings › Appearance (default light;
     // the old "Automatic" and every older theme choice simply land on light)
-    d.setAttribute("data-theme", g("pl-mode") === "dark" ? "dark" : "light");
+    // Arcade (v71) is a second look, dark only, picked in Settings › Appearance (pl-look); anything else is Coral Dusk
+    var arcade = g("pl-look") === "arcade";
+    d.setAttribute("data-look", arcade ? "arcade" : "coral");
+    d.setAttribute("data-theme", arcade || g("pl-mode") === "dark" ? "dark" : "light");
     d.setAttribute("data-preset", "coral");
     // text size: a smooth slider (v45) stores a number like 1.07; the older Small/Large/Extra large letters still work
     var fs = g("pl-fs") || "m", FSN = { s: .92, m: 1, l: 1.12, xl: 1.25 }, fz = FSN[fs] || parseFloat(fs);
