@@ -10,6 +10,13 @@ const MAPW = 342, MAPH = 76;
 
 function cells(filled, n = 10) { return Array.from({ length: n }, (_, i) => `<i class="${i < filled ? "on" : ""}"></i>`).join(""); }
 
+// large text or a narrow screen: the four numbers wrap into two rows instead of being cut off
+function fit() {
+  const box = $("arcadeHud"), strip = box && box.querySelector(".ar-strip"); if (!strip || box.hidden) return;
+  box.classList.remove("tight"); if (strip.scrollWidth > strip.clientWidth + 1) box.classList.add("tight");
+}
+window.addEventListener("resize", fit);
+
 export function renderArcade() {
   const box = $("arcadeHud"); if (!box) return;
   const on = isArcade(); box.hidden = !on; if (!on) { box.innerHTML = ""; $("leftSub").hidden = false; return; }
@@ -45,4 +52,5 @@ export function renderArcade() {
 <div class="ar-map">${svg}</div>${allowance ? `<p class="ar-key">Dashed line: what you can spend a day, ${esc(money(allowance, { whole: true }))}</p>` : ""}
 <div class="ar-left"><div><small>${label}</small><b class="num${afterBills < 0 ? " neg" : ""}">${esc(money(afterBills))}</b></div>${allowance ? `<span><b>${esc(money(allowance, { whole: true }))} a day</b><small>for ${daysLeft} day${daysLeft === 1 ? "" : "s"}</small></span>` : ""}</div>
 ${rows ? `<div class="ar-cats">${rows}</div>` : ""}`;
+  fit();
 }

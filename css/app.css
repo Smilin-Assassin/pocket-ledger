@@ -1255,3 +1255,38 @@ h1, h2, h3, .hero .big, .fold-t b, .goal-top .pct, .loan-top .num { font-weight:
 :root[data-look="arcade"][data-preset="coral"] :is(.primary, .ghost, .chip, .seg button, .modeseg button) { border: 0; }
 :root[data-look="arcade"][data-preset="coral"] .ghost { background: var(--line); }
 @media (min-width: 900px) { :root[data-look="arcade"] .arcade-hud { max-width: 560px; } }
+/* Arcade polish (v72): the parts the browser draws, focus inside cut corners (an outline outside a clip-path is cut off), figures that line up, a cut-out frame around the + */
+:root[data-look="arcade"] { accent-color: var(--accent); caret-color: var(--accent); scrollbar-color: #3A3548 var(--bg); }
+:root[data-look="arcade"] ::selection { background: var(--accent); color: var(--accent-ink); }
+:root[data-look="arcade"] :is(.num, .ar-strip b, .ar-left b, .ar-v b, .ar-title span) { font-variant-numeric: tabular-nums; }
+:root[data-look="arcade"] :is(.ar-cat, .primary, .ghost, .chip, .modeseg button, .seg button, .dk-tab, .dk-plus):focus-visible { outline: 2px solid var(--ink); outline-offset: -4px; }
+:root[data-look="arcade"] .ar-cat:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+:root[data-look="arcade"] .ar-cat:active { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+:root[data-look="arcade"] .dk-plus { width: 64px; height: 64px; margin-left: -32px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); border: 3px solid var(--bg); background-clip: padding-box; }
+:root[data-look="arcade"] .dk-pi { width: 24px; height: 24px; }
+:root[data-look="arcade"] .arcade-hud.tight .ar-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 10px; }
+:root[data-look="arcade"] .arcade-hud.tight .ar-strip > div:nth-child(2) { border-right: 0; }
+:root[data-look="arcade"] .arcade-hud.tight .ar-strip > div:nth-child(-n+2) { padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+/* Arcade, one shape language everywhere (v72+): every surface, box, control and tag is a cut corner on a filled background (no outlines, no pills,
+   no plain rectangles). --cut is the corner size: 14 for surfaces, 10 for boxes, 8 for controls, 5 for small things. */
+:root[data-look="arcade"] :is(.sheet, .chat, .pick-pop, .toast, .goal, .loan, .xfer-bar, .loan-done, .loan-hist, details.fold, .fold-body,
+  .field input:not([type="checkbox"], [type="radio"], [type="range"]), .field select, .field textarea, input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]), select, textarea,
+  .monthnav, .seg, .modeseg, .primary, .ghost, .chip, .banner, .banner button, .fab, .owner-tag, .badge, .icon-btn, .seg button, .modeseg button, .monthnav button, .qa-seg, .dp, .pick-opt) {
+  border-radius: 0; clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+:root[data-look="arcade"] :is(.sheet, .chat, .pick-pop, .toast) { --cut: 14px; }
+:root[data-look="arcade"] .sheet { clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%, 0 14px); }
+:root[data-look="arcade"] :is(.goal, .loan, .xfer-bar, .loan-done, .loan-hist, details.fold, .fold-body, .banner) { --cut: 10px; }
+:root[data-look="arcade"] :is(.field input, .field select, .field textarea, input, select, textarea, .monthnav, .seg, .modeseg, .primary, .ghost, .chip, .banner button, .fab, .qa-seg, .dp, .pick-opt) { --cut: 8px; }
+:root[data-look="arcade"] :is(.owner-tag, .badge, .icon-btn, .seg button, .modeseg button, .monthnav button) { --cut: 5px; }
+:root[data-look="arcade"] :is(.goal, .loan, .loan-done, .loan-hist) { border: 0; background: var(--sunk); }
+:root[data-look="arcade"] :is(.field input, .field select, .field textarea, input:not([type="checkbox"], [type="radio"], [type="range"]), select, textarea, .monthnav, .chip, .owner-tag, .dp) { border: 0; background: var(--sunk); }
+:root[data-look="arcade"] :is(.field input, .field select, .field textarea, input, select, textarea):focus-visible, :root[data-look="arcade"] .pick-field.open > select { outline: 2px solid var(--accent); outline-offset: -2px; box-shadow: none; }
+:root[data-look="arcade"] .seg button[aria-pressed="true"], :root[data-look="arcade"] .modeseg button[aria-pressed="true"] { box-shadow: none; }
+:root[data-look="arcade"] .owner-tag { text-transform: none; letter-spacing: 0; font-size: .75rem; }
+:root[data-look="arcade"] .fab { background: var(--accent); }
+:root[data-look="arcade"] .primary:focus-visible { outline: 2px solid var(--ink); outline-offset: -4px; }
+:root[data-look="arcade"] :is(.set-index a, .fs-prev, .pcolors button, .dk-tab:not(.on)) { border-radius: 0; }
+:root[data-look="arcade"] :is(.set-index a, .fs-prev) { --cut: 8px; clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+:root[data-look="arcade"] .pcolors button { --cut: 5px; clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); box-shadow: none; border: 0; }
+:root[data-look="arcade"] .pcolors button[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: -3px; }
+:root[data-look="arcade"] .scanbig { --cut: 10px; border: 0; border-radius: 0; background: var(--sunk); clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
