@@ -146,8 +146,14 @@ export const uRef = () => ctx.F.doc(ctx.db, "users", meId());
 // so we don't wait for the server; failures are reported when they happen.
 const cleanS = o => { const c = JSON.parse(JSON.stringify(o)); delete c.id; return c; };
 const clean = o => { const c = cleanS(o); c.author = c.author || meId(); return c; };
-function fire(p) {
-  p.catch(e => toast(e && e.code === "permission-denied" ? "Only the person who added that can change it." : "A change couldn't be saved. Check your connection."));
+// `write` is a function that does the write (so it can be done again). If the server turns it down, the message
+// stays for a while with a Try again button instead of the change quietly disappearing (v70).
+function fire(write) {
+  const run = () => { let p; try { p = write(); } catch (e) { p = Promise.reject(e); } return p.catch(e => {
+    if (e && e.code === "permission-denied") return toast("Only the person who added that can change it.");
+    toast("A change wasn't saved. Check your connection.", { action: "Try again", onAction: run, ms: 12000 });
+  }); };
+  run();
   return Promise.resolve();
 }
 const col = c => ctx.F.collection(hRef(), c);
@@ -155,27 +161,24 @@ const col = c => ctx.F.collection(hRef(), c);
 export const hooks = { place: null };
 export const validId = id => /^[A-Za-z0-9_-]{1,100}$/.test(String(id || ""));
 export const db = {
-  add(e) { if (hooks.place) { try { hooks.place(e); } catch {} } const ref = ctx.F.doc(col("entries")); fire(ctx.F.setDoc(ref, clean(e))); return ref.id; },
-  addWithId(id, e) { return fire(ctx.F.setDoc(ctx.F.doc(col("entries"), id), clean(e))); },
-  update(id, e) { return fire(ctx.F.setDoc(ctx.F.doc(col("entries"), id), clean(e))); },
+  add(e) { if (hooks.place) { try { hooks.place(e); } catch {} } const ref = ctx.F.doc(col("entries")), d = clean(e); fire(() => ctx.F.setDoc(ref, d)); return ref.id; },
+  addWithId(id, e) { const ref = ctx.F.doc(col("entries"), id), d = clean(e); return fire(() => ctx.F.setDoc(ref, d)); },
+  update(id, e) { const ref = ctx.F.doc(col("entries"), id), d = clean(e); return fire(() => ctx.F.setDoc(ref, d)); },
   remove(id) { return db.removeDoc("entries", id); },
-  saveDoc(c, id, data) { const ref = id ? ctx.F.doc(col(c), id) : ctx.F.doc(col(c)); fire(ctx.F.setDoc(ref, clean(data))); return ref.id; },
+  saveDoc(c, id, data) { const ref = id ? ctx.F.doc(col(c), id) : ctx.F.doc(col(c)); const d = clean(data); fire(() => ctx.F.setDoc(ref, d)); return ref.id; },
   // deleting keeps a copy in "trash" for 30 days (Settings › Recently deleted)
   removeDoc(c, id) {
-    const x = (raw[c] || []).find(o => o.id === id);
-    const b = ctx.F.writeBatch(ctx.db);
-    if (x) b.set(ctx.F.doc(col("trash"), c + "__" + id), { col: c, docId: id, data: cleanS(x), deletedAt: Date.now(), author: meId() });
-    b.delete(ctx.F.doc(col(c), id));
-    return fire(b.commit());
+    const x = (raw[c] || []).find(o => o.id === id), copy = x && { col: c, docId: id, data: cleanS(x), deletedAt: Date.now(), author: meId() };
+    const tRef = ctx.F.doc(col("trash"), c + "__" + id), dRef = ctx.F.doc(col(c), id);
+    return fire(() => { const b = ctx.F.writeBatch(ctx.db); if (copy) b.set(tRef, copy); b.delete(dRef); return b.commit(); });
   },
   // many entries at once (statement imports): batched, returns the new ids straight away.
   // Like every other write, they show at once and sync in the background (no waiting on the server).
   addMany(list) {
     const F = ctx.F, ids = [];
     for (let i = 0; i < list.length; i += 400) {
-      const b = F.writeBatch(ctx.db);
-      list.slice(i, i + 400).forEach(e => { const ref = F.doc(col("entries")); ids.push(ref.id); b.set(ref, clean(e)); });
-      fire(b.commit());
+      const part = list.slice(i, i + 400).map(e => { const ref = F.doc(col("entries")); ids.push(ref.id); return [ref, clean(e)]; });
+      fire(() => { const b = F.writeBatch(ctx.db); part.forEach(([ref, d]) => b.set(ref, d)); return b.commit(); });
     }
     return Promise.resolve(ids);
   },
@@ -183,30 +186,27 @@ export const db = {
   removeEntries(ids) {
     const F = ctx.F, by = new Map((raw.entries || []).map(o => [o.id, o]));
     for (let i = 0; i < ids.length; i += 200) {
-      const b = F.writeBatch(ctx.db);
-      ids.slice(i, i + 200).forEach(id => {
-        const x = by.get(id);
-        if (x) b.set(F.doc(col("trash"), "entries__" + id), { col: "entries", docId: id, data: cleanS(x), deletedAt: Date.now(), author: meId() });
-        b.delete(F.doc(col("entries"), id));
+      const part = ids.slice(i, i + 200).map(id => { const x = by.get(id); return [id, x && { col: "entries", docId: id, data: cleanS(x), deletedAt: Date.now(), author: meId() }]; });
+      fire(() => {
+        const b = F.writeBatch(ctx.db);
+        part.forEach(([id, copy]) => { if (copy) b.set(F.doc(col("trash"), "entries__" + id), copy); b.delete(F.doc(col("entries"), id)); });
+        return b.commit();
       });
-      fire(b.commit());
     }
   },
   restoreEntries(items) {
     const F = ctx.F;
     for (let i = 0; i < items.length; i += 200) {
-      const b = F.writeBatch(ctx.db);
-      items.slice(i, i + 200).forEach(([id, data]) => { b.set(F.doc(col("entries"), id), clean(Object.assign({}, data, { author: data.author || meId() }))); b.delete(F.doc(col("trash"), "entries__" + id)); });
-      fire(b.commit());
+      const part = items.slice(i, i + 200).map(([id, data]) => [id, clean(Object.assign({}, data, { author: data.author || meId() }))]);
+      fire(() => { const b = F.writeBatch(ctx.db); part.forEach(([id, d]) => { b.set(F.doc(col("entries"), id), d); b.delete(F.doc(col("trash"), "entries__" + id)); }); return b.commit(); });
     }
   },
   // undoing an import: removed for good (not kept in Recently deleted)
   removeMany(ids) {
     const F = ctx.F;
     for (let i = 0; i < ids.length; i += 400) {
-      const b = F.writeBatch(ctx.db);
-      ids.slice(i, i + 400).forEach(id => b.delete(F.doc(col("entries"), id)));
-      fire(b.commit());
+      const part = ids.slice(i, i + 400);
+      fire(() => { const b = F.writeBatch(ctx.db); part.forEach(id => b.delete(F.doc(col("entries"), id))); return b.commit(); });
     }
     return Promise.resolve();
   },
@@ -214,9 +214,8 @@ export const db = {
   patchMany(ids, patch) {
     const F = ctx.F;
     for (let i = 0; i < ids.length; i += 400) {
-      const b = F.writeBatch(ctx.db);
-      ids.slice(i, i + 400).forEach(id => b.update(F.doc(col("entries"), id), patch));
-      fire(b.commit());
+      const part = ids.slice(i, i + 400);
+      fire(() => { const b = F.writeBatch(ctx.db); part.forEach(id => b.update(F.doc(col("entries"), id), patch)); return b.commit(); });
     }
   },
   // remember a category for a shop or person (kept in your own space, used by imports, scans and the form)
@@ -225,20 +224,19 @@ export const db = {
     const rules = JSON.parse(JSON.stringify(catRules()));
     (rules[type] = rules[type] || {})[key] = category;
     if (!isGroup()) state.settings.catRules = rules; else state.myRules = rules;
-    return fire(ctx.F.updateDoc(hRef(ctx.profile.personal), { "settings.catRules": rules }));
+    return fire(() => ctx.F.updateDoc(hRef(ctx.profile.personal), { "settings.catRules": rules }));
   },
   // put back something just deleted (the Undo button) and drop its Recently deleted copy
   restoreDoc(c, id, data) {
-    const b = ctx.F.writeBatch(ctx.db);
-    b.set(ctx.F.doc(col(c), id), clean(Object.assign({}, data, { author: data.author || meId() })));
-    b.delete(ctx.F.doc(col("trash"), c + "__" + id));
-    return fire(b.commit());
+    const d = clean(Object.assign({}, data, { author: data.author || meId() })), ref = ctx.F.doc(col(c), id), tRef = ctx.F.doc(col("trash"), c + "__" + id);
+    return fire(() => { const b = ctx.F.writeBatch(ctx.db); b.set(ref, d); b.delete(tRef); return b.commit(); });
   },
   saveGoal(id, g) { return db.saveDoc("goals", id, g); },
   saveSettings(partial) {
     const c = cleanS(Object.assign({}, state.settings, partial));
     if (isGroup()) delete c.people;
-    return fire(ctx.F.updateDoc(hRef(), { settings: c }));
+    const ref = hRef();
+    return fire(() => ctx.F.updateDoc(ref, { settings: c }));
   },
   updateSpace(patch) { return ctx.F.updateDoc(hRef(), patch); },
   // restore a backup file into your own space (Me); groups aren't touched
@@ -251,12 +249,15 @@ export const db = {
       goals: (d.goals || []).map(g => Object.assign({}, g, { owner: g.owner === "shared" ? "shared" : toMe(g.owner), author: me }))
     };
     ["recurring", "loans", "settlements"].forEach(c => { incoming[c] = (Array.isArray(d[c]) ? d[c] : []).map(x => Object.assign({}, x, x.person ? { person: toMe(x.person) } : {}, { author: me })); });
-    const ops = [];
+    // everything from the backup is written first and only then is what isn't in it removed, so a restore that
+    // stops half-way (the connection drops) has lost nothing and can simply be run again
+    const sets = [], dels = [];
     COLS.forEach(c => {
       const keep = new Set(incoming[c].filter(x => validId(x.id)).map(x => x.id));
-      raw[c].forEach(x => { if (!keep.has(x.id)) ops.push(b => b.delete(F.doc(col(c), x.id))); });
-      incoming[c].forEach(x => ops.push(b => b.set(validId(x.id) ? F.doc(col(c), x.id) : F.doc(col(c)), clean(x))));
+      raw[c].forEach(x => { if (!keep.has(x.id)) dels.push(b => b.delete(F.doc(col(c), x.id))); });
+      incoming[c].forEach(x => sets.push(b => b.set(validId(x.id) ? F.doc(col(c), x.id) : F.doc(col(c)), clean(x))));
     });
+    const ops = sets.concat(dels);
     for (let i = 0; i < ops.length; i += 400) { const b = F.writeBatch(ctx.db); ops.slice(i, i + 400).forEach(f => f(b)); await b.commit(); }
     const st = Object.assign({ currency: "MVR", opening: 0 }, d.settings || {});
     st.people = [Object.assign({}, people()[0] || {}, { id: me })];
@@ -322,7 +323,9 @@ export function billStatus(r, k) {
 export function openBills(who = ui.view) {
   const now = monthKey(new Date()), out = [];
   state.recurring.filter(r => !r.paused && (!who || whoOk(who, r.person))).forEach(r => {
+    // the last 13 months up to this one (a bill that began longer ago still gets this month checked)
     let k = r.startMonth || now; if (k > now) k = now;
+    const first = shiftMonth(now, -12); if (k < first) k = first;
     for (let i = 0; i < 13 && k <= now; i++, k = shiftMonth(k, 1)) {
       if (k < (r.startMonth || now) || billDone(r, k)) continue;
       const st = billStatus(r, k);

@@ -52,7 +52,9 @@ function computeAlerts(hh, data, today) {
   recurring.filter(r => !r.paused).forEach(r => {
     const win = Math.max(1, Math.min(31, +r.remindDays || 7));
     const months = [];
-    let k = r.startMonth && r.startMonth < now ? r.startMonth : now;
+    // the last 13 months up to this one (a bill that began longer ago still gets this month checked)
+    const first = shiftMonth(now, -12);
+    let k = r.startMonth && r.startMonth < now ? (r.startMonth > first ? r.startMonth : first) : now;
     for (let i = 0; i < 13 && k <= now; i++, k = shiftMonth(k, 1)) months.push(k);
     months.push(shiftMonth(now, 1));
     months.forEach(k => {
@@ -74,7 +76,10 @@ function computeAlerts(hh, data, today) {
   Object.keys(budgets).forEach(who => {
     const b = budgets[who] || {};
     Object.keys(b).forEach(cat => {
-      const lim = +b[cat]; if (!(lim > 0)) return;
+      const base = +b[cat]; if (!(base > 0)) return;
+      // money carried over into this category this month adds to its budget, as it does in the app
+      const lim = base + entries.filter(e => e.type === "carryover" && effMonth(e) === now && (who === "all" || e.person === who) && (e.category || "Other") === cat)
+        .reduce((s, e) => s + (+e.amount || 0), 0);
       const spent = entries.filter(e => e.type === "expense" && effMonth(e) === now && countsMoney(e, loans) && (who === "all" || e.person === who) && (e.category || "Other") === cat)
         .reduce((s, e) => s + (+e.amount || 0), 0);
       const level = spent >= lim ? "over" : spent >= lim * 0.8 ? "near" : null;

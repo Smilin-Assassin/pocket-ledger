@@ -70,6 +70,13 @@ export function saveFile(name, content, okLabel) {
     if (okLabel) toast(okLabel + " as " + name);
   } catch { toast("The file wasn't saved. Try again."); }
 }
+// one cell of a CSV file. Text that a spreadsheet would run as a formula (it starts with = + - or @) gets a leading
+// apostrophe so it opens as plain text; real numbers are left alone.
+export function csvCell(v) {
+  let t = String(v ?? "");
+  if (typeof v !== "number" && /^[=+\-@\t\r]/.test(t) && !/^[+-]?\d+(\.\d+)?$/.test(t)) t = "'" + t;
+  return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+}
 export function busy(btn, on, label) {
   if (!btn) return;
   btn.disabled = on;

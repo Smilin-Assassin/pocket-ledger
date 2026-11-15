@@ -164,10 +164,11 @@ function send() {
   const err = m => { $("xsErr").textContent = m; $("xsErr").hidden = false; };
   if (!p) return err(to === "__find" ? "Find the person by their email first." : "Pick who you're sending to.");
   if (!(amount > 0)) return err("Enter the amount.");
+  if (!(amount < 1e9)) return err("That amount is too large. Check it and try again.");
   if (!side) return err("Choose how it counts on your side.");
   // the transfer (addressed to them) and your side (in your own space) are saved together, at once
   const ref = F().doc(F().collection(ctx.db, "transfers")), wb = F().writeBatch(ctx.db);
-  wb.set(ref, { from: meId(), fromName: myName(), to: p.uid, toName: p.name, amount: r2(amount), date, note: note.slice(0, 160), created: Date.now(), author: meId() });
+  wb.set(ref, { from: meId(), fromName: String(myName()).slice(0, 40), to: p.uid, toName: String(p.name || "").slice(0, 40), amount: r2(amount), date, note: note.slice(0, 160), created: Date.now(), author: meId() });
   if (side.startsWith("exp:")) {
     wb.set(F().doc(personalEntries(), "xfer-out-d-" + ref.id), { type: "expense", amount: r2(amount), date, category: side.slice(4),
       note: ("To " + p.name + (note ? ": " + note : "")).slice(0, 160), person: meId(), author: meId(), created: Date.now(), source: "transfer", transferId: ref.id, transferTo: p.uid });

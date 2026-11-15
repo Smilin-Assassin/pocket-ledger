@@ -1,6 +1,6 @@
 // Ask about your money (typing or voice). Gemini decides what to look up; the
 // numbers come from the app; changes are prepared for one-tap confirmation.
-import { $, esc, money, sum, r2, monthKey, monthName, shiftMonth, monthsBetween, todayISO, fmtDate, isoOk, MONTH, lsGet, lsSet, toast, canHover, saveFile } from "./util.js";
+import { $, esc, money, sum, r2, monthKey, monthName, shiftMonth, monthsBetween, todayISO, fmtDate, isoOk, MONTH, lsGet, lsSet, toast, canHover, saveFile, csvCell } from "./util.js";
 import { state, ui, meId, isGroup, people, pname, groupName, effMonth, countsMoney, visibleGoals, goalBalance, goalName, totalSavings, loanOutstanding, openLoans,
   budgetsFor, spentIn, carriedIn, owesPairs, EXP_CATS, INC_CATS, TYPE_LABEL, merchantKey, EAT, mealName } from "./store.js";
 import { createLoan, findLoan, recordRepayment, createRecurring, settlePair, setBudget, addEntries } from "./actions.js";
@@ -288,8 +288,7 @@ function reportHtml(r, i, j) {
     <div class="row-btns">${r.rows.length > 8 ? `<button class="ghost" type="button" data-repmore="${i}:${j}">${r.open ? "Show less" : "Show all " + r.rows.length}</button>` : ""}${r.rows.length ? `<button class="ghost" type="button" data-repcsv="${i}:${j}">Download CSV</button>` : ""}</div></div>`;
 }
 function reportCsv(r) {
-  const cell = v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
-  const csv = [r.cols].concat(r.rows).map(row => row.map(cell).join(",")).join("\r\n");
+  const csv = [r.cols].concat(r.rows).map(row => row.map(csvCell).join(",")).join("\r\n");
   saveFile(("pocket-ledger-" + r.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "").slice(0, 60) + ".csv", "\ufeff" + csv, "Saved");
 }
 

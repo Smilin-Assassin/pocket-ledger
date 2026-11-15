@@ -55,10 +55,17 @@ async function start(opts) {
 }
 // the state an earlier test left (g1 → "", g2 → "2"); when it isn't there (a test run on its own, or in
 // parallel), a saved copy in fixtures/ is used, with group invite windows moved into the future
+// The made-up data was written with October 2026 dates. The app shows the month you're in, so the tests move it
+// into this month (and September into last month); without this they only pass in October 2026.
+const thisMonth = obj => {
+  const d = new Date(), pad = n => String(n).padStart(2, "0"), k = d.getFullYear() + "-" + pad(d.getMonth() + 1);
+  const p = new Date(d.getFullYear(), d.getMonth() - 1, 1), prev = p.getFullYear() + "-" + pad(p.getMonth() + 1);
+  return JSON.parse(JSON.stringify(obj).replace(/2026-(10|09)(?=-\d\d"|")/g, (m, mm) => mm === "10" ? k : prev));
+};
 const loadState = n => {
   if (fs.existsSync(STATE(n))) return JSON.parse(fs.readFileSync(STATE(n)));
-  const st = JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", "state" + (n || "") + ".json")));
+  const st = thisMonth(JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", "state" + (n || "") + ".json"))));
   Object.values(st).forEach(d => { if (d && typeof d === "object" && d.joinUntil) d.joinUntil = Date.now() + 7 * 864e5; });
   return st;
 };
-module.exports = { start, check, loadState, URL0 };
+module.exports = { start, check, loadState, thisMonth, URL0 };

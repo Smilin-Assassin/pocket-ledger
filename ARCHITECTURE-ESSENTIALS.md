@@ -12,7 +12,7 @@ Phone / laptop browser (installable PWA)
                   ├─ js/motion.js    springs, presets, vibrations, refresh-rate measure
                   ├─ js/scan.js      receipt/slip scanning (Gemini) + bank statement import (BML/MIB CSV exact, PDF via Gemini)
                   ├─ js/chat.js      Gemini chat, voice, one-tap confirm
-                  └─ sw.js           offline cache (network-first), share target, push
+                  └─ sw.js           offline cache (saved release first), share target, push
         │
         ▼
 Firebase project pocket-ledger-3a340 (asia-south1)

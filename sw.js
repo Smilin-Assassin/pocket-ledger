@@ -1,16 +1,32 @@
 // Pocket Ledger service worker: makes the app open offline and installable.
-const VERSION = "pl-v69";
+const VERSION = "pl-v70";
 const SHELL = ["./", "./index.html", "./app.js", "./config.js", "./manifest.webmanifest", "./css/app.css",
   "./js/main.js", "./js/util.js", "./js/store.js", "./js/actions.js", "./js/shell.js", "./js/gemini.js", "./js/scan.js", "./js/chat.js",
-  "./js/lock.js", "./js/notify.js", "./js/backup.js", "./js/transfers.js", "./js/motion.js", "./js/dock.js", "./js/quick.js", "./js/smart.js", "./js/categories.js", "./js/fold.js", "./js/picker.js", "./js/swipe.js", "./js/erase.js", "./js/delight.js",
+  "./js/lock.js", "./js/notify.js", "./js/backup.js", "./js/transfers.js", "./js/motion.js", "./js/dock.js", "./js/quick.js", "./js/smart.js", "./js/categories.js", "./js/fold.js", "./js/picker.js", "./js/swipe.js", "./js/erase.js", "./js/delight.js", "./js/theme.js", "./js/splash.js",
   "./js/pages/home.js", "./js/pages/entries.js", "./js/pages/loans.js", "./js/pages/bills.js", "./js/pages/goals.js", "./js/pages/settings.js", "./js/pages/admin.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/maskable-512.png", "./icons/favicon-32.png", "./icons/apple-touch-icon.png", "./icons/chat-bot.png"];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // fetched fresh from GitHub (never the browser's own short-lived copy), so a release is saved whole: all new files or none
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: "reload" })))).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  // the Firebase library and fonts saved by the last release are carried over (they are versioned by their own address),
+  // so the app still opens offline straight after an update; then the old release's files are removed
+  e.waitUntil((async () => {
+    const now = await caches.open(VERSION);
+    for (const k of (await caches.keys()).filter(k => k !== VERSION && k !== "pl-share")) {
+      try {
+        const old = await caches.open(k);
+        for (const r of await old.keys()) {
+          if (!/(^|\.)gstatic\.com$|^fonts\.googleapis\.com$/.test(new URL(r.url).hostname) || await now.match(r)) continue;
+          const res = await old.match(r); if (res) await now.put(r, res);
+        }
+      } catch (err) {}
+      await caches.delete(k);
+    }
+    await self.clients.claim();
+  })());
 });
 self.addEventListener("fetch", e => {
   const req = e.request;
@@ -34,12 +50,13 @@ self.addEventListener("fetch", e => {
   // Live services (sign-in, database sync, scanning) always go to the network.
   if (/googleapis\.com$|firebaseio\.com$|firebaseapp\.com$/.test(url.hostname) && url.hostname !== "fonts.googleapis.com") return;
   if (url.origin === location.origin) {
-    // App files: try the network first so updates arrive, fall back to the saved copy offline.
-    // "no-cache" makes the browser check with GitHub every time, so a new release never mixes with old files.
-    e.respondWith(fetch(req, { cache: "no-cache" }).then(res => {
-      if (res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); }
+    // App files open from the copy saved with this release (v70), so the app starts at once, also on a weak signal.
+    // An update is a new sw.js: it saves the whole new release, takes over, and the open page refreshes itself (app.js).
+    // Anything not saved yet comes from the network and is kept; offline, a page that isn't saved falls back to the app itself.
+    e.respondWith(caches.open(VERSION).then(c => c.match(req, { ignoreSearch: true }).then(hit => hit || fetch(req, { cache: "no-cache" }).then(res => {
+      if (res.ok) c.put(req, res.clone());
       return res;
-    }).catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match("./index.html"))));
+    }).catch(() => req.mode === "navigate" ? c.match("./index.html") : Response.error()))));
     return;
   }
   if (url.hostname === "www.gstatic.com" || url.hostname === "fonts.gstatic.com" || url.hostname === "fonts.googleapis.com") {

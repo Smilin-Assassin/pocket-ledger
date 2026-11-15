@@ -131,7 +131,14 @@ E(2, 120, "Food & groceries", "Agora"); E(3, 80, "Food & groceries", "Agora"); E
   for (const k of "2468") await p.click(`#lockPad [data-k="${k}"]`); await p.waitForTimeout(500);
   check(await p.isHidden("#lock"), "the right PIN opens it");
   // a pattern
-  await T.nav("settings/lock"); await p.click("#lockChange"); await p.click('#lockMethod [data-m="pattern"]'); await p.waitForTimeout(200);
+  // changing the lock asks for the current PIN first (v70); Cancel leaves everything as it was
+  await T.nav("settings/lock"); await p.click("#lockChange"); await p.waitForTimeout(200);
+  check(await p.isVisible("#lock") && /Confirm it's you/.test(await p.textContent("#lockTitle")) && await p.isHidden("#lockSetup"), "Change asks for the current PIN before anything opens");
+  await p.click("#lockBack"); await p.waitForTimeout(200);
+  check(await p.isHidden("#lock") && await p.isHidden("#lockSetup"), "Cancel closes it and nothing changes");
+  await p.click("#lockChange"); for (const k of "2468") await p.click(`#lockPad [data-k="${k}"]`); await p.waitForTimeout(500);
+  check(await p.isHidden("#lock") && await p.isVisible("#lockSetup"), "the right PIN opens the change form");
+  await p.click('#lockMethod [data-m="pattern"]'); await p.waitForTimeout(200);
   const dot = async (sel, i) => p.evaluate(([s, i]) => { const r = document.querySelectorAll(s + " .pat-dot")[i].getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }, [sel, i]);
   const draw = async (sel, idx) => { const pts = []; for (const i of idx) pts.push(await dot(sel, i)); await p.mouse.move(...pts[0]); await p.mouse.down(); for (const q of pts.slice(1)) await p.mouse.move(q[0], q[1], { steps: 4 }); await p.mouse.up(); await p.waitForTimeout(600); };
   await draw("#lsPatPad", [0, 1]); check(/at least 4/.test(await p.textContent("#lsPatHint")), "a 2-dot pattern is refused", await p.textContent("#lsPatHint"));
@@ -144,7 +151,7 @@ E(2, 120, "Food & groceries", "Agora"); E(3, 80, "Food & groceries", "Agora"); E
   await draw("#lockPatPad", [8, 7, 6, 3]); check(await p.isVisible("#lock"), "a wrong pattern stays locked");
   await draw("#lockPatPad", [0, 1, 2, 5]); check(await p.isHidden("#lock"), "the right pattern opens it");
   // a password
-  await T.nav("settings/lock"); await p.click("#lockChange"); await p.click('#lockMethod [data-m="password"]');
+  await T.nav("settings/lock"); await p.click("#lockChange"); await p.waitForTimeout(300); await draw("#lockPatPad", [0, 1, 2, 5]); await p.click('#lockMethod [data-m="password"]');
   await p.fill("#lockPw1", "abc"); await p.fill("#lockPw2", "abc"); await p.click("#lockSave"); await p.waitForTimeout(200);
   check((await p.evaluate(() => JSON.parse(localStorage.getItem("pl-lock")).method)) === "pattern", "a 3-letter password is refused");
   await p.fill("#lockPw1", "tiger-lily"); await p.fill("#lockPw2", "tiger-lily"); await p.click("#lockSave"); await p.waitForTimeout(500);
@@ -155,7 +162,16 @@ E(2, 120, "Food & groceries", "Agora"); E(3, 80, "Food & groceries", "Agora"); E
   await p.fill("#lockPw", "tiger-lily"); await p.keyboard.press("Enter"); await p.waitForTimeout(500);
   check(await p.isHidden("#lock"), "the right password (Enter) opens it");
   await T.nav("settings/lock"); await p.click("#lockOff"); await p.waitForTimeout(200);
+  check(await p.isVisible("#lock") && !!(await p.evaluate(() => localStorage.getItem("pl-lock"))), "Turn off asks for the password first");
+  // five wrong tries in a row and there's a wait before the next one, even for the right password
+  for (let i = 0; i < 5; i++) { await p.fill("#lockPw", "nope-" + i); await p.click("#lockPwGo"); await p.waitForTimeout(350); }
+  check(/Too many tries/.test(await p.textContent("#lockErr")), "after 5 wrong tries it asks you to wait", await p.textContent("#lockErr"));
+  await p.fill("#lockPw", "tiger-lily"); await p.click("#lockPwGo"); await p.waitForTimeout(400);
+  check(await p.isVisible("#lock"), "the right password doesn't work during the wait");
+  await p.evaluate(() => { const t = JSON.parse(localStorage.getItem("pl-lock-tries")); t.until = Date.now() - 1; localStorage.setItem("pl-lock-tries", JSON.stringify(t)); });
+  await p.fill("#lockPw", "tiger-lily"); await p.keyboard.press("Enter"); await p.waitForTimeout(500);
   check(!(await p.evaluate(() => localStorage.getItem("pl-lock"))), "Turn off removes the lock");
+  check(!(await p.evaluate(() => localStorage.getItem("pl-lock-tries"))), "and the count of wrong tries is cleared");
   check((await T.denied()).length === 0, "no rule denials", await T.denied());
   await T.end();
 })();

@@ -17,7 +17,7 @@ import { initChat, openChat, startRec } from "./chat.js";
 import { initLock } from "./lock.js";
 import { refreshPush } from "./notify.js";
 import { initNag, renderNag } from "./backup.js";
-import { aiReady } from "./gemini.js";
+import { aiReady, tidySharedKey } from "./gemini.js";
 import { initTransfers, checkTransfers } from "./transfers.js";
 import { initDock, dockBadges, buildDock } from "./dock.js";
 import { initQuick, openQuick } from "./quick.js";
@@ -69,7 +69,7 @@ export function boot(fb) {
   route();
   try { const m = sessionStorage.getItem("pl-join-msg"); if (m) { sessionStorage.removeItem("pl-join-msg"); setTimeout(() => toast(m), 800); } } catch {}
   (function waitReady() {
-    if (state.ready) { takeSharedFiles(); handleShortcut(); refreshPush(); checkRequests(); checkTransfers(); lastSeenMark(); }
+    if (state.ready) { takeSharedFiles(); handleShortcut(); refreshPush(); checkRequests(); checkTransfers(); lastSeenMark(); tidySharedKey(); }
     else setTimeout(waitReady, 300);
   })();
   window.PL = { go, ctx, state };

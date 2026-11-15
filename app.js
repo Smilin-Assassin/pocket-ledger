@@ -16,8 +16,21 @@ function showGate(view) {
 function gateMsg(id, text) { const el = $(id); el.textContent = text || ""; el.hidden = !text; }
 function busy(btn, on, label) { btn.disabled = on; if (label) { if (on) { btn.dataset.l = btn.textContent; btn.textContent = label; } else if (btn.dataset.l) btn.textContent = btn.dataset.l; } }
 
-if ("serviceWorker" in navigator && location.protocol === "https:") {
-  navigator.serviceWorker.register("./sw.js").catch(() => {});
+// The app opens from the files saved on the device; a new release arrives as a new sw.js (v70). When it has taken
+// over, the page refreshes itself if it has only just opened, and otherwise offers a button so nothing being typed is lost.
+if ("serviceWorker" in navigator && (location.protocol === "https:" || window.PL_SW_TEST)) {
+  const sw = navigator.serviceWorker, had = !!sw.controller, opened = Date.now();
+  let regP = sw.register("./sw.js").catch(() => null), refreshed = false, lastCheck = Date.now();
+  sw.addEventListener("controllerchange", () => {
+    if (!had || refreshed) return; refreshed = true;
+    if (Date.now() - opened < 8000) return location.reload();
+    import("./js/util.js").then(u => u.toast("Pocket Ledger was updated.", { action: "Refresh", onAction: () => location.reload(), ms: 15000 })).catch(() => {});
+  });
+  // an app left open for days still looks for a new release when you come back to it
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden || Date.now() - lastCheck < 3600e3) return; lastCheck = Date.now();
+    regP.then(r => r && r.update()).catch(() => {});
+  });
 }
 
 const AUTH_MSG = {

@@ -15,8 +15,22 @@ async function hashSecret(secret, salt, slow) {
   return b64(await crypto.subtle.deriveBits({ name: "PBKDF2", salt: enc.encode(salt), iterations: 120000, hash: "SHA-256" }, key, 256));
 }
 const method = c => (c && c.method) || "pin";
-const check = async (secret, c) => (await hashSecret(secret, c.salt, !!c.slow)) === c.hash;
 let lockedAt = 0, pinBuf = "";
+// Wrong tries (v70): after 5 in a row there's a wait before the next one, 30 seconds at first, doubling up to 15 minutes.
+// Kept on the device so closing and reopening the app doesn't reset it. Face or fingerprint isn't affected.
+const TRY_LS = "pl-lock-tries", FREE_TRIES = 5;
+const tries = () => { try { return JSON.parse(localStorage.getItem(TRY_LS) || "null") || { n: 0, until: 0 }; } catch { return { n: 0, until: 0 }; } };
+const setTries = t => { try { t ? localStorage.setItem(TRY_LS, JSON.stringify(t)) : localStorage.removeItem(TRY_LS); } catch {} };
+const waitLeft = () => Math.max(0, Math.ceil((tries().until - Date.now()) / 1000));
+const waitText = s => "Too many tries. Try again in " + (s >= 90 ? Math.ceil(s / 60) + " minutes" : s + " second" + (s === 1 ? "" : "s")) + ".";
+// true or false for a try that was checked; null when it wasn't checked because of the wait
+async function check(secret, c) {
+  if (waitLeft()) return null;
+  const ok = (await hashSecret(secret, c.salt, !!c.slow)) === c.hash;
+  if (ok) setTries(null);
+  else { const t = tries(); t.n++; if (t.n >= FREE_TRIES) t.until = Date.now() + Math.min(30 * Math.pow(2, t.n - FREE_TRIES), 900) * 1000; setTries(t); }
+  return ok;
+}
 
 // ---------- the 3x3 pattern pad (drawn with a finger or mouse) ----------
 function patternPad(host, onDone) {
@@ -40,20 +54,25 @@ function patternPad(host, onDone) {
 }
 
 // ---------- the lock screen ----------
-const wrong = () => { const e = $("lockErr"); e.textContent = ({ pin: "That PIN isn't right.", pattern: "That pattern isn't right.", password: "That password isn't right." })[method(cfg())]; e.hidden = false; };
-let lockPat = null;
-function showLock() {
+const wrong = () => { const e = $("lockErr"), s = waitLeft(); e.textContent = s ? waitText(s) : ({ pin: "That PIN isn't right.", pattern: "That pattern isn't right.", password: "That password isn't right." })[method(cfg())]; e.hidden = false; };
+let lockPat = null, afterUnlock = null;
+// the lock screen also confirms it's you before the lock is changed or turned off (then `then` runs, and Cancel shows)
+function showLock(then) {
   const c = cfg(); if (!c) return; const m = method(c);
+  afterUnlock = then || null;
+  $("lockTitle").textContent = then ? "Confirm it's you" : "Pocket Ledger is locked";
+  $("lockBack").hidden = !then;
   pinBuf = ""; $("lockDots").textContent = ""; $("lockErr").hidden = true;
   $("lockPad").hidden = m !== "pin"; $("lockDots").hidden = m !== "pin";
   $("lockPatWrap").hidden = m !== "pattern"; $("lockPwWrap").hidden = m !== "password";
   $("lockBioBtn").hidden = !c.cred;
   $("lockPw").value = ""; $("lock").hidden = false;
   if (m === "pattern" && !lockPat) lockPat = patternPad($("lockPatPad"), async s => { const k = cfg(); if (!k) return; if (await check(s, k)) unlock(); else wrong(); });
+  if (waitLeft()) wrong();
   if (c.cred) setTimeout(tryBio, 250);
   else if (m === "password") setTimeout(() => $("lockPw").focus(), 100);
 }
-function unlock() { $("lock").hidden = true; pinBuf = ""; $("lockErr").hidden = true; }
+function unlock() { $("lock").hidden = true; pinBuf = ""; $("lockErr").hidden = true; const f = afterUnlock; afterUnlock = null; if (f) { try { f(); } catch (e) { console.error(e); } } }
 async function tryBio() {
   const c = cfg(); if (!c || !c.cred) return;
   try {
@@ -71,6 +90,8 @@ export function initLock() {
     const c = cfg();
     // a PIN made in v45 or later knows its length, so a wrong one is called out (and cleared) as soon as it's all typed
     const L = (c && c.len) || 0, full = L ? pinBuf.length >= L : pinBuf.length >= 8;
+    if (c && waitLeft()) { wrong(); pinBuf = ""; $("lockDots").textContent = ""; return; }
+    // only a complete PIN is checked (so each wrong PIN counts once, not once per digit); older PINs without a saved length are checked from 4 digits on
     if (c && method(c) === "pin" && (L ? pinBuf.length === L : pinBuf.length >= 4) && await check(pinBuf, c)) unlock();
     else if (c && full) { wrong(); pinBuf = ""; $("lockDots").textContent = ""; }
   });
@@ -78,10 +99,11 @@ export function initLock() {
   $("lockPwGo").addEventListener("click", tryPw);
   $("lockPw").addEventListener("keydown", ev => { if (ev.key === "Enter") tryPw(); });
   $("lockBioBtn").addEventListener("click", tryBio);
+  $("lockBack").addEventListener("click", () => { if (!afterUnlock) return; afterUnlock = null; $("lock").hidden = true; pinBuf = ""; });
   document.addEventListener("visibilitychange", () => {
     if (!cfg()) return;
     if (document.hidden) lockedAt = Date.now();
-    else if (lockedAt && Date.now() - lockedAt > 60000) showLock();
+    else if (lockedAt && Date.now() - lockedAt > 60000 && !afterUnlock) showLock();
   });
   if (cfg()) showLock();
 }
@@ -122,7 +144,9 @@ async function store(m, secret) {
 }
 export function initSettings() {
   const open = () => { pick = method(cfg()); $("lockSetup").hidden = false; ["lockPin1", "lockPin2", "lockPw1", "lockPw2"].forEach(id => $(id).value = ""); showMethod(); };
-  $("lockOn").addEventListener("click", open); $("lockChange").addEventListener("click", open);
+  // changing the lock or turning it off asks for the current PIN, pattern or password first
+  const sure = fn => () => (cfg() ? showLock(fn) : fn());
+  $("lockOn").addEventListener("click", open); $("lockChange").addEventListener("click", sure(open));
   $("lockCancel").addEventListener("click", () => { $("lockSetup").hidden = true; });
   $("lockMethod").addEventListener("click", ev => { const b = ev.target.closest("button[data-m]"); if (b) { pick = b.dataset.m; showMethod(); } });
   $("lockSave").addEventListener("click", async () => {
@@ -138,7 +162,7 @@ export function initSettings() {
       await store("password", a);
     }
   });
-  $("lockOff").addEventListener("click", () => { try { localStorage.removeItem(LOCK_LS); } catch {} renderSettings(); toast("Security is off"); });
+  $("lockOff").addEventListener("click", sure(() => { try { localStorage.removeItem(LOCK_LS); } catch {} setTries(null); renderSettings(); toast("Security is off"); }));
   $("lockBioOff").addEventListener("click", () => { const c = cfg(); if (c) { delete c.cred; save(c); } renderSettings(); toast("Face or fingerprint is off"); });
   $("lockBioAdd").addEventListener("click", async () => {
     try {

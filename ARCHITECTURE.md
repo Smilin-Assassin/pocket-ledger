@@ -4,7 +4,7 @@ Short version: `ARCHITECTURE-ESSENTIALS.md`. What the app is for and the product
 
 ## Principles
 - **No build step.** Plain ES modules, loaded as they are by GitHub Pages. One job per file.
-- **Offline first.** Firestore's persistent cache means writes land instantly and sync later; the service worker serves the shell network-first so updates arrive on the next open.
+- **Offline first.** Firestore's persistent cache means writes land instantly and sync later; the service worker serves the shell from the copy saved with the release (v70), so the app opens at once; a new `sw.js` saves the whole new release, takes over, and the open page refreshes itself (`app.js`).
 - **The server is small.** Everything that can run in the browser does. The server only holds what must be secret or trusted: the Gemini key, invite redemption, admin actions, scheduled alerts and push.
 - **Security in rules, not in the UI.** `firestore.rules` enforces who can read a space and that only a doc's `author` can change it. The UI hides buttons, the rules make it true.
 
@@ -35,7 +35,7 @@ Short version: `ARCHITECTURE-ESSENTIALS.md`. What the app is for and the product
 | `js/fold.js` | Folded cards on the Dashboard (v42): 12 months and Compare show a one-line summary and open in place (clip reveal, staggered parts, bars growing, cards below gliding). Open state per device in localStorage `pl-fold`. |
 | `js/smart.js` | Smart help on Home, computed on the device (other months show only that month's "could use a look"): regular payments → bill, category above usual, quiet days, optional places (rounded position on entries added today, suggestion when near a place paid at twice). |
 | `js/lock.js`, `js/notify.js`, `js/backup.js`, `js/util.js` | Security on this device (v45: PIN, pattern or password via PBKDF2, plus optional face/fingerprint through WebAuthn; the lock config lives in `localStorage` `pl-lock`), push setup and notification choices, backup/restore/reminder and import history, small helpers (`toast` with Undo, dates, money, storage). |
-| `sw.js` | Cache `pl-vNN`, network-first with `no-cache`, share target (images, PDF, CSV), push display. |
+| `sw.js` | Cache `pl-vNN`: the release is saved whole at install (`cache: "reload"`) and served cache-first; the Firebase library and fonts carry over between releases; share target (images, PDF, CSV), push display. |
 | `functions/index.js`, `alerts.js` | `gemini`, `access`, `admin`, `dailyAlerts` (08:30 Maldives), `notifyTransfer`, `testPush`. |
 
 ## Statement import pipeline
@@ -90,7 +90,7 @@ tests/run-all.sh        # or one test: cd tests && NODE_PATH=$(npm root -g) node
 - `access/{uid}`: invite-only gate, written only by the server. `{ok, email, admin, how: existing|invite|restored, since, invite, invitedBy}`.
 - `revoked/{uid}`: people the admin removed (server only).
 - `invites/{code}`: `{by, note, group, created, expires, max: 1, used[], usedBy[]}`; created by admins in the app, used up by the `access` function.
-- `viewRequests/{id}`: "can I see your dashboard" `{from, fromName, to, toName, status: pending|accepted|declined|revoked, space, group, created, answered}`.
+- `viewRequests/{id}` is gone (v70): the feature was removed in v37 and its rules now too.
 - `aiUsage/{uid}_{day}` `{n, uid, day}` and `config/app {aiLimit}`: server only.
 
 ## Server functions (`functions/index.js`, region asia-south1)

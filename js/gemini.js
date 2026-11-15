@@ -1,7 +1,7 @@
 // Talking to Gemini: through your secure server (the "gemini" Cloud Function),
 // or straight to Google with a key if a space still uses one.
 import { $, lsGet, lsSet, toast } from "./util.js";
-import { ctx, state, hRef } from "./store.js";
+import { ctx, state, hRef, isGroup, meId, onChange } from "./store.js";
 import { callFn, serverMissing } from "./notify.js";
 
 const KEY_LS = "pl-gemini-key", MODEL_LS = "pl-gemini-model";
@@ -100,15 +100,32 @@ export function parseJsonText(text) {
 }
 export const geminiJson = async (prompt, files, signal, extra) => parseJsonText(await geminiText(prompt, files, Object.assign({ json: true, signal }, extra || {})));
 
+// A key must never sit in a group's shared data, where every member can read it (v70). In a group it is kept on
+// this device only; a key an older version left in the group is moved to its creator's device and removed.
+export function tidySharedKey() {
+  if (!isGroup() || !spaceKey() || !state.household || state.household.owner !== meId()) return;
+  if (!lsGet(KEY_LS).trim()) lsSet(KEY_LS, spaceKey());
+  ctx.F.updateDoc(hRef(), { gemini: { key: "" } }).then(() => { state.household.gemini = { key: "" }; }).catch(() => {});
+}
+
 // ---------- Settings › Gemini ----------
+// where the key is kept depends on the space (redone when the space's data arrives, which can be after the page opens)
+function keyText() {
+  const grp = isGroup(), lab = document.querySelector('label[for="setHKey"]');
+  if (lab) lab.textContent = grp ? "Gemini key on this device" : "Gemini key for this space";
+  $("hkeyHint").textContent = grp ? "Kept on this device only, never in the group's shared data. Other people in the group use the server or their own key."
+    : "Saved with your own space's data, so it works on all your devices. Only you can see it.";
+}
 export function renderSettings() {
   const on = serverAI(), dk = lsGet(KEY_LS).trim(), hk = spaceKey();
+  keyText();
   $("srvState").textContent = on ? "Gemini runs on your secure server for everyone. No key is stored in the app." : "Optional: run Gemini on your secure server, so no key is stored in the app or on phones.";
   $("srvOn").hidden = on; $("srvOff").hidden = !on;
   $("hkeyField").hidden = on; $("hkeyHint").hidden = on;
   $("setHKey").value = hk || dk; $("setKey").value = dk && dk !== (hk || dk) ? dk : ""; $("setModel").value = lsGet(MODEL_LS);
 }
 export function initSettings() {
+  onChange(keyText);
   $("srvOn").addEventListener("click", async () => {
     $("srvOn").disabled = true;
     try {
@@ -125,8 +142,11 @@ export function initSettings() {
   });
   $("saveAi").addEventListener("click", async () => {
     const hk = $("setHKey").value.trim(), dk = $("setKey").value.trim();
-    lsSet(KEY_LS, dk && dk !== hk ? dk : ""); lsSet(MODEL_LS, $("setModel").value.trim());
-    if (!serverAI() && hk !== spaceKey() && (state.household.type !== "group" || state.household.owner === ctx.user.uid)) {
+    lsSet(MODEL_LS, $("setModel").value.trim());
+    // in a group the key stays on this device; only your own space keeps it with its data
+    if (isGroup()) { lsSet(KEY_LS, dk || hk); return toast("Gemini settings saved"); }
+    lsSet(KEY_LS, dk && dk !== hk ? dk : "");
+    if (!serverAI() && hk !== spaceKey()) {
       try { await ctx.F.updateDoc(hRef(), { gemini: { key: hk } }); } catch { return toast("Couldn't save the key. Check your connection."); }
     }
     toast("Gemini settings saved");

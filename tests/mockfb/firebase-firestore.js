@@ -22,13 +22,8 @@ function allowed(path, before, after) {
   if (seg[0] === "access") return false;
   if (seg[0] === "invites") { if (!before) return isAdmin() && after.by === u && !(after.used || []).length && after.max <= 20; if (!after) return isAdmin(); return false; }
   if (!hasAccess()) return false;
-  if (seg[0] === "viewRequests") {
-    if (!before) return after.from === u && after.status === "pending" && only(Object.keys(after), ["from", "fromName", "to", "toName", "status", "created", "group"]);
-    if (!after) return before.from === u || before.to === u;
-    return before.to === u && only(changed(before, after), ["status", "space", "toName", "answered"]);
-  }
   if (seg[0] === "transfers" && seg.length === 2) {
-    if (!before) return after.from === u && after.author === u && typeof after.to === "string" && after.to !== u && typeof after.amount === "number" && after.amount > 0 && only(Object.keys(after), ["from", "fromName", "to", "toName", "amount", "date", "note", "created", "author"]);
+    if (!before) return after.from === u && after.author === u && typeof after.to === "string" && after.to !== u && typeof after.amount === "number" && after.amount > 0 && after.amount < 1e9 && [["fromName", 40], ["toName", 40], ["note", 160], ["date", 10]].every(([k, n]) => typeof (after[k] ?? "") === "string" && (after[k] ?? "").length <= n) && only(Object.keys(after), ["from", "fromName", "to", "toName", "amount", "date", "note", "created", "author"]);
     if (!after) return before.from === u;
     return false;
   }
@@ -101,7 +96,8 @@ export async function getDocs(q) {
   let keys = Object.keys(d).filter(k => k.startsWith(pre) && !k.slice(pre.length).includes("/")).sort();
   const w = q.where || [];
   if (RULES) {
-    if (q.path === "viewRequests" || q.path === "transfers") { if (!w.some(c => (c.f === "from" || c.f === "to") && c.v === me())) throw err("permission-denied"); }
+    if (q.path === "viewRequests") throw err("permission-denied");
+    if (q.path === "transfers") { if (!w.some(c => (c.f === "from" || c.f === "to") && c.v === me())) throw err("permission-denied"); }
     else if (q.path === "invites") { if (!isAdmin()) throw err("permission-denied"); }
     else if (q.path.startsWith("households/")) { if (!canRead(q.path.split("/")[1])) throw err("permission-denied"); }
   }

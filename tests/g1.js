@@ -1,7 +1,7 @@
 // g1: an old shared household (p1/p2 people) moves to: Adam's own space + a "Household" group.
-const { start } = require("./lib");
+const { start, thisMonth } = require("./lib");
 const H = "households/HH1";
-const seed = {
+const seed = thisMonth({
   [H]: { members: ["uid_adamxcom", "uid_linaxcom"], personOf: { uid_adamxcom: "p1", uid_linaxcom: "p2" }, joinUntil: 0, ai: { server: true }, gemini: { key: "" },
     settings: { currency: "MVR", opening: 1000, openingBy: { p1: 1000, p2: 500 }, people: [{ id: "p1", name: "Adam", acct: "4821", bank: "ADAM NAZIM", color: "#1f8a7a" }, { id: "p2", name: "Lina", acct: "1111", color: "#c0587e" }], budgets: { p1: { Food: 2000 }, all: { Bills: 3000 } } } },
   [H + "/entries/e1"]: { type: "income", amount: 20000, date: "2026-10-01", category: "Salary", person: "p1", created: 1 },
@@ -17,7 +17,7 @@ const seed = {
   [H + "/settlements/s1"]: { from: "p2", to: "p1", amount: 100, date: "2026-09-30", created: 1 },
   "users/uid_adamxcom": { household: "HH1", email: "adam@x.com" },
   "users/uid_linaxcom": { household: "HH1", email: "lina@x.com" }
-};
+});
 const users = { "adam@x.com": "secret12", "lina@x.com": "secret12", "ali@x.com": "secret12" };
 
 (async () => {

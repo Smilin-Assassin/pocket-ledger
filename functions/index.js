@@ -26,6 +26,7 @@ const APP_URL = "https://smilin-assassin.github.io/pocket-ledger/";
 const ICON = APP_URL + "icons/icon-192.png";
 const MODEL_CHAIN = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"];
 const DAILY_AI_LIMIT = 300; // Gemini calls per person per day
+const MAX_REQUEST_CHARS = 12e6; // the biggest request the app sends is one 8 MB statement PDF (about 11 million characters)
 
 // ---------- notifications ----------
 // tapping a notification opens the page it's about
@@ -51,7 +52,8 @@ async function sendTo(uids, title, body, kind) {
     const dead = [];
     res.responses.forEach((r, i) => {
       if (r.success) sent++;
-      else if (r.error && /registration-token-not-registered|invalid-registration-token|invalid-argument/.test(r.error.code || "")) dead.push(tokens[i]);
+      // only forget a device when Google says that device is gone (a message that was simply rejected must not unregister anyone)
+      else if (r.error && /registration-token-not-registered|invalid-registration-token/.test(r.error.code || "")) dead.push(tokens[i]);
     });
     if (dead.length) await ref.update({ tokens: FieldValue.arrayRemove(...dead) });
   }
@@ -60,18 +62,23 @@ async function sendTo(uids, title, body, kind) {
 
 exports.dailyAlerts = onSchedule({ schedule: "every day 08:30", timeZone: "Indian/Maldives" }, async () => {
   const today = localToday(new Date(), 5);
-  const since = shiftMonth(today.slice(0, 7), -2) + "-01";
+  // a year back: a bill counts as paid only if its entry is loaded, so this must reach as far as the bills check does
+  const since = shiftMonth(today.slice(0, 7), -12) + "-01";
   const hhs = await db.collection("households").get();
   for (const doc of hhs.docs) {
     try {
       const hh = doc.data();
-      const [entries, recurring, loans] = await Promise.all([
+      // every loan repayment counts, however old, or a loan would look less paid than it is
+      const [entries, repays, recurring, loans] = await Promise.all([
         doc.ref.collection("entries").where("date", ">=", since).get(),
+        doc.ref.collection("entries").where("loanRole", "==", "repay").get(),
         doc.ref.collection("recurring").get(),
         doc.ref.collection("loans").get()
       ]);
       const toArr = q => q.docs.map(d => Object.assign({ id: d.id }, d.data()));
-      const { alerts, state } = computeAlerts(hh, { entries: toArr(entries), recurring: toArr(recurring), loans: toArr(loans) }, today);
+      const have = new Set(entries.docs.map(d => d.id));
+      const allEntries = toArr(entries).concat(toArr(repays).filter(e => !have.has(e.id)));
+      const { alerts, state } = computeAlerts(hh, { entries: allEntries, recurring: toArr(recurring), loans: toArr(loans) }, today);
       for (const a of alerts) await sendTo(recipientsFor(a, hh), a.title, a.body, a.kind);
       await doc.ref.update({ alertState: state });
       if (alerts.length) logger.info("household " + doc.id + ": " + alerts.length + " alert(s)");
@@ -241,6 +248,16 @@ async function geminiHandler(req) {
   if (!acc.exists) throw new HttpsError("permission-denied", "Pocket Ledger is invite-only.");
   if (req.data && req.data.ping) return { ok: true };
 
+  // what the app may ask for: a sensible size, only the settings it uses, only the models listed above
+  const { contents, search, fast } = req.data || {};
+  if (!Array.isArray(contents) || !contents.length) throw new HttpsError("invalid-argument", "Nothing to send.");
+  if (contents.length > 40 || JSON.stringify(contents).length > MAX_REQUEST_CHARS) throw new HttpsError("invalid-argument", "That's too much to send at once. Try a smaller file.");
+  const gc0 = (req.data && req.data.generationConfig) || {}, generationConfig = {};
+  if (typeof gc0.temperature === "number" && gc0.temperature >= 0 && gc0.temperature <= 2) generationConfig.temperature = gc0.temperature;
+  if (gc0.response_mime_type === "application/json") generationConfig.response_mime_type = "application/json";
+  if (gc0.thinkingConfig && gc0.thinkingConfig.thinkingBudget === 0) generationConfig.thinkingConfig = { thinkingBudget: 0 };
+  const model = MODEL_CHAIN.includes(String((req.data && req.data.model) || "")) ? String(req.data.model) : null;
+
   // simple daily limit per person
   const day = localToday(new Date(), 5);
   const usage = db.doc("aiUsage/" + uid + "_" + day);
@@ -251,11 +268,9 @@ async function geminiHandler(req) {
   const limit = (await appConfig()).aiLimit || DAILY_AI_LIMIT;
   if (used > limit) throw new HttpsError("resource-exhausted", "Daily Gemini limit reached. It resets tomorrow.");
 
-  const { contents, generationConfig, model, search, fast } = req.data || {};
-  if (!Array.isArray(contents) || !contents.length) throw new HttpsError("invalid-argument", "Nothing to send.");
   // search: let Gemini look things up with Google Search (used to tell what kind of place an unknown shop is)
-  let body = JSON.stringify(Object.assign({ contents, generationConfig: generationConfig || {} }, search ? { tools: [{ google_search: {} }] } : {}));
-  const chain = model ? [String(model)] : fast ? [MODEL_CHAIN[MODEL_CHAIN.length - 1]].concat(MODEL_CHAIN.slice(0, -1)) : MODEL_CHAIN;
+  let body = JSON.stringify(Object.assign({ contents, generationConfig }, search ? { tools: [{ google_search: {} }] } : {}));
+  const chain = model ? [model] : fast ? [MODEL_CHAIN[MODEL_CHAIN.length - 1]].concat(MODEL_CHAIN.slice(0, -1)) : MODEL_CHAIN;
   let status = 0, msg = "";
   for (const m of chain) {
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -271,7 +286,7 @@ async function geminiHandler(req) {
       }
       status = r.status; msg = ""; try { msg = ((await r.json()).error || {}).message || ""; } catch (e) {}
       if ((status === 503 || status === 500) && attempt === 0) { await new Promise(res => setTimeout(res, 1500)); continue; }
-      if (status === 400 && !/api.?key/i.test(msg) && generationConfig && generationConfig.thinkingConfig) { delete generationConfig.thinkingConfig; body = JSON.stringify(Object.assign({ contents, generationConfig }, search ? { tools: [{ google_search: {} }] } : {})); attempt = -1; continue; }
+      if (status === 400 && !/api.?key/i.test(msg) && generationConfig.thinkingConfig) { delete generationConfig.thinkingConfig; body = JSON.stringify(Object.assign({ contents, generationConfig }, search ? { tools: [{ google_search: {} }] } : {})); attempt = -1; continue; }
       break;
     }
     const noQuota = status === 429 && /limit:\s*0\b|free_tier/i.test(msg);
@@ -280,7 +295,7 @@ async function geminiHandler(req) {
   logger.warn("gemini failed", { status, msg });
   if (status === 429) throw new HttpsError("resource-exhausted", msg || "Gemini is busy. Try again in a minute.");
   if (status === 400 && /api.?key/i.test(msg)) throw new HttpsError("failed-precondition", "The server's Gemini key isn't valid.");
-  throw new HttpsError("unavailable", status ? "HTTP " + status + ": " + msg : "Couldn't reach Gemini. Try again in a moment.");
+  throw new HttpsError("unavailable", status ? "HTTP " + status + ": " + String(msg).slice(0, 200) : "Couldn't reach Gemini. Try again in a moment.");
 }
 
 // Someone recorded money sent to another person in a group they share: let the receiver know.
@@ -306,8 +321,12 @@ exports.notifyTransfer = onCall(async req => {
     const p = u.personal ? (await db.doc("households/" + u.personal).get()).data() || {} : {};
     auto = !!(((p.settings || {}).xferRules || {})[uid]);
   } catch (e) { auto = false; }
+  // the name shown is the sender's own name in Pocket Ledger, not whatever the request said
+  let fromName = "Someone";
+  try { fromName = String(((await db.doc("users/" + uid).get()).data() || {}).name || "Someone").slice(0, 40); } catch (e) {}
+  const note = String(t.note || "").slice(0, 160);
   const amt = "MVR " + Number(t.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const sent = await sendTo([t.to], (t.fromName || "Someone") + " sent you " + amt, (t.note ? t.note + ". " : "") + (auto ? "It's added to your income when you open Pocket Ledger." : "Open Pocket Ledger to choose how it counts."), "transfers");
+  const sent = await sendTo([t.to], fromName + " sent you " + amt, (note ? note + ". " : "") + (auto ? "It's added to your income when you open Pocket Ledger." : "Open Pocket Ledger to choose how it counts."), "transfers");
   await ref.update({ notified: Date.now() });
   return { sent };
 });

@@ -1,5 +1,5 @@
 // Entries page: the add/edit form and every entry, searchable across months.
-import { $, esc, money, num, sum, todayISO, monthKey, monthName, shiftMonth, toast, saveFile, fillSelect, canHover } from "../util.js";
+import { $, esc, money, num, sum, todayISO, monthKey, monthName, shiftMonth, toast, saveFile, fillSelect, canHover, csvCell } from "../util.js";
 import { state, ui, db, meId, isAll, isGroup, people, pname, pcolor, canEdit, addedBy, otherOf, inMonth, countsMoney,
   visibleGoals, goalBalance, goalName, totalSavings, catOptions, guessCategory, changed, merchantKey, effMonth, EAT, MEALS, mealName, mealAt, mealFromNote } from "../store.js";
 import { createRecurring, budgetCheck, removeWithUndo } from "../actions.js";
@@ -364,7 +364,7 @@ function frGo() {
 function exportCsv() {
   const rows = [["Date", "Person", "Type", "Category", "Meal", "Goal", "Note", "Amount", "Currency"]].concat(
     state.entries.slice().sort((a, b) => (a.date || "").localeCompare(b.date || "")).map(e => [e.date, pname(e.person), e.type, e.category || "", mealName(e.meal), goalName(e.goalId), e.note || "", e.amount, state.settings.currency || "MVR"]));
-  const csv = rows.map(r => r.map(v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v).join(",")).join("\r\n");
+  const csv = rows.map(r => r.map(csvCell).join(",")).join("\r\n");
   saveFile("pocket-ledger-" + todayISO() + ".csv", "﻿" + csv, "Exported");
 }
 export { exportCsv };

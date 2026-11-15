@@ -1,7 +1,7 @@
 rules_version = '2';
 // Pocket Ledger: everyone has a private space; groups are shared.
 //  - Only members can add things to a space; only the person who added something can change or delete it.
-//  - "viewers" can look at someone's private space (after that person allowed it) but can't change anything.
+//  - "viewers" is left over from an old feature (viewing someone's dashboard); the app now empties it.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
@@ -65,21 +65,17 @@ service cloud.firestore {
       }
     }
 
-    // "Can I see your dashboard?" requests between people who share a group.
-    match /viewRequests/{rid} {
-      allow create: if hasAccess() && request.resource.data.from == me() && request.resource.data.status == 'pending'
-                    && request.resource.data.keys().hasOnly(['from', 'fromName', 'to', 'toName', 'status', 'created', 'group']);
-      allow read: if signedIn() && (resource.data.from == me() || resource.data.to == me());
-      allow update: if signedIn() && resource.data.to == me() && onlyKeys(['status', 'space', 'toName', 'answered']);
-      allow delete: if signedIn() && (resource.data.from == me() || resource.data.to == me());
-    }
-
     // Money sent straight to another person (no shared group needed). The receiver's app adds it
     // to their own space; the server sends the push. Nobody can change a transfer once it's sent.
     match /transfers/{tid} {
       allow create: if hasAccess() && request.resource.data.from == me() && request.resource.data.author == me()
                     && request.resource.data.to is string && request.resource.data.to != me()
-                    && request.resource.data.amount is number && request.resource.data.amount > 0
+                    && request.resource.data.amount is number && request.resource.data.amount > 0 && request.resource.data.amount < 1000000000
+                    // short text only: these go into the receiver's notification and their entry
+                    && request.resource.data.get('fromName', '') is string && request.resource.data.get('fromName', '').size() <= 40
+                    && request.resource.data.get('toName', '') is string && request.resource.data.get('toName', '').size() <= 40
+                    && request.resource.data.get('note', '') is string && request.resource.data.get('note', '').size() <= 160
+                    && request.resource.data.get('date', '') is string && request.resource.data.get('date', '').size() <= 10
                     && request.resource.data.keys().hasOnly(['from', 'fromName', 'to', 'toName', 'amount', 'date', 'note', 'created', 'author']);
       allow read: if signedIn() && (resource.data.from == me() || resource.data.to == me());
       allow delete: if signedIn() && resource.data.from == me();

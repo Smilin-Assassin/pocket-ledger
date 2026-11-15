@@ -18,6 +18,17 @@ async function buildBackup() {
   if (!out.entries) { out.entries = []; out.goals = []; out.settings = {}; }
   return out;
 }
+// Is this file safe to restore? Every entry needs a known type, a real amount and a proper date, and a goal a name.
+const TYPES = ["expense", "income", "save", "withdraw", "carryover", "move"];
+export function backupProblem(d) {
+  if (!d || typeof d !== "object" || !Array.isArray(d.entries) || !Array.isArray(d.goals)) return "That file isn't a Pocket Ledger backup.";
+  if (d.entries.length > 50000) return "That backup is too large to restore here.";
+  const bad = d.entries.findIndex(e => !e || typeof e !== "object" || !TYPES.includes(e.type) || typeof e.amount !== "number" || !isFinite(e.amount) || e.amount < 0 || !/^\d{4}-\d{2}-\d{2}$/.test(String(e.date || "")));
+  if (bad >= 0) return "That backup can't be restored: entry " + (bad + 1) + " is damaged (its type, amount or date is missing). Nothing was changed.";
+  if (d.goals.some(g => !g || typeof g !== "object" || typeof g.name !== "string")) return "That backup can't be restored: one of its goals is damaged. Nothing was changed.";
+  if (["recurring", "loans", "settlements"].some(c => d[c] !== undefined && (!Array.isArray(d[c]) || d[c].some(x => !x || typeof x !== "object")))) return "That backup can't be restored: part of it is damaged. Nothing was changed.";
+  return "";
+}
 export async function doBackup() {
   toast("Making your backup…");
   let d; try { d = await buildBackup(); } catch { return toast("Couldn't make the backup. Check your connection."); }
@@ -75,10 +86,10 @@ export function initSettings() {
     const f = ev.target.files[0]; ev.target.value = "";
     if (!f) return;
     try {
-      const d = JSON.parse(await f.text());
-      if (!d || !Array.isArray(d.entries) || !Array.isArray(d.goals)) throw new Error();
+      let d = null; try { d = JSON.parse(await f.text()); } catch {}
+      const why = backupProblem(d); if (why) return toast(why);
       pending = d;
-      $("restoreMsg").textContent = "Restore " + f.name + "? It has " + d.entries.length + " entries and " + d.goals.length + " goals, and will replace everything in your own space (Me). Groups aren't changed.";
+      $("restoreMsg").textContent = "Restore " + f.name + "? It has " + d.entries.length + " entries and " + d.goals.length + " goals, and will replace everything in your own space (Me). Groups aren't changed. A copy of what you have now is saved to this device first.";
       $("restoreBanner").hidden = false;
     } catch { toast("That file isn't a Pocket Ledger backup."); }
   });
@@ -88,7 +99,10 @@ export function initSettings() {
     const d = pending; pending = null; $("restoreBanner").hidden = true;
     if (!navigator.onLine) return toast("Restoring needs an internet connection.");
     if (ctx.space && ctx.space.type !== "personal") return toast("Switch to your own space (Me) first, then restore.");
+    // a copy of what's there now goes to the device first, so a wrong restore can be put back
+    try { saveFile("pocket-ledger-before-restore-" + todayISO() + ".json", JSON.stringify(await buildBackup(), null, 1)); }
+    catch { return toast("Couldn't save a copy of what you have now, so nothing was restored. Check your connection and try again."); }
     toast("Restoring…");
-    try { await db.replaceAll(d); toast("Backup restored"); } catch (e) { if (!e || e.code !== "group") toast("Couldn't restore. Check your connection and try again."); }
+    try { await db.replaceAll(d); toast("Backup restored"); } catch (e) { if (!e || e.code !== "group") toast("The restore didn't finish. Nothing was removed; check your connection and restore the same file again."); }
   });
 }

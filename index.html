@@ -2,27 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- A safety net (v70): the page may only run its own scripts and Firebase's, never script text slipped into the page. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' https: wss:; frame-src https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#FBF7F3">
-<script>
-(function () {
-  var d = document.documentElement, g = function (k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } };
-  window.plApplyTheme = function () {
-    // one look, Coral Dusk (v50), in light or dark, chosen by hand in Settings › Appearance (default light;
-    // the old "Automatic" and every older theme choice simply land on light)
-    d.setAttribute("data-theme", g("pl-mode") === "dark" ? "dark" : "light");
-    d.setAttribute("data-preset", "coral");
-    // text size: a smooth slider (v45) stores a number like 1.07; the older Small/Large/Extra large letters still work
-    var fs = g("pl-fs") || "m", FSN = { s: .92, m: 1, l: 1.12, xl: 1.25 }, fz = FSN[fs] || parseFloat(fs);
-    if (!(fz >= .8 && fz <= 1.4)) { fz = 1; fs = "m"; }
-    d.setAttribute("data-fs", FSN[fs] ? fs : "custom"); d.style.setProperty("--fs-zoom", String(fz)); d.setAttribute("data-fs-z", String(fz));
-    var m = document.querySelector('meta[name="theme-color"]');
-    if (m && document.body) m.setAttribute("content", getComputedStyle(document.body).backgroundColor);
-  };
-  window.plApplyTheme();
-  document.addEventListener("DOMContentLoaded", window.plApplyTheme);
-})();
-</script>
+<script src="js/theme.js"></script>
 <meta name="description" content="Household money tracker: income, spending, savings goals and receipt scanning.">
 <title>Pocket Ledger</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -31,21 +15,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400..800&display=swap">
-<link rel="stylesheet" href="css/app.css?v=69">
+<link rel="stylesheet" href="css/app.css?v=70">
 </head>
 <body>
 <!-- A (v51): the logo opening, once per app opening; it never takes taps and leaves on its own -->
 <div class="splash" id="splash" aria-hidden="true"><svg viewBox="0 0 168 168" width="132" height="132"><circle class="sp-seg" cx="84" cy="84" r="40" pathLength="100" stroke="#FF7A45" stroke-dasharray="35.0 200" transform="rotate(-90.0 84 84)" style="--len:35.0;animation-delay:0ms"/><circle class="sp-seg" cx="84" cy="84" r="40" pathLength="100" stroke="#FF4D8D" stroke-dasharray="24.0 200" transform="rotate(36.0 84 84)" style="--len:24.0;animation-delay:110ms"/><circle class="sp-seg" cx="84" cy="84" r="40" pathLength="100" stroke="#FFD166" stroke-dasharray="17.5 200" transform="rotate(122.4 84 84)" style="--len:17.5;animation-delay:220ms"/><circle class="sp-seg" cx="84" cy="84" r="40" pathLength="100" stroke="#9C8BC4" stroke-dasharray="23.5 200" transform="rotate(185.4 84 84)" style="--len:23.5;animation-delay:330ms"/><circle class="sp-dot" cx="84" cy="84" r="8" fill="#FFFFFF"/></svg><div class="sp-name">Pocket Ledger</div></div>
-<script>
-(function () {
-  var s = document.getElementById("splash"), seen = false;
-  try { seen = sessionStorage.getItem("pl-splashed") === "1"; sessionStorage.setItem("pl-splashed", "1"); } catch (e) {}
-  if (seen) { s.remove(); window.plSplashUntil = 0; return; }
-  var calm = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches, stay = calm ? 450 : 1350;
-  window.plSplashUntil = performance.now() + stay + 300;
-  setTimeout(function () { s.classList.add("bye"); setTimeout(function () { s.remove(); }, 320); }, stay);
-})();
-</script>
+<script src="js/splash.js"></script>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 10.5 12 4l8.5 6.5V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/></symbol>
@@ -616,7 +591,7 @@
 <div class="lock" id="lock" hidden>
   <div class="lock-card">
     <img src="icons/icon-192.png" alt="" width="56" height="56">
-    <h2>Pocket Ledger is locked</h2>
+    <h2 id="lockTitle">Pocket Ledger is locked</h2>
     <div class="lock-dots" id="lockDots" aria-live="polite"></div>
     <div class="err" id="lockErr" hidden>That PIN isn't right.</div>
     <div class="lock-pad" id="lockPad">
@@ -628,6 +603,7 @@
     <div id="lockPatWrap" hidden><div id="lockPatPad"></div></div>
     <div id="lockPwWrap" class="lock-pw" hidden><input id="lockPw" type="password" maxlength="64" autocomplete="current-password" aria-label="Password" placeholder="Password"><button class="primary" type="button" id="lockPwGo">Unlock</button></div>
     <button class="ghost" type="button" id="lockBioBtn" hidden>Use face or fingerprint</button>
+    <button class="ghost" type="button" id="lockBack" hidden>Cancel</button>
   </div>
 </div>
 
@@ -680,6 +656,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="app.js?v=69"></script>
+<script type="module" src="app.js?v=70"></script>
 </body>
 </html>
