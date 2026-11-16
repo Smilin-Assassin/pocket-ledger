@@ -1254,7 +1254,9 @@ h1, h2, h3, .hero .big, .fold-t b, .goal-top .pct, .loan-top .num { font-weight:
 :root[data-look="arcade"] .ar-left > span b { white-space: nowrap; }
 :root[data-look="arcade"][data-preset="coral"] :is(.primary, .ghost, .chip, .seg button, .modeseg button) { border: 0; }
 :root[data-look="arcade"][data-preset="coral"] .ghost { background: var(--line); }
-@media (min-width: 900px) { :root[data-look="arcade"] .arcade-hud { max-width: 560px; } }
+:root[data-look="arcade"] :is(.ar-a, .ar-b) { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; }
+@media (min-width: 900px) { :root[data-look="arcade"] .arcade-hud { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 36px; max-width: 1100px; align-items: start; } }
+:root[data-look="arcade"] .ar-map .b.cut { fill: var(--c-spent); stroke: var(--ink); stroke-width: 0; }
 /* Arcade polish (v72): the parts the browser draws, focus inside cut corners (an outline outside a clip-path is cut off), figures that line up, a cut-out frame around the + */
 :root[data-look="arcade"] { accent-color: var(--accent); caret-color: var(--accent); scrollbar-color: #3A3548 var(--bg); }
 :root[data-look="arcade"] ::selection { background: var(--accent); color: var(--accent-ink); }
