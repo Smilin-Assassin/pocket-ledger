@@ -64,12 +64,17 @@ export function rollNumber(big) {
     Object.assign(o.style, { left: big.offsetLeft + "px", top: big.offsetTop + "px", height: big.offsetHeight + "px", letterSpacing: cs.letterSpacing, color: cs.color });
     ["fontFamily", "fontSize", "fontWeight", "fontStyle", "fontStretch", "fontVariationSettings", "fontFeatureSettings", "fontOpticalSizing"].forEach(k => { if (cs[k]) o.style[k] = cs[k]; });
     o.style.setProperty("--lh", lh + "px");
-    let n = 0;
+    // each rolling digit is as wide as its digit in the finished amount (a column is otherwise as wide as its widest digit, so the number
+    // used to get wider while rolling and snap narrower at the end). Screen widths are divided by the text-size zoom.
+    const tn = big.firstChild, br = big.getBoundingClientRect(), z = big.offsetHeight ? br.height / big.offsetHeight : 1, wid = [];
+    if (tn && tn.nodeType === 3 && tn.length === text.length) { const r = document.createRange(); for (let i = 0; i < tn.length; i++) { r.setStart(tn, i); r.setEnd(tn, i + 1); wid.push(r.getBoundingClientRect().width / z); } }
+    let n = 0, ci = -1;
     for (const ch of text) {
+      ci++;
       if (/\d/.test(ch)) {
         const col = el("span", "odo-col", Array.from({ length: 10 + +ch + 1 }, (_, k) => `<span>${k % 10}</span>`).join(""));
         col.style.setProperty("--to", -(10 + +ch) * lh + "px"); col.style.animationDelay = (n++ * 45) + "ms";
-        const w = el("span", "odo-win"); w.appendChild(col); o.appendChild(w);
+        const w = el("span", "odo-win"); if (wid[ci] > 0) w.style.width = wid[ci].toFixed(2) + "px"; w.appendChild(col); o.appendChild(w);
       } else o.appendChild(el("span", "odo-ch", ch === " " ? "&nbsp;" : ch.replace(/[<>&]/g, "")));
     }
     host.appendChild(o);

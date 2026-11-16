@@ -53,6 +53,7 @@ A household in the Maldives wants to know, at any moment, **how much is left to 
 
 ## Release history (newest first)
 
+- November 2026 (pl-v77): **The rolling number keeps its size.** Each rolling digit is now as wide as its digit in the final amount, so the Left to spend number no longer grows while it rolls and snaps narrower at the end.
 - November 2026 (pl-v76): **Arcade cards stand out.** Cards are lighter than the page so they read as cards, a light top edge shows when one rides over another, and the first letter of "For you" is no longer cut off by the corner shape.
 - November 2026 (pl-v75): **Arcade motion and highlights.** Always crisp (no bounce or stretch, so the Calm / Lively / Jelly choice is hidden under Arcade). The Dashboard opening plays once per app opening: map bars rise in steps, category cells light one by one, the big number ticks digit by digit. Square sparks for a reached goal, a square chip instead of the coin, a hard scan line without glow, flat orange selected states on cut corners, sharp blink for recording. All inside `prefers-reduced-motion: no-preference`.
 - November 2026 (pl-v74): **Arcade Dashboard on wide screens.** Two columns on a laptop (strip and month map left, Left to spend after bills and categories right). The month map's scale follows the daily allowance so the dashed line stays readable when one big day dwarfs the rest; taller days are cut off at the top with a note.
