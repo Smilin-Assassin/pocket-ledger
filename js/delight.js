@@ -78,6 +78,14 @@ export function rollNumber(big) {
       } else { const c = el("span", "odo-ch", ch === " " ? "&nbsp;" : ch.replace(/[<>&]/g, "")); if (wid[ci] > 0) c.style.cssText = `width:${wid[ci].toFixed(2)}px;flex:none`; o.appendChild(c); }
     }
     host.appendChild(o);
+    // line the copy up with the real amount exactly: compare where the first character sits in each and move the copy by the difference
+    // (the copy's taller rows put it a pixel or two lower, so the amount jumped when the roll ended)
+    const oc = o.querySelector(".odo-ch");
+    if (oc && oc.firstChild && tn && tn.nodeType === 3 && !/\d/.test(text[0])) {
+      const r1 = document.createRange(), r2 = document.createRange(); r1.setStart(tn, 0); r1.setEnd(tn, 1); r2.selectNodeContents(oc);
+      const a = r1.getBoundingClientRect(), b = r2.getBoundingClientRect();
+      o.style.left = big.offsetLeft + (a.left - b.left) / z + "px"; o.style.top = big.offsetTop + (a.top - b.top) / z + "px";
+    }
     setTimeout(() => { o.remove(); show(); }, 1150 + n * 45);
   });
 }

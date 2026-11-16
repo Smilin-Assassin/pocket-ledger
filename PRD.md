@@ -53,6 +53,7 @@ A household in the Maldives wants to know, at any moment, **how much is left to 
 
 ## Release history (newest first)
 
+- November 2026 (pl-v80): **The amount no longer jumps when the roll ends.** The rolling copy sat about a pixel lower than the real amount, so "MVR" and the digits shifted up as the roll finished. The copy is now lined up with the real amount by measuring both.
 - November 2026 (pl-v79): **No wrong numbers while the app opens.** The Arcade top used to flash "MVR 0.00, add your income" and then a left-to-spend without the bills before the real number. The app now counts as ready only once entries, goals, bills and the household have all arrived, and the Arcade top draws nothing before that.
 - November 2026 (pl-v78): **The rolling number matches the final amount to the pixel.** v77 fixed the digit boxes but the comma, dot and currency letters still differed by a few pixels; every character of the rolling copy now takes its width from the finished amount, so nothing resizes at the end.
 - November 2026 (pl-v77): **The rolling number keeps its size.** Each rolling digit is now as wide as its digit in the final amount, so the Left to spend number no longer grows while it rolls and snaps narrower at the end.
