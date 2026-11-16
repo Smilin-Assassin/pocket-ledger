@@ -75,7 +75,7 @@ export function rollNumber(big) {
         const col = el("span", "odo-col", Array.from({ length: 10 + +ch + 1 }, (_, k) => `<span>${k % 10}</span>`).join(""));
         col.style.setProperty("--to", -(10 + +ch) * lh + "px"); col.style.animationDelay = (n++ * 45) + "ms";
         const w = el("span", "odo-win"); if (wid[ci] > 0) w.style.width = wid[ci].toFixed(2) + "px"; w.appendChild(col); o.appendChild(w);
-      } else o.appendChild(el("span", "odo-ch", ch === " " ? "&nbsp;" : ch.replace(/[<>&]/g, "")));
+      } else { const c = el("span", "odo-ch", ch === " " ? "&nbsp;" : ch.replace(/[<>&]/g, "")); if (wid[ci] > 0) c.style.cssText = `width:${wid[ci].toFixed(2)}px;flex:none`; o.appendChild(c); }
     }
     host.appendChild(o);
     setTimeout(() => { o.remove(); show(); }, 1150 + n * 45);
