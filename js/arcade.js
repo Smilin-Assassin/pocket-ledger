@@ -23,6 +23,7 @@ window.addEventListener("resize", fit);
 export function renderArcade() {
   const box = $("arcadeHud"); if (!box) return;
   const on = isArcade(); box.hidden = !on; if (!on) { box.innerHTML = ""; $("leftSub").hidden = false; return; }
+  if (!state.ready) { box.innerHTML = ""; $("leftSub").hidden = true; return; } // nothing until entries and bills have arrived: an early draw showed "MVR 0.00, add your income" and a left-to-spend without the bills
   const t = monthTotals(ui.month), rb = recurringMonth(ui.month, ui.view), now = new Date(), cur = ui.month === monthKey(now);
   const [y, m] = ui.month.split("-").map(Number), days = new Date(y, m, 0).getDate(), today = cur ? now.getDate() : (ui.month < monthKey(now) ? days : 0);
   const daysLeft = cur ? days - now.getDate() + 1 : 0;

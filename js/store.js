@@ -114,14 +114,14 @@ function rebuild() {
 export function setView(v) { ui.view = v; try { localStorage.setItem("pl-view-" + ctx.hid, v); } catch {} changed(); }
 
 // ---------- connect ----------
-const got = { entries: false, goals: false, h: false };
+const got = { entries: false, goals: false, recurring: false, h: false };
 export function connect(fb) {
   Object.assign(ctx, fb);
   if (ctx.space && ctx.space.role === "viewer") state.readOnly = true;
   ui.view = ctx.space && ctx.space.type === "group" ? (lsGet("pl-view-" + ctx.hid) || "all") : meId();
   const { F, db } = ctx, hh = F.doc(db, "households", ctx.hid);
   const snapErr = e => { if (e && e.code === "permission-denied") { state.readOnly = true; changed(); toast("You don't have access to this space."); } };
-  const settle = k => { if (k in got) got[k] = true; if (got.entries && got.goals && got.h) state.ready = true; rebuild(); changed(); };
+  const settle = k => { if (k in got) got[k] = true; if (got.entries && got.goals && got.recurring && got.h) state.ready = true; rebuild(); changed(); };
   COLS.forEach(c => F.onSnapshot(F.collection(hh, c), s => { raw[c] = s.docs.map(d => Object.assign({ id: d.id }, d.data())); settle(c); }, snapErr));
   F.onSnapshot(hh, s => {
     if (s.exists()) {
