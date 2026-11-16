@@ -27,7 +27,7 @@ const { start, loadState, URL0 } = require("./lib");
   const f = await p.evaluate(() => ({ h: getComputedStyle(document.querySelector("h1, h2")).fontFamily, body: getComputedStyle(document.body).fontFamily, link: [...document.querySelectorAll('link[rel="stylesheet"]')].map(l => l.href).find(h => /fonts\.googleapis/.test(h)) || "" }));
   check(/^"?Chakra Petch/.test(f.h) && /^"?Nunito/.test(f.body) && /Chakra\+Petch/.test(f.link), "Chakra Petch for headings, Nunito for text", f);
   const sh = await p.evaluate(() => { const c = document.querySelector(".panel"); return { r: getComputedStyle(c).clipPath.slice(0, 7), b: getComputedStyle(c).backgroundColor }; });
-  check(sh.r === "polygon" && sh.b === "rgb(30, 27, 38)", "cut-corner cards on a plum surface", sh);
+  check(sh.r === "polygon" && sh.b === "rgb(38, 34, 47)", "cut-corner cards on a plum surface", sh);
   check(await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), "no sideways scrolling in Arcade");
   await T.nav("home"); await p.waitForTimeout(500);
   const ring = await p.evaluate(() => { const r = document.getElementById("catRing"); return [...r.querySelectorAll("path.seg")].slice(0, 1).map(c => getComputedStyle(c).fill); });
