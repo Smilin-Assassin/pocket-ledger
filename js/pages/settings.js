@@ -86,13 +86,13 @@ function syncAppearance() {
   const mode = lsGet("pl-mode") === "dark" ? "dark" : "light", fs = lsGet("pl-fs") || "m";
   const arcade = lsGet("pl-look") === "arcade";
   document.querySelectorAll("#lookSeg [data-look]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.look === (arcade ? "arcade" : "coral"))));
-  $("modeSeg").hidden = arcade;
+  $("modeSeg").hidden = arcade; $("motionSeg").hidden = arcade;
   $("lookHint").textContent = arcade ? "Arcade is always dark. Switch back to Coral Dusk for Light." : "Coral Dusk, in Light or Dark below.";
   document.querySelectorAll("#set-look [data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
   fsSync();
   // motion, dock and vibrations
   document.querySelectorAll("#motionSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.motion === M.preset)));
-  $("motionHint").textContent = reduced() ? "Your phone is set to reduce motion, so animations are kept short." : ({ calm: "Smooth and quick, hardly any bounce.", lively: "A little stretch and bounce.", jelly: "Stretchy and wobbly. The fun one." })[M.preset];
+  $("motionHint").textContent = arcade ? "Arcade is always crisp: quick and exact, no bounce." : reduced() ? "Your phone is set to reduce motion, so animations are kept short." : ({ calm: "Smooth and quick, hardly any bounce.", lively: "A little stretch and bounce.", jelly: "Stretchy and wobbly. The fun one." })[M.preset];
   const six = fitsSix(), tabs = six ? M.tabs : 4;
   document.querySelectorAll("#dockSizeSeg button").forEach(b => { b.setAttribute("aria-pressed", String(+b.dataset.tabs === tabs)); b.disabled = b.dataset.tabs === "6" && !six; });
   const picks = $("dockPicks"); picks.hidden = tabs === 6;
@@ -118,7 +118,7 @@ function fsSync() { const z = fsNow(); $("fsRange").value = Math.round(z * 100);
 function fsInit() {
   const r = $("fsRange");
   r.addEventListener("input", () => fsPreview(+r.value / 100));
-  const apply = () => { const z = +r.value / 100; lsSet("pl-fs", Math.round(z * 100) === 100 ? "" : String(z)); window.plApplyTheme(); syncAppearance(); changed(); };
+  const apply = () => { const z = +r.value / 100; lsSet("pl-fs", Math.round(z * 100) === 100 ? "" : String(z)); window.plApplyTheme(); motionChanged(); syncAppearance(); changed(); };
   r.addEventListener("change", apply);
   $("fsReset").addEventListener("click", () => { r.value = 100; apply(); });
 }

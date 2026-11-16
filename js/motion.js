@@ -18,6 +18,8 @@ export const reduced = () => !!(mq && mq.matches);
 
 // k: stiffness, zeta: damping (1 = no overshoot, lower = bouncier); mass 1
 export function params() {
+  // Arcade (v75) is always crisp: fast, fully damped (no overshoot), no stretch, whatever Calm / Lively / Jelly says
+  if (document.documentElement.getAttribute("data-look") === "arcade") return { k: 1100, zeta: 1.15, trail: 1, stretch: 0 };
   const S = PRESETS[M.preset];
   return { k: 260 + S.speed * 9, zeta: 1.05 - S.bounce * 0.0065, trail: 1 - S.stretch * 0.0078, stretch: S.stretch / 100 };
 }

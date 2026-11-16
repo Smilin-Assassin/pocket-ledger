@@ -1292,3 +1292,36 @@ h1, h2, h3, .hero .big, .fold-t b, .goal-top .pct, .loan-top .num { font-weight:
 :root[data-look="arcade"] .pcolors button { --cut: 5px; clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); box-shadow: none; border: 0; }
 :root[data-look="arcade"] .pcolors button[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: -3px; }
 :root[data-look="arcade"] .scanbig { --cut: 10px; border: 0; border-radius: 0; background: var(--sunk); clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+/* ===== Arcade motion and highlights (v75): crisp and exact, never bouncy. Hard stops and stepped ticks instead of springs and glows;
+   highlights are flat orange with dark text on a cut corner; no soft shadows or blur. ===== */
+:root[data-look="arcade"] { -webkit-tap-highlight-color: rgba(255, 122, 69, .25); }
+:root[data-look="arcade"] .nav-blob { border-radius: 0; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+:root[data-look="arcade"] .pick-opt[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+:root[data-look="arcade"] :is(.primary, .ghost, .chip, .seg button, .modeseg button, .ar-cat):active { filter: brightness(.88); transform: translateY(1px); transition: none; }
+:root[data-look="arcade"] .mic.rec { animation: arBlink 1s steps(1) infinite; }
+@keyframes arBlink { 50% { opacity: .45; } }
+/* the coin drop: a square chip falls straight in, no pulse */
+:root[data-look="arcade"] .coin-pop { border-radius: 0; background: var(--sunk); box-shadow: none; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+:root[data-look="arcade"] .coin { border-radius: 0; box-shadow: none; background: var(--c-saved); clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px); }
+:root[data-look="arcade"] .coin-ring { animation: none; }
+/* goal sparks: small squares that fly out in steps, no spinning */
+:root[data-look="arcade"] .confetti i { width: 8px; height: 8px; margin-left: -4px; border-radius: 0; --r: 0deg !important; animation-timing-function: steps(14, end); }
+/* the scan beam: a hard line, no glow */
+:root[data-look="arcade"] .scanviz-doc { border-radius: 0; background: var(--sunk); box-shadow: none; clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); }
+:root[data-look="arcade"] .scanviz-doc i { border-radius: 0; background: var(--line); }
+:root[data-look="arcade"] .scanviz-tint { background: rgba(255, 122, 69, .14); }
+:root[data-look="arcade"] .scanviz-beam { border-radius: 0; box-shadow: none; height: 3px; animation-timing-function: steps(24, end); }
+@media (prefers-reduced-motion: no-preference) {
+  /* opening logo: pop in with steps, not an overshoot */
+  :root[data-look="arcade"] .sp-dot { animation: spPop .2s steps(3, end) .5s both; }
+  :root[data-look="arcade"] .sp-name { animation: spUp .25s steps(4, end) .6s both; }
+  /* the rolling number ticks digit by digit with hard edges */
+  :root[data-look="arcade"] .odo-col { animation-duration: .8s; animation-timing-function: steps(16, end); }
+  :root[data-look="arcade"] .odo-win { -webkit-mask-image: none; mask-image: none; }
+  /* Dashboard opening: the month map rises bar by bar, the category cells light up one by one */
+  :root[data-look="arcade"] .arcade-hud.intro .ar-map .b { transform-box: fill-box; transform-origin: bottom; animation: arRise .35s steps(6, end) both; animation-delay: calc(var(--d) * 14ms); }
+  :root[data-look="arcade"] .arcade-hud.intro .ar-cells i.on { animation: arLight .12s steps(1, end) both; animation-delay: calc(500ms + var(--n) * 45ms); }
+  :root[data-look="arcade"] .arcade-hud.intro .ar-strip b { animation: arLight .12s steps(1, end) both; animation-delay: 80ms; }
+  @keyframes arRise { from { transform: scaleY(0); } }
+  @keyframes arLight { from { opacity: 0; } }
+}

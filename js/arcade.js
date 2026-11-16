@@ -2,13 +2,16 @@
 // (today marked, dashed line = what you can spend a day), the amount left after bills, and the top categories as segmented bars.
 // Only drawn while Settings › Appearance › Look is Arcade; under Coral Dusk it stays empty and hidden.
 import { $, esc, money, monthKey, monthName } from "./util.js";
+import { reduced } from "./motion.js";
+import { rollNumber, rollPending } from "./delight.js";
 import { state, ui, monthTotals, inMonth, countsMoney, recurringMonth, budgetsFor, carriedIn, spentIn } from "./store.js";
 
 const plain = s => s.replace(/^MVR\s*/, ""); // the strip shows numbers only, like the mock-up
 const isArcade = () => document.documentElement.getAttribute("data-look") === "arcade";
 const MAPW = 342, MAPH = 76;
 
-function cells(filled, n = 10) { return Array.from({ length: n }, (_, i) => `<i class="${i < filled ? "on" : ""}"></i>`).join(""); }
+function cells(filled, n = 10) { return Array.from({ length: n }, (_, i) => `<i class="${i < filled ? "on" : ""}" style="--n:${i}"></i>`).join(""); }
+let introDone = false; // the opening sequence plays once per app opening, never again on data changes
 
 // large text or a narrow screen: the four numbers wrap into two rows instead of being cut off
 function fit() {
@@ -30,7 +33,7 @@ export function renderArcade() {
   let svg = `<svg viewBox="0 0 ${MAPW} ${MAPH + 28}" role="img" aria-label="${esc("Spending for each day of " + monthName(ui.month) + (allowance ? ", with a daily allowance of " + money(allowance, { whole: true }) : "") + (cur ? ". Today is day " + now.getDate() + "." : "."))}"><line x1="0" x2="${MAPW}" y1="${MAPH}" y2="${MAPH}" class="ax"/>`;
   for (let d = 1; d <= days; d++) {
     const x = (d - 1) * step + (step - bw) / 2, v = perDay[d];
-    if (v > 0) { const h = Math.max(2, Math.min(1, v / peak) * (MAPH - 8)); svg += `<rect x="${x.toFixed(1)}" y="${(MAPH - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" class="b${v > peak ? " cut" : ""}"/>`; }
+    if (v > 0) { const h = Math.max(2, Math.min(1, v / peak) * (MAPH - 8)); svg += `<rect x="${x.toFixed(1)}" y="${(MAPH - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" class="b${v > peak ? " cut" : ""}" style="--d:${d}"/>`; }
     else svg += `<rect x="${x.toFixed(1)}" y="${MAPH - (d <= today ? 1.5 : 2)}" width="${bw.toFixed(1)}" height="${d <= today ? 1.5 : 2}" class="${d <= today ? "z" : "f"}"/>`;
   }
   if (allowance) { const ly = MAPH - allowance / peak * (MAPH - 8); svg += `<line x1="0" x2="${MAPW}" y1="${ly.toFixed(1)}" y2="${ly.toFixed(1)}" class="al"/>`; }
@@ -53,4 +56,8 @@ export function renderArcade() {
 </div><div class="ar-b"><div class="ar-left"><div><small>${label}</small><b class="num${afterBills < 0 ? " neg" : ""}">${esc(money(afterBills))}</b></div>${allowance ? `<span><b>${esc(money(allowance, { whole: true }))} a day</b><small>for ${daysLeft} day${daysLeft === 1 ? "" : "s"}</small></span>` : ""}</div>
 ${rows ? `<div class="ar-cats">${rows}</div>` : ""}</div>`;
   fit();
+  if (!introDone && state.ready && !reduced() && box.offsetParent && (t.income || t.spent)) {
+    introDone = true; box.classList.add("intro"); setTimeout(() => box.classList.remove("intro"), 1800);
+    if (rollPending()) rollNumber(box.querySelector(".ar-left > div b"));
+  }
 }

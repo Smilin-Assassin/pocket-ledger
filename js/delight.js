@@ -102,7 +102,8 @@ export function checkGoals(goals, toast) {
 export function confetti() {
   if (reduced()) return;
   const box = el("div", "confetti"); box.setAttribute("aria-hidden", "true");
-  const cols = RING.concat(["#FFFFFF", "#FFD166"]);
+  const arcade = d.documentElement.getAttribute("data-look") === "arcade";
+  const cols = arcade ? ["#FF7A45", "#FFD166", "#7CE3C8", "#FF8FB8", "#B79CFF", "#F2EDF4"] : RING.concat(["#FFFFFF", "#FFD166"]);
   for (let i = 0; i < 46; i++) {
     const a = Math.random() * Math.PI * 2, r = 120 + Math.random() * 220, b = el("i");
     b.style.cssText = `background:${cols[i % cols.length]};--x:${(Math.cos(a) * r).toFixed(0)}px;--y:${(Math.sin(a) * r * .8 - 90).toFixed(0)}px;--r:${(Math.random() * 720 - 360).toFixed(0)}deg;animation-delay:${(Math.random() * 90).toFixed(0)}ms;${i % 3 ? "" : "width:7px;height:7px;border-radius:50%;"}`;
